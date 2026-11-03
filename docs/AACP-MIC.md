@@ -118,3 +118,64 @@ control getters return unknown values without touching the async context.
 This transport uses existing CDC descriptors; it adds no USB HID dependency.
 A future Web Serial or desktop UI can use this command layer. Physical CDC
 and AirPods interoperability testing remains deferred.
+
+## AU cadence and queue telemetry (microphone branch)
+
+The AACP AU path now exposes a lock-free, allocation-free diagnostic snapshot
+through `aacp_mic_audio_get_stats(aacp_mic_audio_stats *out)` in
+`src/btstack/aacp_mic.h`. It is safe to read without holding the BT lock,
+but it is **not a transactional snapshot**: counters are individual C11 atomics
+and depths are approximate, capacity-clamped samples of the two SPSC indices.
+The function does not clear or reset lifetime counters. Counters are wrapping
+32-bit totals, not per-second rates. Call from a normal context when logging;
+do not print or wait inside the USB IRQ. The current BT poll emits
+`[mic-cad]` and `[mic-dec]` lines every two seconds, in both transport-only
+and AAC-ELD builds.
+
+* `aacp_mic_audio_note_au(timestamp, arrival_us)` is invoked once per
+  validated AU. `arrival_us` is the wrapping `time_us_32()` clock.
+  `arrival_intervals` counts consecutive AU pairs within the same capture/
+  Bluetooth generation; its exclusive buckets are burst (<1 ms), 7.5 ms
+  (6.5–8.5 ms), 10 ms (9–11 ms), long gap (>=15 ms), and other.
+  Multiple AUs carried by one SDU naturally produce a burst interval.
+  Min/last/max are in microseconds and include bursts; use the buckets and
+  raw intervals rather than treating one observed interval as a clock.
+* All `timestamp_*` values are **raw AACP units**, not microseconds.
+  `timestamp_step_reference` is the first positive delta in the current
+  generation; changes, duplicate steps, backwards steps and 2x-or-larger
+  forward steps are counted as discontinuity *candidates*. A uint32 wrap
+  with a small positive delta is handled. No timestamp-rate assumption or
+  concealment/resampling is introduced. Disconnects and capture reopens
+  rebase the comparator, retaining aggregate counters.
+* `au_depth`/`pcm_depth` and `au_high_water`/`pcm_high_water`
+  are measured in **frames**, with hard limits of 32 AUs and 16 PCM frames.
+  Separate overflow and stale-generation discard counts expose buffer
+  pressure across reconnects. A work pass can clear up to 32 stale AUs
+  and still decode up to eight current AUs; USB discards stale PCM in its
+  bounded read without waiting on decode.
+* `decode_last_us`, `decode_max_us` and `decode_ema_us` measure
+  AAC Fill+Decode duration on the same microsecond clock. The EMA uses 1/8
+  new and 7/8 prior measurement. Decoder format remains checked at 48 kHz
+  mono, 480 samples; failures emit silence as before. A transport-only build
+  has zero decode/queue counters, but still reports AU timing.
+
+### 48 kHz vs 64 kHz hardware evidence
+
+One 480-sample decoded frame represents **10 ms at 48 kHz** or **7.5 ms
+at 64 kHz**. The *existing* AAC ASC configures FDK for 48 kHz and the
+*existing* USB microphone clock is 64 kHz; neither is changed by telemetry.
+To determine whether this mismatch is intentional, capture 30–60 seconds
+of steady speech or constant recording, include the `[mic-cad]` and
+`[mic-dec]` logs from startup through reconnect, and preserve any raw
+timestamp traces available from a diagnostic UART. Correlate the AU/frame
+counts over wall-clock duration, arrival buckets and timestamp steps,
+decoder format, queue growth/drop rates and audible pitch/duration.
+Consistently receiving ~100 480-sample AUs/s supports a 48 kHz source
+cadence, whereas ~133.3 AUs/s supports 64 kHz-equivalent consumption; radio
+bursts and missing packets can obscure both. The timestamp units must be
+established independently before any conversion is inferred. These are
+tests to run, **not measurements already obtained**.
+
+Host mocks now exercise bursts, raw timestamp discontinuities, generation
+restarts, overflow/high-water, stale AU/PCM discard and simulated decode
+duration. They do not demonstrate real-device timing or acoustic quality.

@@ -5,6 +5,7 @@
 #include <aacdecoder_lib.h>
 #include <assert.h>
 #include <stdio.h>
+uint32_t mock_time_us;
 static int16_t value;
 static bool fail;
 static CStreamInfo info={48000,1,480};
@@ -18,6 +19,7 @@ AAC_DECODER_ERROR aacDecoder_Fill(HANDLE_AACDECODER d,UCHAR **p,UINT *n,UINT *va
 }
 AAC_DECODER_ERROR aacDecoder_DecodeFrame(HANDLE_AACDECODER d,INT_PCM *p,int n,int flags) {
  (void)d; assert(n>=480); if(flags) return AAC_DEC_OK;
+ mock_time_us+=325; /* simulated Fill+Decode duration */
  for(int i=0;i<480;i++) p[i]=value;
  return fail?AAC_DEC_UNKNOWN:AAC_DEC_OK;
 }
@@ -25,6 +27,31 @@ CStreamInfo *aacDecoder_GetStreamInfo(HANDLE_AACDECODER d) { (void)d;return &inf
 static void enqueue(uint8_t v) { aacp_mic_audio_enqueue(&v,1); }
 static void drain(void) { int16_t p[64]; while(aacp_mic_audio_read(p,64)) {} }
 int main(void) {
+ aacp_mic_audio_stats s;
+ // Raw AACP timestamps are not assumed to be in samples or microseconds.
+ // A 480-tick step and 7500-us arrival period are independent observations.
+ for (uint32_t i=0;i<20;i++) aacp_mic_audio_note_au(i*480u,i*7500u);
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_observed==20 && s.arrival_intervals==19);
+ assert(s.arrival_7500us==19 && s.arrival_10000us==0);
+ assert(s.timestamp_step_reference==480 && s.timestamp_step_changes==0);
+ // One missing timestamp interval, rapid burst, duplicate, backtrack.
+ aacp_mic_audio_note_au(21u*480u,20u*7500u);
+ aacp_mic_audio_note_au(22u*480u,20u*7500u+20);
+ aacp_mic_audio_note_au(22u*480u,20u*7500u+40);
+ aacp_mic_audio_note_au(22u*480u-1,20u*7500u+60);
+ aacp_mic_audio_get_stats(&s);
+ assert(s.timestamp_gap_candidates==1 && s.timestamp_step_changes>=1);
+ assert(s.arrival_bursts==3 && s.timestamp_duplicates==1);
+ assert(s.timestamp_backwards==1);
+ uint32_t previous_generation=s.generation;
+ aacp_mic_discontinuity();
+ aacp_mic_audio_note_au(7,200000);
+ aacp_mic_audio_note_au(487,207500);
+ aacp_mic_audio_get_stats(&s);
+ assert(s.generation==previous_generation+1);
+ assert(s.timestamp_backwards==1); // restart is not a wrap/backtrack
+ assert(s.timestamp_step_reference==480);
  int16_t p[64]; aacp_mic_audio_init(); assert(aacp_mic_audio_ready());
  enqueue(3); aacp_mic_audio_work(); assert(!aacp_mic_audio_read(p,64));
  aacp_mic_set_capture(true); enqueue(7); aacp_mic_audio_work();
@@ -32,6 +59,8 @@ int main(void) {
  // Close/reopen must discard a partial PCM frame and pending compressed AU.
  enqueue(99); aacp_mic_set_capture(false); aacp_mic_set_capture(true);
  aacp_mic_audio_work(); assert(!aacp_mic_audio_read(p,64));
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_stale>=1 && s.pcm_stale>=1);
  enqueue(8); aacp_mic_audio_work(); assert(aacp_mic_audio_read(p,64)==64 && p[0]==8);
  aacp_mic_discontinuity(); assert(aacp_mic_capture() && !aacp_mic_audio_read(p,64));
  // Unexpected format is rejected instead of copying stereo/other rate PCM.
@@ -42,6 +71,24 @@ int main(void) {
  // Fill both queues past capacity; bounded dropping must preserve valid data.
  for(int i=0;i<100;i++) enqueue(12);
  for(int i=0;i<5;i++) aacp_mic_audio_work();
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_high_water==32 && s.au_overflows>=68);
+ assert(s.pcm_high_water==16 && s.pcm_overflows>=16);
+ assert(s.decode_max_us>=325 && s.decode_last_us>=325);
+ assert(s.decoded_rate==48000 && s.decoded_channels==1 && s.decoded_frame_samples==480);
  while(aacp_mic_audio_read(p,64)) for(int i=0;i<64;i++) assert(p[i]==12);
- puts("microphone queue, generation and decode-error integration tests passed");
+ // A full queue of stale AUs must be discarded in one bounded work call.
+ aacp_mic_discontinuity();
+ for (unsigned i=0;i<32;i++) enqueue(45);
+ aacp_mic_discontinuity();
+ aacp_mic_audio_work();
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_depth==0 && s.au_stale>=33);
+ assert(!aacp_mic_audio_read(p,64));
+ enqueue(46); aacp_mic_audio_work();
+ assert(aacp_mic_audio_read(p,64)==64 && p[0]==46);
+ // Decode and PCM high-water never increase past fixed queue capacities.
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_high_water<=32 && s.pcm_high_water<=16);
+ puts("microphone cadence, timestamp, burst, overflow and reconnect tests passed");
 }

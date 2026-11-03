@@ -16,6 +16,7 @@ extern void a2dp_source_queue_jitter(uint8_t);
 #include "aacp_mic_protocol.h"
 #include "classic/device_id_server.h"
 #include <stdio.h>
+#include "pico/time.h"
 #include <string.h>
 static uint8_t device_id[100];
 static bd_addr_t peer;
@@ -56,6 +57,7 @@ void aacp_mic_init(void) {
 static bool wanted(void) { return aacp_mic_capture() && aacp_mic_audio_ready(); }
 static void au(const uint8_t *data,uint8_t len,uint32_t timestamp,void *ctx) {
  (void)ctx; units++; bytes+=len; last_timestamp=timestamp;
+ aacp_mic_audio_note_au(timestamp,time_us_32());
  if (session.started && wanted()) aacp_mic_audio_enqueue(data,len);
 }
 static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
@@ -148,6 +150,7 @@ void aacp_mic_poll(void) {
    printf("[mic] open=%u confirmed=%u wanted=%u sent_start=%u attempts=%u sdu=%lu au=%lu bytes=%lu malformed=%lu ts=%lu\n",
    opened,session.confirmed,wanted(),session.started,attempts,(unsigned long)sdus,
    (unsigned long)units,(unsigned long)bytes,(unsigned long)malformed,(unsigned long)last_timestamp);
+   aacp_mic_audio_report();
  }
 }
 
