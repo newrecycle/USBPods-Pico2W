@@ -10,13 +10,13 @@ import urllib.request
 IMAGES = {
     "stock0031": {
         "ref": "c1075d4bc440422cf2b2fd12c64a1f53f77660ee",
-        "header_sha256": "ab603f4e25d20078a1f4ea3035618d0e804fa39ee01ba9458bc1f54a4124ffad",
+        "header_sha256": "11fc817e33a875e4f619c6939f934e916be0dfa083ce4af073867f340779a6c9",
         "payload_sha256": "ce1992c1a6a16ae51bc012439486e9fb212623eca92d9e82a8090c2acf7ef1df",
         "bytes": 6164,
     },
     "rpi0065": {
         "ref": "055d64274b014dd7b1c2fc94d26e8a18face7124",
-        "header_sha256": "934ff6a88fd417f8f06a8387581c6989e620c90ce03a8bec203ed74aed703e18",
+        "header_sha256": "d05a8dca7e232ada470d8ed723edaa1ea78000098870f9b979d490d83ad35b22",
         "payload_sha256": "d974384d0aa8124d30084f30d13519a3ed3b9f759f7ddd6a34ef3dcf1441bcf7",
         "bytes": 6970,
     },
