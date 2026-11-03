@@ -23,8 +23,10 @@ and resume restores it **only** if still mounted with alt 1 open.
 - `short_writes`: `tud_audio_write()` responses other than 128 bytes.
 
 Counters are cumulative 32-bit wraparound values, not per-session resets.
-The USB microphone always emits a 64-sample / 128-byte mono packet when
-active, padding short reads with silence. This does **not** change the
+The USB microphone writes a 64-sample / 128-byte mono packet on each active
+IN preload, padding short reads with silence. TinyUSB 0.18 passes the audio
+function ID (0) to the preload callback, not the USB microphone interface
+number (2); the callback gates on that ID and the tracked host intent. This does **not** change the
 existing 48 kHz AACP/FDK decoder output format or the advertised 64 kHz
 microphone USB clock. Physical tests are still needed to resolve cadence,
 drift, sample-rate behavior and decode timing.

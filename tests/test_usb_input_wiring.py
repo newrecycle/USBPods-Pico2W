@@ -12,6 +12,7 @@ assert "usb_capture_resume();" in section("void tud_resume_cb", "static bool tud
 assert "usb_capture_close();" in section("bool tud_audio_set_itf_close_EP_cb", "bool tud_audio_set_itf_cb")
 assert "usb_capture_set_alt(alt == 1);" in section("bool tud_audio_set_itf_cb", "uint16_t usb_stop_delay")
 tx = section("bool tud_audio_tx_done_pre_load_cb", "// AUDIO Task")
+assert "itf != 0" in tx  # TinyUSB 0.18 func_id, NOT USB interface number
 assert "usb_capture_running()" in tx and "usb_capture_note_tx(got, written);" in tx
 assert "usb_hid_media_poll(ready, usb_hid_send_report);" in source
 assert "usb_hid_media_enqueue(usage);" in source

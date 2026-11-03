@@ -922,8 +922,9 @@ volatile uint8_t usb_splice_sim;
 bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t alt)
  { 
     (void)rhport; (void)ep_in;
-    if (itf != ITF_NUM_AUDIO_STREAMING_MIC || alt != 1 ||
-        !usb_capture_running()) return true;
+    /* TinyUSB 0.18 passes the AUDIO FUNCTION INDEX here, not bInterfaceNumber.
+       CFG_TUD_AUDIO is 1: function 0 has the single microphone IN endpoint. */
+    if (itf != 0 || alt != 1 || !usb_capture_running()) return true;
     int16_t packet[64] = {0};
     uint32_t got = aacp_mic_audio_read(packet, 64);
     uint16_t written = tud_audio_write(packet, sizeof(packet));
