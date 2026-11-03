@@ -7,6 +7,7 @@
 extern bool a2dp_source_is_playing(void);
 extern void a2dp_source_on_aap_wake(void);
 extern void a2dp_source_apply_eld_rate(void);
+extern void a2dp_source_queue_jitter(uint8_t);
 #include "../tinyusb/uac.h"
 #include "pico/cyw43_arch.h"
 #include "pico/async_context.h"
@@ -95,6 +96,9 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    opened=true; requested=false; send_errors=0;
    memset(&session,0,sizeof(session));
    aacp_control_reset(&controls); deadline=btstack_run_loop_get_time_ms()+5000;
+   /* Reapply current policy after a new channel handshake, never stale writes.
+      The source defers this until playback has resumed after any rebuild. */
+   a2dp_source_queue_jitter(aap_get_game()?aap_game_jitter():150);
    printf("[mic] AACP opened cid=%u mtu=%u\n",cid,l2cap_event_channel_opened_get_remote_mtu(p));
    break;
  }
@@ -192,6 +196,6 @@ void aap_set_game(bool on) {
  if (!control_lock()) return;
  if(on)settings()->usbset|=USBSET_GAME;else settings()->usbset&=(uint8_t)~USBSET_GAME;
  settings_mark_dirty();a2dp_source_apply_eld_rate();
- if(opened)(void)aacp_control_set(&controls,0x0b,on?aap_game_jitter():150);
+ if(opened)a2dp_source_queue_jitter(on?aap_game_jitter():150);
  control_unlock();
 }

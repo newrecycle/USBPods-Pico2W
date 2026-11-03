@@ -34,7 +34,12 @@ playback profile changes.
 
 `eld_profile.c` is the single policy implementation. `eld_encoder.c` is shared
 by initial configuration and live rebuild. It checks allocation, every FDK
-parameter, initialization and returned stream geometry. Failure closes the
+parameter, initialization and returned stream geometry. CBR profiles also set
+an explicit peak rate; the first native duplex test exposed a 332-byte startup
+AU at 192 kbps when the peak was left implicit (the transport reserved 304).
+With the peak bound, the expanded fixture produces at most 241-byte AUs at
+192 kbps and 401 at 320 kbps. The encoder output buffer is additionally limited by the
+actual negotiated packet space, independently of the nominal estimate. Failure closes the
 handle and clears the stream info instead of publishing a partial encoder.
 The old handle is closed before allocating a new one, avoiding a temporary
 double encoder heap alongside the mic decoder.
@@ -49,7 +54,12 @@ before USB descriptors are rebuilt.
 Commands: `:eldrate 1/2/3`, `:game 0/1`, `:gamelevel 1/2`, `:eldstatus`.
 The status response distinguishes selected/desired policy from the successfully
 configured active encoder, rebuild-pending state and failure/rebuild counters.
-A queued setting alone does not establish that it became active.
+A queued setting alone does not establish that it became active. Game-mode
+jitter is queued through the source's post-START scheduler rather than emitted
+during the rate-change suspend. A superseding mode cancels the old timer;
+headset disconnect clears it, and channel reconnect reapplies current policy. `:eldstatus` also reports the target linker heap
+region and current allocator use; CI records the linker region but does not
+claim that dynamic allocations were exercised on the board.
 
 ## Offline acceptance
 
@@ -59,6 +69,8 @@ A queued setting alone does not establish that it became active.
 - Actual repository FDK: repeated 192/256/320, both game profiles, 44.1 kHz
   resampling, relay cap and return-to-default transitions. The actual microphone
   queue and decoder remain active; their capture generation must not change.
+  Three complete cycles cover 24 transitions and 3,072 playback/microphone
+  frames with tones, full-scale noise, silence and impulses.
   Playback frames are decoded and checked for stereo/480 samples/48 kHz; mic
   PCM is checked for non-silence and frame continuity; encoded AU bounds are
   checked against the packet budget.

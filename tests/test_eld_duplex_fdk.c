@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 static UCHAR mic_au[32][255];static unsigned mic_len[32],mic_count;
 static void set(HANDLE_AACENCODER h,AACENC_PARAM k,UINT v){assert(aacEncoder_SetParam(h,k,v)==AACENC_OK);}
 static void mic_fixture(void) {
@@ -26,26 +29,41 @@ static void mic_fixture(void) {
  assert(mic_count>=28);aacEncClose(&h);
 }
 int main(void){
+ setvbuf(stdout,NULL,_IONBF,0);
  mic_fixture();aacp_mic_audio_init();assert(aacp_mic_audio_ready());aacp_mic_set_capture(true);
  uint32_t generation=aacp_mic_generation();HANDLE_AACENCODER encoder=NULL;AACENC_InfoStruct ei;
  const struct {uint8_t rate,game,level,r44,relay;} modes[]={
    {1,0,1,0,0},{2,0,1,0,0},{3,0,1,0,0},{3,1,1,0,0},
    {3,1,2,0,0},{2,0,1,1,0},{2,0,1,0,1},{2,0,1,0,0}
  };
- unsigned all_frames=0;int mic_peak=0;
- for(unsigned mode=0;mode<sizeof(modes)/sizeof(modes[0]);mode++){
+ unsigned all_frames=0;int mic_peak=0;uint32_t noise=1;
+ for(unsigned transition=0;transition<3*sizeof(modes)/sizeof(modes[0]);transition++){
+   unsigned mode=transition%(sizeof(modes)/sizeof(modes[0]));
    eld_profile p=eld_profile_select(modes[mode].rate,modes[mode].game,modes[mode].level,modes[mode].r44,modes[mode].relay,5,1);
    assert(eld_encoder_open(&encoder,&ei,&p)==AACENC_OK);
    assert(aacp_mic_audio_ready() && aacp_mic_generation()==generation);
+#ifdef __GLIBC__
+   struct mallinfo2 heap=mallinfo2();
+   printf("ELD host heap mic+encoder profile %u: inuse=%zu free_arena=%zu (not target RAM measurement)\n",mode,(size_t)heap.uordblks,(size_t)heap.fordblks);
+#endif
    HANDLE_AACDECODER decoder=aacDecoder_Open(TT_MP4_RAW,1);assert(decoder);
    UCHAR*conf[]={ei.confBuf};UINT size=ei.confSize;assert(aacDecoder_ConfigRaw(decoder,conf,&size)==AAC_DEC_OK);
    resamp44_t rs;resamp44_reset_st(&rs);unsigned frames=0,max_au=0;
-   for(unsigned frame=0;frame<64;frame++){
+   for(unsigned frame=0;frame<128;frame++){
      INT_PCM input[960],resampled[960],decoded[1920],mic[480];UCHAR bytes[2048];
      for(unsigned i=0;i<p.input_frames;i++){
        double t=(frame*p.input_frames+i)/(double)p.input_rate;
-       input[2*i]=(INT_PCM)(10000*sin(2*3.141592653589793*440*t));
-       input[2*i+1]=(INT_PCM)(9000*sin(2*3.141592653589793*880*t));
+       switch((frame/16)%4) {
+       case 0:
+         input[2*i]=(INT_PCM)(10000*sin(2*3.141592653589793*440*t));
+         input[2*i+1]=(INT_PCM)(9000*sin(2*3.141592653589793*880*t));break;
+       case 1:
+         noise=noise*1664525u+1013904223u;input[2*i]=(INT_PCM)(noise>>16);
+         noise=noise*1664525u+1013904223u;input[2*i+1]=(INT_PCM)(noise>>16);break;
+       case 2:input[2*i]=input[2*i+1]=0;break;
+       default:
+         input[2*i]=i==0?30000:0;input[2*i+1]=i==1?-30000:0;break;
+       }
      }
      void*pcm=input;
      if(p.input_rate==44100){assert(resamp44_process_st(&rs,input,441,resampled,480)==480);pcm=resampled;}
@@ -53,7 +71,9 @@ int main(void){
      AACENC_BufDesc in={1,ib,&iid,&is,&ie},out={1,ob,&oid,&os,&oe};AACENC_InArgs args={960,0};AACENC_OutArgs result={0};
      assert(aacEncEncode(encoder,&in,&out,&args,&result)==AACENC_OK);
      if(result.numOutBytes){
-       unsigned n=(unsigned)result.numOutBytes;assert(n<=p.bitrate/800+64);if(n>max_au)max_au=n;
+       unsigned n=(unsigned)result.numOutBytes;
+       if(n>p.bitrate/800+64)fprintf(stderr,"ELD budget violation: mode=%u frame=%u bytes=%u budget=%u rate=%u vbr=%u sbr=%u\n",mode,frame,n,p.bitrate/800+64,p.bitrate,p.vbr,p.sbr);
+       assert(n<=p.bitrate/800+64);if(n>max_au)max_au=n;
        UCHAR*b[]={bytes};UINT length=n,valid=n;assert(aacDecoder_Fill(decoder,b,&length,&valid)==AAC_DEC_OK&&!valid);
        assert(aacDecoder_DecodeFrame(decoder,decoded,1920,0)==AAC_DEC_OK);
        CStreamInfo *info=aacDecoder_GetStreamInfo(decoder);assert(info&&info->frameSize==480&&info->numChannels==2&&info->sampleRate==48000);frames++;
@@ -63,8 +83,8 @@ int main(void){
      for(unsigned i=0;i<480;i++)if(abs(mic[i])>mic_peak)mic_peak=abs(mic[i]);
      assert(aacp_mic_generation()==generation);
    }
-   assert(frames>=60);all_frames+=frames;aacDecoder_Close(decoder);
-   printf("ELD duplex profile %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",mode,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
+   assert(frames>=124);all_frames+=frames;aacDecoder_Close(decoder);
+   printf("ELD duplex transition %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",transition,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
  }
  assert(mic_peak>1000);aacEncClose(&encoder);aacp_mic_set_capture(false);
  printf("ELD rate/game transitions with active mic queue: %u playback frames, mic peak=%d\n",all_frames,mic_peak);

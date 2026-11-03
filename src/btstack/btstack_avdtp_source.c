@@ -1353,6 +1353,8 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
         }
         out_ptr              = &context->codec_storage[hdr_offset];
         out_size             = sizeof(context->codec_storage) - hdr_offset;
+        int mtu_space = context->max_media_payload_size - hdr_offset;
+        if (out_size > mtu_space) out_size = mtu_space; /* never encode beyond negotiated packet space */
         out_buf.bufs         = &out_ptr;
         out_buf.bufSizes     = &out_size;
         AACENC_ERROR err;
@@ -1479,20 +1481,30 @@ void a2dp_source_remote_bye(uint16_t handle, uint8_t reason){
    User-prescribed game-mode order: "first set to 192k, THEN toggle game" —
    the jitter command must never hit the buds mid-decode right before a
    suspend/rate change (that crashed them). Queued here, pushed 500 ms after
-   the next START-accept; sent immediately when no stream is running. */
+   the next START-accept. An already-running stable stream also permits the
+   delayed push (AACP may open after AVDTP START). */
 static volatile uint8_t src_pending_jitter;   /* raw ms, 0 = none */
 static btstack_timer_source_t src_jitter_timer;
 static void src_jitter_handler(btstack_timer_source_t *ts){
     (void)ts;
-    if (!src_pending_jitter) return;
+    if (!src_pending_jitter || !a2dp_is_connected_flag || !is_streaming ||
+        src_eld_reset_pending || suspend_recovery_pending) return;
     extern void aap_set_jitter_raw(uint8_t value);
     aap_set_jitter_raw(src_pending_jitter);
     src_pending_jitter = 0;
 }
 void a2dp_source_queue_jitter(uint8_t ms){
     extern void aap_set_jitter_raw(uint8_t value);
-    if (!is_streaming){ aap_set_jitter_raw(ms); return; }
+    btstack_run_loop_remove_timer(&src_jitter_timer);
+    if (cur_codec != CODEC_ID_AACELD || !a2dp_is_connected_flag){
+        src_pending_jitter=0;aap_set_jitter_raw(ms);return;
+    }
     src_pending_jitter = ms;
+    if (is_streaming && !src_eld_reset_pending && !suspend_recovery_pending) {
+        btstack_run_loop_set_timer_handler(&src_jitter_timer, src_jitter_handler);
+        btstack_run_loop_set_timer(&src_jitter_timer, 500);
+        btstack_run_loop_add_timer(&src_jitter_timer);
+    }
 }
 
 /* ---- suspended-stream self-heal (ESP32 port) -------------------------------
@@ -1665,6 +1677,8 @@ void a2dp_source_parkwatch_init(void){
    rate simply applies at the next encoder init. */
 void a2dp_source_apply_eld_rate(void) {
     if (cur_codec != 4 || !a2dp_is_connected_flag) return;
+    btstack_run_loop_remove_timer(&src_jitter_timer);
+    src_pending_jitter=src_eld_profile().jitter;
     aaceld_frame_sequence = 1;
     media_tracker.rtp_timestamp = 0;
     src_eld_reset_pending = true;      /* encoder rebuilt in the main loop */
@@ -1719,19 +1733,17 @@ void a2dp_source_main_work(void) {
            the old leak for one session (error 33, recoverable), never a free
            of live state.
 
-           IRQ-off: the check and the sweep must be one atomic step against
-           the BT IRQ, or a configure could open a handle mid-sweep and have
-           it freed a microsecond later. Freeing with IRQs off in thread mode
-           is the house pattern (the ELD rebuild below) and also sidesteps the
-           malloc_mutex deadlock that killed the IRQ-context sweep. */
-        uint32_t irq = save_and_disable_interrupts();
+           The async context lock makes the check/sweep atomic against BT
+           configuration, while USB interrupts continue draining microphone
+           PCM. Allocation/free stays in thread mode. */
+        async_context_acquire_lock_blocking(cyw43_arch_async_context());
         if (cur_codec == 0) {
             for (int i = 0; codec_registry[i]; i++)
                 if (codec_registry[i]->release) codec_registry[i]->release();
-            restore_interrupts(irq);
+            async_context_release_lock(cyw43_arch_async_context());
             printf("Codecs released (main loop)\n");
         } else {
-            restore_interrupts(irq);
+            async_context_release_lock(cyw43_arch_async_context());
         }
     }
     if (!src_eld_reset_pending) return;
@@ -2479,7 +2491,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
 
 static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
 
-    // AAC-ELD: max 986 bytes per RTP payload (Apple negotiated limit)
+    // AAC-ELD: cap at 986 bytes and respect a smaller negotiated media MTU.
     // SBC/LDAC: 656 bytes — long-tuned, left alone.
     // AAC-LC: use the ACTUALLY NEGOTIATED media MTU. One AAC-LC AU is 1024
     // samples in one payload, so the payload size IS the bitrate ceiling
@@ -2487,7 +2499,8 @@ static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
     // have the higher rate it advertises instead of being clamped to the
     // classic 672-byte-MTU assumption.
     if (cur_codec == 4) {
-        context->max_media_payload_size = 986;
+        int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
+        context->max_media_payload_size = m > 0 && m < 986 ? (uint16_t)m : 986;
     } else if (cur_codec == 2) {
         int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
         context->max_media_payload_size = (m >= 0x290 && m <= 1024) ? (uint16_t) m : 0x290;
@@ -3035,6 +3048,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                     break;
                 }
                 src_active_eld=profile;src_eld_rebuilds++;src_eld_reset_pending=false;
+                btstack_run_loop_remove_timer(&src_jitter_timer);
+                src_pending_jitter=profile.jitter;
                 src_full_bitrate=profile.bitrate;src_vbr_mode=0;src_relay_rate_low=false;
 
                 PLOG("AAC-ELD setup complete! frameLength=%d, inputChannels=%d, bitrate=%lu (encoder reports %lu, sbr=%lu ratio=%lu vbr=%lu)\n",
@@ -3222,6 +3237,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                cleared its cid for this same (broadcast) event. Only the
                HEADSET's release may tear the source state down. */
             if (little_endian_read_16(packet, 3) != media_tracker.avdtp_cid) break;
+            btstack_run_loop_remove_timer(&src_jitter_timer);
+            src_pending_jitter=0;
             a2dp_demo_timer_stop(&media_tracker);
             finish_scan_avdtp_codec = false;
             if (a2dp_is_connected_flag && (read_settings_byte() & USBSET_PAUSEDC)) {

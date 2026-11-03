@@ -15,7 +15,9 @@ static unsigned host_keys;static uint16_t last_usage;
 void usb_hid_consumer(uint16_t usage){host_keys++;last_usage=usage;}
 bool a2dp_source_is_playing(void){return true;}
 void a2dp_source_on_aap_wake(void){}
-void a2dp_source_apply_eld_rate(void){}
+static unsigned rate_sequence,jitter_sequence,sequence;
+void a2dp_source_apply_eld_rate(void){rate_sequence=++sequence;}
+void a2dp_source_queue_jitter(uint8_t ms){assert(ms==60 || ms==90 || ms==150);jitter_sequence=++sequence;}
 static btstack_packet_handler_t callback;
 static uint32_t now,epochs;
 static int locks;
@@ -57,6 +59,8 @@ int main(void){
  uint8_t reply[]={4,0,4,0,9,0,0x0d,2,0,0,0};
  callback(L2CAP_DATA_PACKET,0x41,reply,11);assert(aap_get_noise_mode()==0);
  callback(L2CAP_DATA_PACKET,0x42,reply,11);assert(aap_get_noise_mode()==2);
+ aap_set_game(true);assert(rate_sequence<jitter_sequence);assert(aap_get_game());
+ aap_set_game(false);assert(rate_sequence<jitter_sequence);assert(!aap_get_game());
  aap_set_ear_pause(true);
  uint8_t ear[]={4,0,4,0,6,0,0,1};callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(!host_keys);
  ear[6]=1;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==1 && last_usage==0xb1);

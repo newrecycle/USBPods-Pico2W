@@ -42,6 +42,7 @@ bool    aap_protocol_seen(void);    /* a valid inbound AACP frame arrived (real 
 uint8_t aap_get_noise_mode(void);   /* 0 unknown, 1 Off 2 ANC 3 Transp 4 Adaptive */
 bool    aap_get_ear_pause(void);
 bool    aap_get_game(void);
+uint8_t aap_game_jitter(void);
 int     aap_get_pvol(void);         /* -1 unsupported, 0/1 */
 int     aap_get_ca(void);
 int     aap_get_aa(void);           /* -1 unsupported, 0..100 */

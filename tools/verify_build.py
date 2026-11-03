@@ -92,6 +92,16 @@ def verify(build, evidence, name="USBPods_Pico2W_Lite"):
     matching = [s.split() for s in symbols.splitlines() if s.endswith(" cyw43_btfw_43439")]
     if len(matching) != 1 or int(matching[0][1], 16) != len(fw):
         raise ValueError("linked controller symbol/size mismatch")
+    addresses = {}
+    for line in symbols.splitlines():
+        fields = line.split()
+        if len(fields) >= 3:
+            try: addresses[fields[-1]] = int(fields[0], 16)
+            except ValueError: pass
+    if "__HeapLimit" in addresses and "end" in addresses:
+        region = addresses["__HeapLimit"] - addresses["end"]
+        if region <= 0: raise ValueError("no linker heap region remains")
+        report["memory"] = {"heap_region_bytes": region, "heap_start": hex(addresses["end"]), "heap_limit": hex(addresses["__HeapLimit"]), "runtime_allocation_verified": False}
     total, families = verify_uf2(uf2, binary)
     if name.startswith("USBPods_"):
         report["usb_descriptors"] = verify_microphone_descriptors(binary,symbols)
@@ -111,3 +121,4 @@ if __name__ == "__main__":
     p.add_argument("--stem", default="USBPods_Pico2W_Lite")
     a=p.parse_args()
     verify(a.build,a.evidence,a.stem)
+
