@@ -6,7 +6,7 @@
 static const uint8_t ids[]={0x0b,0x0d,0x26,0x28,0x2e};
 void aacp_control_reset(aacp_control *s) {
  memset(s,0,sizeof(*s)); memset(s->battery,0xff,3);
- s->pvol=s->ca=s->aa=-1;
+ s->pvol=s->ca=s->aa=s->allow_off=-1;
 }
 static bool valid(unsigned i,uint8_t v) {
  switch(i) {
@@ -64,6 +64,7 @@ bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
  }
  case 0x09:
    if(n!=11 || p[8] || p[9] || p[10]) return false;
+   if(p[6]==0x34){if(p[7]!=1&&p[7]!=2)return false;s->allow_off=p[7]==1;return true;}
    for(unsigned i=0;i<sizeof(ids);i++) if(p[6]==ids[i] && valid(i,p[7])) {
      s->observed[i]++;
      switch(i) {
@@ -78,4 +79,30 @@ bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
    return false;
  default: return false;
  }
+}
+
+static int control_frame_size(const uint8_t *p,size_t n) {
+ if(n<6 || memcmp(p,"\x04\x00\x04\x00",4) || p[5])return 0;
+ switch(p[4]) {
+ case 9:return n>=11?11:-1;
+ case 6:case 0x19:return n>=8?8:-1;
+ case 4:
+   if(n<7 || p[6]>3)return -1;
+   return n>=7u+5u*p[6]?(int)(7u+5u*p[6]):-1;
+ default:return 0;
+ }
+}
+int aacp_control_walk(const uint8_t *p,size_t n,aacp_control_frame_cb cb,void *ctx) {
+ if(!n)return 0;
+ size_t off=0;int frames=0;
+ while(off<n) {
+   int len=control_frame_size(p+off,n-off);
+   if(len<=0)return off || len<0?-1:0;
+   off+=(size_t)len;frames++;
+ }
+ if(cb)for(off=0;off<n;) {
+   int len=control_frame_size(p+off,n-off);
+   cb(p+off,(size_t)len,ctx);off+=(size_t)len;
+ }
+ return frames;
 }

@@ -3,10 +3,12 @@
 // This module owns ONE PSM 0x1001 channel in the public Lite build.
 #include "btstack.h"
 #include "aacp_control.h"
+#include "media_input.h"
 #include "../settings.h"
 extern bool a2dp_source_is_playing(void);
 extern void a2dp_source_on_aap_wake(void);
 extern void a2dp_source_apply_eld_rate(void);
+extern void a2dp_source_recover_eld_stream(void);
 extern void a2dp_source_queue_jitter(uint8_t);
 #include "../tinyusb/uac.h"
 #include "pico/cyw43_arch.h"
@@ -28,6 +30,7 @@ static aacp_mic_session session;
 static aacp_control controls;
 static bool initialized;
 static bool paused_by_ear;
+static media_input host_media;
 /* Upstream resets A2DP after 0x58 START (+800 ms) and STOP. A successful
  * wire transition replaces the previous request; the main-loop poll submits
  * recovery through the source's serialized SUSPEND/rebuild/START owner. */
@@ -40,7 +43,7 @@ static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
 static void release_channel(void) {
- playback_reset_pending=false;refresh_pending=false;
+ playback_reset_pending=false;refresh_pending=false;media_input_reset(&host_media);
  aacp_mic_discontinuity();
  uint16_t old=cid; cid=0; opened=requested=false;
  memset(&session,0,sizeof(session));
@@ -69,6 +72,40 @@ static void au(const uint8_t *data,uint8_t len,uint32_t timestamp,void *ctx) {
  aacp_mic_audio_note_au(timestamp,time_us_32());
  if (session.started && wanted()) aacp_mic_audio_enqueue(data,len);
 }
+static void control_notification(const uint8_t *p,size_t n,void *context) {
+ (void)context;
+ /* Bounded, non-secret diagnostics for otherwise unsupported button
+    configuration and gestures. Never dump arbitrary AACP packets/keys. */
+ if(n==11 && !memcmp(p,"\x04\x00\x04\x00\x09\x00",6) &&
+    (p[6]==5 || (p[6]>=0x14 && p[6]<=0x18) || p[6]==0x39))
+   printf("[aacp] button config id=0x%02x values=%u,%u,%u,%u\n",p[6],p[7],p[8],p[9],p[10]);
+ if(n==8 && !memcmp(p,"\x04\x00\x04\x00\x19\x00",6))
+   printf("[aacp] stem type=%u bud=%u\n",p[6],p[7]);
+ bool valid=controls.ear_valid,worn=controls.worn;uint32_t stem=controls.stem_count;
+ if (aacp_control_receive(&controls,p,n)) {
+   session.confirmed=true;
+   if(n==11 && p[4]==0x09)
+     printf("[aacp] control notify id=0x%02x value=%u\n",p[6],p[7]);
+   if (controls.ear_valid && valid && worn!=controls.worn && settings()->ear_pause) {
+     if (!controls.worn && a2dp_source_is_playing()) {
+       usb_hid_consumer(0x00b1);paused_by_ear=true;
+     } else if (controls.worn && paused_by_ear) {
+       usb_hid_consumer(0x00b0);paused_by_ear=false;a2dp_source_on_aap_wake();
+     }
+   }
+   if (controls.stem_count!=stem && settings()->stem_hid) {
+     uint16_t usage=controls.stem==5?0x00cd:controls.stem==6?0x00b5:0x00b6;
+     uint32_t now=btstack_run_loop_get_time_ms();
+     for(unsigned i=0;i<MEDIA_INPUT_QUEUE;i++) {
+       uint16_t native=media_input_poll(&host_media,now);if(!native)break;
+       usb_hid_consumer(native);
+     }
+     media_input_typed(&host_media,now);usb_hid_consumer(usage);
+   }
+ }
+
+}
+
 static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
  if (type==L2CAP_DATA_PACKET) {
    if (!opened || channel!=cid) return;
@@ -76,31 +113,12 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    if (frames<0) malformed++;
    else if (frames>0) sdus++;
    else {
-     /* Bounded, non-secret diagnostics for otherwise unsupported button
-        configuration and gestures. Never dump arbitrary AACP packets/keys. */
-     if(n==11 && !memcmp(p,"\x04\x00\x04\x00\x09\x00",6) &&
-        (p[6]==5 || (p[6]>=0x14 && p[6]<=0x18) || p[6]==0x39))
-       printf("[aacp] button config id=0x%02x values=%u,%u,%u,%u\n",p[6],p[7],p[8],p[9],p[10]);
-     if(n==8 && !memcmp(p,"\x04\x00\x04\x00\x19\x00",6))
-       printf("[aacp] stem type=%u bud=%u\n",p[6],p[7]);
-     bool valid=controls.ear_valid,worn=controls.worn;uint32_t stem=controls.stem_count;
-     if (aacp_control_receive(&controls,p,n)) {
-       session.confirmed=true;
-       if(n==11 && p[4]==0x09)
-         printf("[aacp] control notify id=0x%02x value=%u\n",p[6],p[7]);
-       if (controls.ear_valid && valid && worn!=controls.worn && settings()->ear_pause) {
-         if (!controls.worn && a2dp_source_is_playing()) {
-           usb_hid_consumer(0x00b1);paused_by_ear=true;
-         } else if (controls.worn && paused_by_ear) {
-           usb_hid_consumer(0x00b0);paused_by_ear=false;a2dp_source_on_aap_wake();
-         }
-       }
-       if (controls.stem_count!=stem && settings()->stem_hid) {
-         uint16_t usage=controls.stem==5?0x00cd:controls.stem==6?0x00b5:0x00b6;
-         usb_hid_consumer(usage);
-       }
-     }
+     int controls_in_sdu=aacp_control_walk(p,n,control_notification,NULL);
+     if(controls_in_sdu==0)control_notification(p,n,NULL);
+     else if(controls_in_sdu<0)wire_controls.framing_errors++;
+     else if(controls_in_sdu>1)wire_controls.batches++;
    }
+
    return;
  }
  if (type!=HCI_EVENT_PACKET) return;
@@ -162,6 +180,11 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
  default: break;
  }
 }
+bool aap_forward_avrcp_media(uint16_t usage) {
+ if(!initialized || !opened || !session.confirmed || !settings()->stem_hid ||
+    (usage!=0xcd && usage!=0xb5 && usage!=0xb6))return false;
+ media_input_avrcp(&host_media,usage,btstack_run_loop_get_time_ms());return true;
+}
 void aacp_mic_poll(void) {
  uint32_t now=btstack_run_loop_get_time_ms();
  if (desired && !cid && attempts<3 && expired(now,due)) {
@@ -183,7 +206,11 @@ void aacp_mic_poll(void) {
      wanted()==session.started && expired(now,playback_reset_due)) {
    playback_reset_pending=false;
    printf("[mic] playback recovery after %s\n",session.started?"START":"STOP");
-   a2dp_source_apply_eld_rate();
+   a2dp_source_recover_eld_stream();
+ }
+ if(!opened || !session.confirmed || !settings()->stem_hid)media_input_reset(&host_media);
+ else for(unsigned i=0;i<MEDIA_INPUT_QUEUE;i++) {
+   uint16_t usage=media_input_poll(&host_media,now);if(!usage)break;usb_hid_consumer(usage);
  }
  if (now-last_report>=2000) {
    last_report=now;
@@ -204,9 +231,11 @@ static bool control_lock(void) {
 }
 static void control_unlock(void) { async_context_release_lock(cyw43_arch_async_context()); }
 aacp_control_diagnostics aap_control_diagnostics(void) {
- aacp_control_diagnostics out={0};
+ aacp_control_diagnostics out={.allow_off=-1};
  if(!control_lock())return out;
- out=wire_controls;memcpy(out.observed,controls.observed,sizeof out.observed);
+ out=wire_controls;memcpy(out.observed,controls.observed,sizeof out.observed);out.allow_off=controls.allow_off;
+ out.mic_started=session.started;out.mic_recovery_pending=playback_reset_pending || (opened && session.confirmed && wanted()!=session.started);
+ out.media_pending=host_media.count;out.media_suppressed=host_media.suppressed;out.media_dropped=host_media.dropped;
  control_unlock();return out;
 }
 bool aacp_control_submit(uint8_t id,uint8_t value) {
@@ -241,10 +270,19 @@ void aap_set_ear_pause(bool on) {
  control_unlock();
 }
 uint8_t aap_game_jitter(void) { return settings()->game_level==2?60:90; }
+bool aap_set_eld_profile(uint8_t rate,bool on,uint8_t level) {
+ if(rate<1||rate>3||level<1||level>2||!control_lock())return false;
+ bool old_game=aap_get_game();uint8_t old_level=settings()->game_level;
+ bool changed=settings()->eld_rate!=rate || old_game!=on || old_level!=level;
+ if(changed) {
+   settings()->eld_rate=rate;settings()->game_level=level;
+   if(on)settings()->usbset|=USBSET_GAME;else settings()->usbset&=(uint8_t)~USBSET_GAME;
+   settings_mark_dirty();a2dp_source_apply_eld_rate();
+   if(opened && (old_game!=on || (on && old_level!=level)))
+     a2dp_source_queue_jitter(on?aap_game_jitter():150);
+ }
+ control_unlock();return true;
+}
 void aap_set_game(bool on) {
- if (!control_lock()) return;
- if(on)settings()->usbset|=USBSET_GAME;else settings()->usbset&=(uint8_t)~USBSET_GAME;
- settings_mark_dirty();a2dp_source_apply_eld_rate();
- if(opened)a2dp_source_queue_jitter(on?aap_game_jitter():150);
- control_unlock();
+ (void)aap_set_eld_profile(settings()->eld_rate?settings()->eld_rate:2,on,settings()->game_level?settings()->game_level:1);
 }

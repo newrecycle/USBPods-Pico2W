@@ -37,7 +37,7 @@ static void advance(uint32_t ms) {
 static void connected(void) {
  memset(&media_tracker,0,sizeof(media_tracker));media_tracker.avdtp_cid=0x42;media_tracker.local_seid=1;
  memset(&src_eld_change_timer,0,sizeof(src_eld_change_timer));memset(&src_jitter_timer,0,sizeof(src_jitter_timer));
- src_eld_timer_armed=false;src_eld_reset_pending=src_codec_release_pending=false;
+ src_eld_timer_armed=false;src_eld_reset_pending=src_codec_release_pending=false;src_requested_eld_valid=false;
  is_streaming=false;a2dp_is_connected_flag=finish_scan_avdtp_codec=true;
  src_fault_hold=src_user_dc_hold=src_auto_kick_pending=false;src_con_handle=0x123;cur_codec=4;
  src_eld_failures=src_eld_rebuilds=src_eld_last_error=src_eld_max_rebuild_us=0;src_eld_error_stage=0;
@@ -72,6 +72,19 @@ int main(void) {
  src_stream_suspend_accepted();a2dp_source_main_work();assert(rebuild_calls==2 && starts==3);
  assert(built_bitrate==192000 && active_slot_count==4);
  src_stream_start_accepted();advance(500);assert(last_jitter==60 && jitters==1);
+
+ // Captured 220546: rate=2 builds, then gamelevel 2->1 while game is OFF.
+ // The effective profile is identical; accepting the first START must RUN,
+ // not immediately issue a second SUSPEND/rebuild/START.
+ connected();config.eld_rate=3;config.game_level=2;
+ request(2,false,2);src_stream_suspend_accepted();a2dp_source_main_work();
+ advance(100);request(2,false,1);src_stream_start_accepted();
+ assert(suspends==1 && rebuild_calls==1 && is_streaming);
+ uint32_t revision=src_eld_change.requested;
+ request(2,false,1);assert(suspends==1 && src_eld_change.requested==revision);
+ a2dp_source_recover_eld_stream();assert(suspends==2);
+ src_stream_suspend_accepted();a2dp_source_main_work();src_stream_start_accepted();
+ assert(is_streaming && rebuild_calls==2 && !disconnects);
 
  // Rejected/failed SUSPEND never restarts a live pump or opens a new encoder.
  connected();suspend_rc=12;request(3,false,1);a2dp_source_main_work();
@@ -167,7 +180,7 @@ names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer'
          'src_eld_link_reset', 'src_eld_schedule_setup', 'src_event_matches_headset',
          'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
          'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
-         'src_jitter_handler', 'a2dp_source_queue_jitter', 'a2dp_source_apply_eld_rate',
+         'src_jitter_handler', 'a2dp_source_queue_jitter', 'src_request_eld_change', 'a2dp_source_apply_eld_rate', 'a2dp_source_recover_eld_stream',
          'src_eld_initialize', 'a2dp_source_main_work', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)

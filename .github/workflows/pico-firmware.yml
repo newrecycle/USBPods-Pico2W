@@ -126,7 +126,7 @@ jobs:
           /tmp/test-control
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src tests/test_control_command.c src/control_command.c -o /tmp/test-console
           /tmp/test-console
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/transport_mocks -I src/btstack tests/test_aacp_transport.c src/btstack/aacp_mic.c src/btstack/aacp_control.c src/btstack/aacp_mic_protocol.c -o /tmp/test-transport
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/transport_mocks -I src/btstack tests/test_aacp_transport.c src/btstack/aacp_mic.c src/btstack/aacp_control.c src/btstack/media_input.c src/btstack/aacp_mic_protocol.c -o /tmp/test-transport
           /tmp/test-transport
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_audio.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-audio
           /tmp/test-mic-audio
@@ -146,6 +146,10 @@ jobs:
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
           python3 tests/test_live_runner.py
+          python3 tests/test_live_matrix.py
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_media_input.c src/btstack/media_input.c -o /tmp/test-media-input
+          /tmp/test-media-input
+          python3 tests/test_media_input_wiring.py
           python3 tests/test_source_boundaries.py
           python3 tests/test_control_records.py
           python3 tests/test_control_status.py
@@ -173,6 +177,7 @@ jobs:
           ASAN_OPTIONS=detect_leaks=0 timeout 90 /tmp/test-eld-duplex
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_frequency.c src/btstack/eld_profile.c src/btstack/eld_encoder.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-eld-frequency
           ASAN_OPTIONS=detect_leaks=0 /tmp/test-eld-frequency
+          python3 tests/test_pcm_packet_path.py --fdk-lib host-fdk/libfdk-aac.a
       - name: Audit 32-bit duplex codec allocations
         if: matrix.decode == 'ON'
         run: |
@@ -220,6 +225,10 @@ jobs:
       - name: Package microphone live-test candidate
         if: matrix.decode == 'ON'
         run: |
+          if ! python3 -c 'import json,sys; s=json.load(open("docs/validation-status.json")); sys.exit(not s.get("live_test_authorized") or bool(s.get("blockers")))'; then
+            echo "Live candidate packaging paused during offline triage."
+            exit 0
+          fi
           stem="$(cat build/usbpods-output-name.txt)"
           python3 tools/package_live_test.py --build build --evidence evidence --output live-test-candidate --stem "$stem" --source-sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID"
       - name: Upload firmware and verification evidence

@@ -52,3 +52,7 @@ void    aap_set_game(bool on);
 void    aap_set_pvol(bool on);
 void    aap_set_ca(bool on);
 void    aap_set_aa(uint8_t strength);
+
+bool aap_set_eld_profile(uint8_t rate,bool game,uint8_t level); /* one settings transaction */
+
+bool aap_forward_avrcp_media(uint16_t usage); /* BT owner; true means queued/deduplicated */

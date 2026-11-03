@@ -33,7 +33,7 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
             -I tests/transport_mocks -I src/btstack \
             tests/test_aacp_transport.c src/btstack/aacp_mic.c \
-            src/btstack/aacp_control.c src/btstack/aacp_mic_protocol.c \
+            src/btstack/aacp_control.c src/btstack/media_input.c src/btstack/aacp_mic_protocol.c \
             -o /tmp/test-transport
           /tmp/test-transport
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \

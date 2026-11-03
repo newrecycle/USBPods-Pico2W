@@ -31,6 +31,16 @@ initial START has a deadline that re-arms self-heal if no response arrives.
 The transition adapters reject unrelated CIDs before mutating source state.
 Headset teardown cancels pending work; a new codec setup starts a fresh session.
 
+Preference writes compare the complete effective profile before requesting a
+transition. An inactive game-level preference or repeated identical profile
+therefore cannot trigger a second SUSPEND/rebuild/START. `:profile RATE GAME
+LEVEL` applies all three settings atomically, including runner restoration.
+The source API `a2dp_source_apply_eld_rate()` is idempotent;
+`a2dp_source_recover_eld_stream()` explicitly forces recovery when the profile
+is unchanged. Microphone START/STOP recovery and manual/self-heal actions use
+the forced API. The captured repeated-profile failure is replayed in the
+production adapter fixture.
+
 Each managed phase has a three-second deadline. Coalesced requests do not move
 an existing phase's deadline. Signaling rejection/error, encoder failure or a
 managed timeout stops playback, cancels pending jitter, records the error and

@@ -6,7 +6,7 @@
 /* All operations run under the channel owner's async-context lock. */
 typedef struct {
  uint8_t battery[3], noise;
- int pvol, ca, aa;
+ int pvol, ca, aa,allow_off;
  uint8_t pending, values[5];
  uint32_t observed[5];
  bool ear_valid,worn;
@@ -24,7 +24,16 @@ bool aacp_control_submit(uint8_t id,uint8_t value);
 
 /* Wire submission is distinct from a fresh peer notification. */
 typedef struct {
- uint32_t transmitted, observed[5];
- uint8_t last_id,last_value;
+ uint32_t transmitted, observed[5],batches,framing_errors;
+ int allow_off;
+ bool mic_started,mic_recovery_pending;
+ uint32_t media_suppressed,media_dropped;
+ uint8_t media_pending,last_id,last_value;
 } aacp_control_diagnostics;
 aacp_control_diagnostics aap_control_diagnostics(void);
+
+/* Structurally validate concatenated fixed-format notifications before any
+ * callbacks. Unknown standalone packets return 0 for legacy handling. No
+ * header searching inside opaque or encoded audio payloads is performed. */
+typedef void (*aacp_control_frame_cb)(const uint8_t*,size_t,void*);
+int aacp_control_walk(const uint8_t*,size_t,aacp_control_frame_cb,void*);

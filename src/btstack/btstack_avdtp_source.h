@@ -67,6 +67,7 @@ void a2dp_source_reconnect();
 void a2dp_source_main_work(void);  /* deferred FDK encoder rebuild — main loop only */
 void a2dp_source_selfheal_init(void);  /* arm the suspended-stream watchdog (init) */
 void a2dp_source_on_aap_wake(void);    /* AAP ear/wake: resume a suspended stream */
+void a2dp_source_recover_eld_stream(void); /* explicit recovery, even if profile unchanged */
 void a2dp_source_apply_eld_rate(void); /* live ELD bitrate change (web setting) */
 uint16_t a2dp_source_con_handle(void); /* headset ACL handle, 0 = none */
 void a2dp_source_note_send(uint8_t rc);      /* count/report a failed media send */

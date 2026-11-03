@@ -9,6 +9,7 @@ typedef struct {
  uint8_t vbr,sbr,slots,jitter;
 } eld_profile;
 eld_profile eld_profile_select(uint8_t rate,bool game,uint8_t level,bool rate44,bool relay,uint8_t vbr,uint8_t sbr);
+bool eld_profile_equal(const eld_profile*,const eld_profile*);
 typedef struct {
  eld_profile desired,active;
  bool ready,pending;

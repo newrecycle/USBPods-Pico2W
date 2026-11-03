@@ -65,12 +65,12 @@ static void quoted(char out[51],const char *s) {
 static void status(void) {
  uint8_t b[3];aap_get_battery(b);const uint8_t *peer=a2dp_source_peer_addr();
  aacp_control_diagnostics ctl=aap_control_diagnostics();
- printf("\n[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"tx_packets\":%lu,\"send_failures\":%lu,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"fault_hold\":%u,\"peer\":\"%s\",\"control_tx\":%lu,\"control_last_id\":%u,\"control_last_value\":%u,\"control_rx_seq\":[%lu,%lu,%lu,%lu,%lu]}\n",
+ printf("\n[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"tx_packets\":%lu,\"send_failures\":%lu,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"fault_hold\":%u,\"peer\":\"%s\",\"control_tx\":%lu,\"control_last_id\":%u,\"control_last_value\":%u,\"control_rx_seq\":[%lu,%lu,%lu,%lu,%lu],\"control_batches\":%lu,\"control_framing_errors\":%lu,\"allow_off\":%d,\"media_pending\":%u,\"media_suppressed\":%lu,\"media_dropped\":%lu,\"mic_started\":%u,\"mic_recovery_pending\":%u}\n",
  aap_channel_open(),aap_protocol_seen(),get_a2dp_connected_flag(),check_is_streaming(),(unsigned long)a2dp_source_tx_packets(),(unsigned long)a2dp_source_send_failures(),get_cur_codec(),
  aap_get_noise_mode(),aap_get_pvol(),aap_get_ca(),aap_get_aa(),b[0],b[1],b[2],
  aacp_mic_capture(),aacp_mic_audio_ready(),bt_sink_relay_connected(),bt_sink_relay_streaming(),a2dp_source_fault_hold(),
  peer?bd_addr_to_str((uint8_t*)peer):"",(unsigned long)ctl.transmitted,ctl.last_id,ctl.last_value,
- (unsigned long)ctl.observed[0],(unsigned long)ctl.observed[1],(unsigned long)ctl.observed[2],(unsigned long)ctl.observed[3],(unsigned long)ctl.observed[4]);
+ (unsigned long)ctl.observed[0],(unsigned long)ctl.observed[1],(unsigned long)ctl.observed[2],(unsigned long)ctl.observed[3],(unsigned long)ctl.observed[4],(unsigned long)ctl.batches,(unsigned long)ctl.framing_errors,ctl.allow_off,ctl.media_pending,(unsigned long)ctl.media_suppressed,(unsigned long)ctl.media_dropped,(unsigned)ctl.mic_started,(unsigned)ctl.mic_recovery_pending);
 }
 static void list(bool scan) {
  /* Format one record before emitting it: background logs must not split
@@ -123,8 +123,9 @@ static bool dispatch(control_command c) {
  case CONTROL_GAME:if(v>1)return false;aap_set_game(v!=0);return true;
  case CONTROL_EARPAUSE:if(v>1)return false;aap_set_ear_pause(v!=0);return true;
  case CONTROL_STEM:if(v>1)return false;s->stem_hid=v;break;
- case CONTROL_GAMELEVEL:if(v<1||v>2)return false;s->game_level=v;aap_set_game(aap_get_game());break;
- case CONTROL_ELDRATE:if(v<1||v>3||bt_sink_relay_connected())return false;s->eld_rate=v;a2dp_source_apply_eld_rate();break;
+ case CONTROL_GAMELEVEL:if(v<1||v>2)return false;return aap_set_eld_profile(s->eld_rate?s->eld_rate:2,aap_get_game(),v);
+ case CONTROL_ELDRATE:if(v<1||v>3||bt_sink_relay_connected())return false;return aap_set_eld_profile(v,aap_get_game(),s->game_level?s->game_level:1);
+ case CONTROL_PROFILE:if(bt_sink_relay_connected())return false;return aap_set_eld_profile(v,c.game!=0,c.level);
  case CONTROL_USBVOL:if(v>100)return false;s->usb_vol_p1=v+1;set_usb_sw_gain_pct(v);break;
  case CONTROL_PHVOL:if(v>100)return false;s->relay_vol_p1=v+1;bt_sink_relay_set_vol_pct(v);break;
  case CONTROL_CONNMODE:if(v<1||v>3)return false;s->connmode=v;break;

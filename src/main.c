@@ -135,9 +135,9 @@ void on_single_press(void){
         case 1: increase_vol_by_key(); break;
         case 2: {   /* the 'k' console key as a button: suspend -> fresh
                        seq/ts/encoder -> restart (AirPods mute recovery) */
-            extern void a2dp_source_apply_eld_rate(void);
+            extern void a2dp_source_recover_eld_stream(void);
             printf("button: stream reset\n");
-            a2dp_source_apply_eld_rate();
+            a2dp_source_recover_eld_stream();
             break;
         }
         case 3: usb_hid_consumer(0x00CD); break;   /* play/pause to the host */

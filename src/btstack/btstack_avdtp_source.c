@@ -1238,7 +1238,8 @@ static void src_dial_maybe_redial_after_drop(void);
    fill/send-trigger gap caused an encode error storm.) */
 static uint8_t src_eld_vbr_mode=5;
 static uint8_t src_eld_sbr=1;
-static eld_profile src_active_eld;
+static eld_profile src_active_eld,src_requested_eld;
+static bool src_requested_eld_valid;
 static uint32_t src_eld_failures,src_eld_rebuilds;
 static eld_profile src_eld_profile(void) {
  eld_profile p=eld_profile_select(settings()->eld_rate,aap_get_game(),settings()->game_level,
@@ -1523,7 +1524,7 @@ static void src_eld_cancel_timer(void) {
     btstack_run_loop_remove_timer(&src_eld_change_timer);src_eld_timer_armed=false;
 }
 static void src_eld_link_reset(void) {
-    eld_transition_reset(&src_eld_change);src_eld_reset_pending=false;
+    eld_transition_reset(&src_eld_change);src_eld_reset_pending=false;src_requested_eld_valid=false;
     src_eld_setup_pending=false;src_eld_early_start=false;src_eld_setup_cid=0;
     src_eld_cancel_timer();btstack_run_loop_remove_timer(&src_jitter_timer);
     src_pending_jitter=0;
@@ -1707,7 +1708,7 @@ static void src_resume_suspended(const char *why) {
     printf("suspended stream: re-START (%s, try %u/3)%s\n",
            why, src_resume_tries, cur_codec == 4 ? " + ELD reset" : "");
     if (cur_codec == 4) {
-        a2dp_source_apply_eld_rate();return;
+        a2dp_source_recover_eld_stream();return;
     }
     uint8_t st = src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
     if (st == ERROR_CODE_COMMAND_DISALLOWED) src_sig_disallowed(why);
@@ -1798,9 +1799,12 @@ void a2dp_source_parkwatch_init(void){
    hygiene as the recovery STARTs (fresh seq/ts so the AirPods decoder
    resyncs cleanly). No-op unless an ELD stream is up; otherwise the new
    rate simply applies at the next encoder init. */
-void a2dp_source_apply_eld_rate(void) {
+static void src_request_eld_change(bool force) {
     if (cur_codec != CODEC_ID_AACELD || !a2dp_is_connected_flag ||
         src_fault_hold || src_user_dc_hold) return;
+    eld_profile desired=src_eld_profile();
+    if(!force && src_requested_eld_valid && eld_profile_equal(&desired,&src_requested_eld))return;
+    src_requested_eld=desired;src_requested_eld_valid=true;
     unsigned actions=eld_transition_request(&src_eld_change,is_streaming);
     if(!actions)return;
     src_eld_error_stage=0;src_eld_last_error=0;
@@ -1812,6 +1816,9 @@ void a2dp_source_apply_eld_rate(void) {
         (unsigned long)src_eld_bitrate());
     src_eld_execute(actions);
 }
+
+void a2dp_source_apply_eld_rate(void){src_request_eld_change(false);}
+void a2dp_source_recover_eld_stream(void){src_request_eld_change(true);}
 
 static void src_eld_initialize(void) {
     /* Only the main loop calls this, with the CYW43 context lock held.
@@ -1829,7 +1836,7 @@ static void src_eld_initialize(void) {
         printf("[eld] initial encoder FAILED status=%u\n",err);
         return;
     }
-    src_active_eld=profile;src_eld_rebuilds++;src_eld_reset_pending=false;
+    src_active_eld=profile;src_requested_eld=profile;src_requested_eld_valid=true;src_eld_rebuilds++;src_eld_reset_pending=false;
     btstack_run_loop_remove_timer(&src_jitter_timer);
     src_pending_jitter=profile.jitter;
     src_full_bitrate=profile.bitrate;src_vbr_mode=0;src_relay_rate_low=false;
@@ -2029,7 +2036,7 @@ static void src_bitrate_ladder_tick(void) {
         printf("ELD coex: relay %s -> re-apply at %lu bps\n",
                want_low ? "streaming" : "idle",
                (unsigned long)src_eld_bitrate());
-        a2dp_source_apply_eld_rate();
+        a2dp_source_recover_eld_stream();
         return;
     }
     /* AAC-LC source: live SetParam is safe for LC (FDK re-inits cleanly). */
@@ -2270,7 +2277,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
                         printf("[auto] damage calm -> stream refresh NOW (kick %lu, backoff %u)\n",
                                (unsigned long)src_auto_kicks, src_rec_escal);
                         src_rec_state = 3;
-                        a2dp_source_apply_eld_rate();
+                        a2dp_source_recover_eld_stream();
                         return;
                     }
                 }
@@ -2405,7 +2412,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
             src_storm_passes++;
             src_storm_ms = now;
             printf("post-storm hygiene: pass %u/3 — refreshing stream\n", src_storm_passes);
-            a2dp_source_apply_eld_rate();
+            a2dp_source_recover_eld_stream();
             if (src_storm_passes >= 3) src_storm_pending = false;   /* optimistic end */
         }
     }
@@ -2595,7 +2602,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
 
                     // Reset AAC-ELD encoder + sequence so both sides start fresh
                     if (cur_codec == CODEC_ID_AACELD) {
-                        a2dp_source_apply_eld_rate();fail_count=0;return;
+                        a2dp_source_recover_eld_stream();fail_count=0;return;
                     }
 
                     a2dp_demo_timer_stop(context);
@@ -3646,7 +3653,7 @@ bool a2dp_source_console_key(char cmd){
             break;
         case 'K':   /* kick: manual suspend->rebuild->restart (mute recovery) */
             printf("manual stream refresh (k)\n");
-            a2dp_source_apply_eld_rate();
+            a2dp_source_recover_eld_stream();
             break;
         case 'U':
             {   /* PCM tap: 500 ms summaries of what the USB host delivers */
@@ -4351,6 +4358,9 @@ uint32_t a2dp_source_tx_packets(void){return src_tx_pkts;}
 uint32_t a2dp_source_send_failures(void){return src_send_fails;}
 
 
+static void src_host_media_key(uint16_t usage) {
+    if(!aap_forward_avrcp_media(usage))usb_hid_consumer(usage);
+}
 static void avrcp_target_packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 static void avrcp_target_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
     watchdog_hw->scratch[7] = 0x44;   /* entered (hang forensics) */
@@ -4394,8 +4404,8 @@ static void avrcp_target_packet_handler_inner(uint8_t packet_type, uint16_t chan
             switch (operation_id) {
                 /* PLAY and PAUSE are ONE DUMB TOGGLE — see the note at
                    set_usb_streaming for why nothing smarter survives contact
-                   with real headsets. Every press forwards exactly one 0xCD
-                   to the computer (discrete 0xB0/0xB1 are widely ignored;
+                   with real headsets. Native fallback forwards one 0xCD
+                   to the computer; explicit AACP gestures take precedence when enabled (discrete 0xB0/0xB1 are widely ignored;
                    macOS did nothing); which label the headset picked is its
                    private toggle state and none of our business. The old
                    volume-0 mute on PAUSE stays gone; volume is restored on
@@ -4412,7 +4422,7 @@ static void avrcp_target_packet_handler_inner(uint8_t packet_type, uint16_t chan
                     is_muted = false;
                     _bt_sink_volume_changed = true;
                     avrcp_controller_set_absolute_volume(media_tracker.avrcp_cid, media_tracker.volume);
-                    usb_hid_consumer(0x00CD);   /* one press = one host toggle */
+                    src_host_media_key(0x00CD);   /* one press = one host toggle */
                     break;
                 }
                 case AVRCP_OPERATION_ID_STOP:
@@ -4420,10 +4430,10 @@ static void avrcp_target_packet_handler_inner(uint8_t packet_type, uint16_t chan
                     usb_hid_consumer(0x00B7);   /* HID Stop */
                     break;
                 case AVRCP_OPERATION_ID_FORWARD:
-                    usb_hid_consumer(0x00B5);   /* HID Scan Next Track */
+                    src_host_media_key(0x00B5);   /* HID Scan Next Track */
                     break;
                 case AVRCP_OPERATION_ID_BACKWARD:
-                    usb_hid_consumer(0x00B6);   /* HID Scan Previous Track */
+                    src_host_media_key(0x00B6);   /* HID Scan Previous Track */
                     break;
                 default:
                     break;

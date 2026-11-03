@@ -12,3 +12,9 @@ eld_profile eld_profile_select(uint8_t rate,bool game,uint8_t level,bool rate44,
  p.jitter=game?(level==2?60:90):150;
  return p;
 }
+
+bool eld_profile_equal(const eld_profile *a,const eld_profile *b) {
+ return a->bitrate==b->bitrate && a->input_rate==b->input_rate &&
+ a->input_frames==b->input_frames && a->vbr==b->vbr && a->sbr==b->sbr &&
+ a->slots==b->slots && a->jitter==b->jitter;
+}

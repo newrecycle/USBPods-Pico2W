@@ -48,6 +48,22 @@ class Contracts(unittest.TestCase):
                 if passes:live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
                 else:
                     with self.assertRaises(RuntimeError):live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
+    def test_preflight_waits_for_initial_mic_recovery_before_measuring(self):
+        class Clock:
+            now=0
+            def monotonic(self):return self.now
+            def sleep(self,n):self.now+=n
+        clock=Clock()
+        class Link:
+            def request(self,cmd):
+                if cmd=='eldstatus':return dict(transition='ready' if clock.now>=2 else 'wait-suspend',pending=int(clock.now<2))
+                return dict(connected=1,confirmed=1,streaming=int(clock.now>=2),codec=4,capture=1,
+                            mic_started=int(clock.now>=1),mic_recovery_pending=int(clock.now<2),tx_packets=int(clock.now*50),send_failures=0)
+        with mock.patch.object(live,'time',clock):
+            d=live.connection_preflight(Link(),FakeRecorder(),seconds=1)
+        self.assertGreaterEqual(clock.now,3)
+        self.assertGreaterEqual(d['start']['tx_packets'],100)
+
     def test_control_no_echo_is_unverified_and_stale_value_is_not_readback(self):
         class Link:
             def __init__(self,fresh=False):self.fresh=fresh
@@ -62,6 +78,15 @@ class Contracts(unittest.TestCase):
         with mock.patch.object(live,'time',Clock()):
             with self.assertRaisesRegex(RuntimeError,'differs'):
                 live.observe_peer_control(Link(True),'ca',1,dict(control_rx_seq=[0]*5),seconds=1)
+
+    def test_atomic_profile_ack_and_capture_ownership(self):
+        rec=FakeRecorder();port=FakePort(rec,[dict(kind='ack',id=live.IDS['profile'],queued=1,value=2)])
+        live.Link(port,rec).request('profile 2 0 1')
+        self.assertEqual(port.written,[b':profile 2 0 1\n'])
+        class Link:
+            def request(self,cmd):return dict(capture=1)
+        state,detail=live_audio.capture_close_state(Link(),True)
+        self.assertEqual(state,'SKIP')
 
     def test_windows_capture_uses_mixer_format(self):
         class SD:
@@ -119,7 +144,7 @@ class Contracts(unittest.TestCase):
     def test_cleanup_only_restores_changed_settings(self):
         original=dict(usbset=33,earpause=0,stem=0,debug=0,gamelevel=2,eldrate=3,usbvol=100,phvol=100,btnmode=2,ldacq=3,lhdcrate=4)
         self.assertEqual(live.restoration_commands(original,original),[])
-        self.assertEqual(live.restoration_commands(original,{**original,'eldrate':1,'usbset':161}),[('game',0),('eldrate',3)])
+        self.assertEqual(live.restoration_commands(original,{**original,'eldrate':1,'usbset':161}),[('profile',(3,0,2))])
         self.assertEqual(live.restoration_commands(original,{}),[])
 
     def test_failure_still_bundles_results(self):
@@ -153,6 +178,16 @@ class Contracts(unittest.TestCase):
         with self.assertRaises(ValueError):live.parse_control('[control] broken')
         self.assertEqual(live.parse_control('[control] {"kind":"status"}')['kind'],'status')
         self.assertIsNone(live.parse_control('other [control] {"kind":"status"}'))
+    def test_offline_pause_prevents_packaging_before_creating_output(self):
+        from package_live_test import package
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'docs').mkdir()
+            (root/'docs/validation-status.json').write_text(json.dumps(dict(live_test_authorized=False,blockers=['offline pass'])))
+            out=root/'candidate'
+            with self.assertRaisesRegex(ValueError,'paused'):
+                package(root,root/'build',root/'evidence',out,'fixture','a'*40,1)
+            self.assertFalse(out.exists())
+
     def test_manifest_gate(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'test.uf2').write_bytes(b'fixture')
@@ -168,7 +203,7 @@ class Contracts(unittest.TestCase):
         header=(ROOT/'src/control_command.h').read_text()
         body=header.split('CONTROL_INFO=128,',1)[1].split('};',1)[0]
         enums=['INFO']+[part.strip().removeprefix('CONTROL_') for part in body.replace('\n','').split(',') if part.strip()]
-        self.assertEqual(len(enums),37)
+        self.assertEqual(len(enums),38)
         for offset,name in enumerate(enums):self.assertEqual(live.IDS[name.lower()],128+offset)
     def test_profile_requires_applied_state(self):
         p=live_audio.PROFILES[0]

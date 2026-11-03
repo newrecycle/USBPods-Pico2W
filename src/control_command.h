@@ -2,7 +2,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdint.h>
-typedef struct { uint8_t id,value; bool status; } control_command;
+typedef struct { uint8_t id,value,game,level; bool status; } control_command;
 typedef struct { char line[32]; uint8_t length; bool active,overflow; } control_input;
 enum control_action {
  CONTROL_INFO=128, CONTROL_SCAN,CONTROL_SCANLIST,CONTROL_SCANSTOP,CONTROL_PAIR,
@@ -12,7 +12,7 @@ enum control_action {
  CONTROL_SAVEDDELETE,CONTROL_PHONEPAIR,CONTROL_PHONEDISC,CONTROL_PHONECONNECT,
  CONTROL_RELAYAAC,CONTROL_UAC1,CONTROL_RATE44,CONTROL_BOOTCONN,CONTROL_PAUSEDC,
  CONTROL_SWVOL,CONTROL_BTNMODE,CONTROL_LDACQ,CONTROL_LHDCRATE,CONTROL_REBOOT,
- CONTROL_TELEMETRY,CONTROL_SAVEDLIST,CONTROL_ELDSTATUS
+ CONTROL_TELEMETRY,CONTROL_SAVEDLIST,CONTROL_ELDSTATUS,CONTROL_PROFILE
 };
 enum control_result { CONTROL_BYPASS,CONTROL_WAIT,CONTROL_READY,CONTROL_INVALID };
 /* Colon-prefixed lines share the existing console with legacy single keys. */

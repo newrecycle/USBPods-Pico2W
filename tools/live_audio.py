@@ -6,6 +6,7 @@ import queue
 import threading
 import time
 import wave
+import traceback
 
 PROFILES = [
     ('eld256',2,False,1,256000,5,1,6),
@@ -29,7 +30,7 @@ def await_profile(link, profile, timeout=15):
     deadline=time.monotonic()+timeout;last={}
     while time.monotonic()<deadline:
         last=link.request('eldstatus')
-        if last.get('transition')=='failed':
+        if last.get('transition')=='failed' or (last.get('error_stage') and last.get('transition')=='off'):
             raise RuntimeError('Firmware transition failed: '+str(last))
         if profile_matches(last,profile):return last
         time.sleep(.25)
@@ -95,10 +96,29 @@ def capture_format(sd, device):
     sd.check_input_settings(device=device,channels=channels,samplerate=rate,dtype='int16',extra_settings=extra)
     return dict(samplerate=rate,channels=channels,extra_settings=extra,host_api=api,mode=mode)
 
+def preserve_audio_failure(root,link,recorder,error,before_cleanup=True):
+    path=root/'audio-failure-state.json'
+    if path.exists():return
+    state={'error':str(error),'before_stream_cleanup':before_cleanup}
+    for command in ('status','eldstatus','telemetry'):
+        try:state[command]=link.request(command,timeout=2)
+        except Exception as exc:state[command]={'error':str(exc)}
+    state['observed']=recorder.control_snapshot()
+    path.write_text(json.dumps(state,indent=2))
+
+def capture_close_state(link,external_before,seconds=3):
+    last=link.request('status')
+    if external_before:return 'SKIP',{'reason':'Capture was already active before the runner opened its stream','state':last}
+    end=time.monotonic()+seconds
+    while last.get('capture') and time.monotonic()<end:
+        time.sleep(.25);last=link.request('status')
+    return ('UNVERIFIED' if last.get('capture') else 'PASS'),{'state':last,'reason':'Runner handle closed; remaining host clients are not owned by this runner'}
+
 class AudioSession:
     """Callbacks only copy/queue samples. A worker owns WAV files and metrics."""
-    def __init__(self,root,recorder,sd,np,output,inp,input_format=None):
+    def __init__(self,root,recorder,sd,np,output,inp,input_format=None,on_failure=None):
         self.root,self.recorder,self.sd,self.np=root,recorder,sd,np
+        self.on_failure=on_failure
         self.output,self.inp=output,inp
         self.input_format=input_format or dict(samplerate=64000,channels=1,extra_settings=None,mode='native-request')
         self.input_rate=self.input_format['samplerate'];self.input_channels=self.input_format['channels']
@@ -150,8 +170,8 @@ class AudioSession:
             self.stack.enter_context(self.sd.RawOutputStream(device=self.output,channels=2,samplerate=48000,
                                     blocksize=0,dtype='int16',callback=self.tone))
             self.set_capture(True)
-        except BaseException:
-            self.close();raise
+        except BaseException as error:
+            self.note_failure(error);self.close();raise
         return self
     def set_capture(self, enabled):
         self.input_stack.close();self.input_stack=contextlib.ExitStack()
@@ -173,7 +193,13 @@ class AudioSession:
                      'output_status':self.output_errors,'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
                      'usb_microphone_rate':64000,'host_capture_mode':self.input_format.get('mode'),
                      'output_rate':48000},indent=2))
-    def __exit__(self,*exc):self.close()
+    def note_failure(self,error):
+        if self.on_failure:
+            try:self.on_failure(error)
+            except Exception as exc:self.errors.append('Preserving first audio failure: '+str(exc))
+    def __exit__(self,kind,error,tb):
+        if error is not None:self.note_failure(error)
+        self.close()
     def phase_errors(self,name):
         with self.lock:m=dict(self.metrics.get(name,{}))
         errors=list(m.get('host_errors',[]))+list(self.output_errors.get(name,[]))+list(self.errors)
@@ -194,9 +220,15 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         end=time.monotonic()+seconds
         while time.monotonic()<end:
             time.sleep(min(5,max(0,end-time.monotonic())))
-            snapshot(link,recorder,label)
+            state=snapshot(link,recorder,label)
+            status=state.get('status',{});eld=state.get('eldstatus',{})
+            if status.get('fault_hold') or not status.get('connected') or eld.get('transition')=='failed':
+                raise RuntimeError('Playback failed during '+label+': '+str({'status':status,'eldstatus':eld}))
             if audio.stop.is_set():raise RuntimeError('Audio collector stopped: '+str(audio.errors))
-    with AudioSession(root,recorder,sd,np,output,inp,input_format) as audio:
+    external_capture=bool(link.request('status').get('capture'))
+    recorder.log('capture-ownership.jsonl',{'capture_active_before_open':external_capture})
+    with AudioSession(root,recorder,sd,np,output,inp,input_format,
+                      on_failure=lambda error:preserve_audio_failure(root,link,recorder,error)) as audio:
         link.wait(lambda s:s.get('capture') and s.get('confirmed'),15)
         dwell(3,'capture_warmup')
         limits=link.request('eldstatus')
@@ -211,9 +243,8 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 continue
             audio.set_phase('transition_'+name)
             settings=link.request('settings')
-            for command,value,key in [('eldrate',rate,'eldrate'),('gamelevel',level,'gamelevel')]:
-                if settings.get(key)!=value:link.request(f'{command} {value}')
-            if bool(settings['usbset']&128)!=gaming:link.request('game '+str(int(gaming)))
+            if (settings.get('eldrate'),bool(settings['usbset']&128),settings.get('gamelevel'))!=(rate,gaming,level):
+                link.request(f'profile {rate} {int(gaming)} {level}')
             applied=await_profile(link,profile)
             dwell(2,'settle_'+name)
             audio.set_phase(name);print(f'{name}: speak/count during {args.duration} seconds of duplex capture.',flush=True)
@@ -234,15 +265,20 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         result('full_quality_comparison','PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
         prompt('Stop that music, then press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)
-        link.wait(lambda s:not s.get('capture'),15);dwell(3,'mic_closed_settle')
-        await_profile(link,baseline);channel_check('mic_closed')
+        closed,detail=capture_close_state(link,external_capture)
+        result('mic_close_endpoint',closed,detail)
+        if closed=='PASS':
+            dwell(3,'mic_closed_settle');await_profile(link,baseline);channel_check('mic_closed')
+        else:result('mic_closed_channels','SKIP','USB capture did not close exclusively under runner control')
         audio.set_phase('mic_reopening');audio.set_capture(True)
         link.wait(lambda s:s.get('capture') and s.get('confirmed'),15);dwell(3,'mic_reopened_settle')
-        await_profile(link,baseline);channel_check('mic_reopened')
+        await_profile(link,baseline)
+        if closed=='PASS':channel_check('mic_reopened')
         audio.set_phase('mic_reopened_steady')
         before=snapshot(link,recorder,'mic_reopened_begin');dwell(5,'mic_reopened_steady')
         after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after)
-        result('mic_close_reopen_duplex','FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
+        result('mic_close_reopen_duplex','FAIL' if errors else 'PASS' if closed=='PASS' else 'UNVERIFIED',
+               {'errors':errors,'closure':closed,'before':before,'after':after})
         for cycle in range(3):
             name=f'capture_reconnect_{cycle+1}';audio.set_phase(name)
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)
@@ -268,5 +304,5 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 result('phone_relay_duplex','FAIL' if errors or heard.lower()=='no' else 'PASS' if heard.lower()=='yes' else 'UNVERIFIED',{'state':state,'errors':errors,'before':before,'after':after})
             finally:
                 link.request('phonedisc');link.request('phonepair 0')
-    link.wait(lambda s:not s.get('capture'),10)
-    result('capture_close','PASS','Host capture intent cleared after stream close; inspect STOP log as separate wire evidence')
+    closed,detail=capture_close_state(link,external_capture)
+    result('capture_close',closed,detail)

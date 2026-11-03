@@ -139,3 +139,11 @@ codec allocation occurs through main-loop work under the CYW43 context lock.
 The raw sink role filter prevents the SDK phone-sink negotiator from issuing
 competing discovery on headset source connections. Fatal setup/TX failures hold
 reconnects until an explicit user connection request.
+
+### Offline triage follow-up
+
+The latest failure sequence is reproduced and repaired in
+[OFFLINE-TRIAGE-FINDINGS.md](OFFLINE-TRIAGE-FINDINGS.md). Profile preferences now
+use an idempotent effective-profile comparison, and `:profile RATE GAME LEVEL`
+applies/restores all three settings as one transaction. Explicit recovery is
+separate. The current pass is offline only; hardware packaging is paused.

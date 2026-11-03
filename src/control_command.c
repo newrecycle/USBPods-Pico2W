@@ -11,6 +11,17 @@ static bool parse(char *p,control_command *out) {
    {"telemetry",CONTROL_TELEMETRY},{"savedlist",CONTROL_SAVEDLIST}
  };
  for(unsigned i=0;i<sizeof(queries)/sizeof(queries[0]);i++)if(!strcmp(p,queries[i].name)){out->id=queries[i].id;return true;}
+ if(!strncmp(p,"profile ",8)) {
+   const char *a=p+8;unsigned values[3];
+   for(unsigned i=0;i<3;i++) {
+     unsigned n=0;if(*a<'0'||*a>'9')return false;
+     while(*a>='0'&&*a<='9'){n=n*10u+(unsigned)(*a++-'0');if(n>255)return false;}
+     values[i]=n;
+     if(i<2){if(*a++!=' ')return false;}else if(*a)return false;
+   }
+   if(values[0]<1||values[0]>3||values[1]>1||values[2]<1||values[2]>2)return false;
+   out->id=CONTROL_PROFILE;out->value=(uint8_t)values[0];out->game=(uint8_t)values[1];out->level=(uint8_t)values[2];return true;
+ }
  char *arg=strchr(p,' ');if(!arg)return false;*arg++=0;
  static const struct { const char *name; uint8_t id; } cmds[]={
    {"pair",CONTROL_PAIR},{"uart",CONTROL_UART},{"debug",CONTROL_DEBUG},

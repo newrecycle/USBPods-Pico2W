@@ -10,13 +10,15 @@
 #include <string.h>
 static user_settings_t config;
 user_settings_t *settings(void){return &config;}
-void settings_mark_dirty(void){}
+static unsigned dirties;
+void settings_mark_dirty(void){dirties++;}
 static unsigned host_keys;static uint16_t last_usage;
 void usb_hid_consumer(uint16_t usage){host_keys++;last_usage=usage;}
 bool a2dp_source_is_playing(void){return true;}
 void a2dp_source_on_aap_wake(void){}
 static unsigned rate_sequence,jitter_sequence,sequence,rate_calls;
 void a2dp_source_apply_eld_rate(void){rate_sequence=++sequence;rate_calls++;}
+void a2dp_source_recover_eld_stream(void){rate_sequence=++sequence;rate_calls++;}
 void a2dp_source_queue_jitter(uint8_t ms){assert(ms==60 || ms==90 || ms==150);jitter_sequence=++sequence;}
 static btstack_packet_handler_t callback;
 static uint32_t now,epochs;
@@ -68,6 +70,12 @@ int main(void){
  callback(L2CAP_DATA_PACKET,0x41,reply,11);assert(aap_get_noise_mode()==0);
  callback(L2CAP_DATA_PACKET,0x42,reply,11);assert(aap_get_noise_mode()==2);
  assert(aap_control_diagnostics().observed[1]==1);
+ // Vendor parser accepts several notifications in one L2CAP SDU.
+ uint8_t batch[]={4,0,4,0,9,0,0x0d,3,0,0,0,
+                  4,0,4,0,9,0,0x28,1,0,0,0,
+                  4,0,4,0,9,0,0x26,1,0,0,0};
+ callback(L2CAP_DATA_PACKET,0x42,batch,sizeof batch);
+ assert(aap_get_noise_mode()==3 && aap_get_ca()==1 && aap_get_pvol()==1);
  // Failed wire sends never schedule recovery. Rapid toggles coalesce.
  unsigned calls=rate_calls;capture=true;send_rc=1;send_now();assert(last_len==19);
  now+=800;aacp_mic_poll();assert(rate_calls==calls);
@@ -82,10 +90,23 @@ int main(void){
  capture=false;send_now();aacp_mic_poll();assert(rate_calls==++calls);
  aap_set_game(true);assert(rate_sequence<jitter_sequence);assert(aap_get_game());
  aap_set_game(false);assert(rate_sequence<jitter_sequence);assert(!aap_get_game());
+ unsigned old_dirties=dirties,old_calls=rate_calls;
+ assert(aap_set_eld_profile(3,true,2));assert(dirties==old_dirties+1 && rate_calls==old_calls+1);
+ assert(config.eld_rate==3 && config.game_level==2 && aap_get_game());
+ old_dirties=dirties;old_calls=rate_calls;
+ assert(aap_set_eld_profile(3,true,2) && dirties==old_dirties && rate_calls==old_calls);
+ assert(!aap_set_eld_profile(0,false,1) && dirties==old_dirties);
  aap_set_ear_pause(true);
  uint8_t ear[]={4,0,4,0,6,0,0,1};callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(!host_keys);
  ear[6]=1;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==1 && last_usage==0xb1);
  ear[7]=0;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==2 && last_usage==0xb0);
+ config.stem_hid=1;unsigned keys=host_keys;
+ uint8_t stems[]={4,0,4,0,9,0,0xaa,4,0,4,0,
+                  4,0,4,0,0x19,0,6,1,4,0,4,0,0x19,0,7,2};
+ callback(L2CAP_DATA_PACKET,0x42,stems,sizeof stems);
+ assert(host_keys==keys+2 && last_usage==0xb6);
+ callback(L2CAP_DATA_PACKET,0x42,stems,sizeof stems-1);assert(host_keys==keys+2);
+ assert(aap_control_diagnostics().batches==2 && aap_control_diagnostics().framing_errors>=1);
  event(L2CAP_EVENT_CHANNEL_CLOSED,0x41);assert(aap_channel_open());
  aap_set_aa(50);capture=true;send_now();calls=rate_calls;
  uint32_t before=epochs;event(L2CAP_EVENT_CHANNEL_CLOSED,0x42);capture=false;

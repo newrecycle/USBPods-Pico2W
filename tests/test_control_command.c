@@ -24,5 +24,12 @@ int main(void){
  assert(line(&s,":status\n",&cmd)==CONTROL_READY); // overflow recovers at newline
  assert(line(&s,":aa 99999999999999999999\n",&cmd)==CONTROL_INVALID);
  assert(line(&s,":status extra\n",&cmd)==CONTROL_INVALID);
+ assert(line(&s,":profile 2 0 1\n",&cmd)==CONTROL_READY && cmd.id==CONTROL_PROFILE && cmd.value==2 && !cmd.game && cmd.level==1);
+ assert(line(&s,":profile 3 1 2\n",&cmd)==CONTROL_READY && cmd.game==1 && cmd.level==2);
+ assert(line(&s,":profile 0 1 2\n",&cmd)==CONTROL_INVALID);
+ assert(line(&s,":profile 2 2 1\n",&cmd)==CONTROL_INVALID);
+ assert(line(&s,":profile 2 0 3\n",&cmd)==CONTROL_INVALID);
+ assert(line(&s,":profile 2 0 1 junk\n",&cmd)==CONTROL_INVALID);
+ assert(line(&s,":profile 2 0\n",&cmd)==CONTROL_INVALID);
  puts("CDC command bounds, malformed input, legacy-key coexistence and recovery passed");
 }

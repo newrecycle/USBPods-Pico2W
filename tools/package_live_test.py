@@ -8,6 +8,9 @@ import shutil
 from verify_build import verify_uf2
 
 def package(root,build,evidence,out,stem,source_sha,run_id):
+    validation=json.loads((root/'docs/validation-status.json').read_text())
+    if not validation.get('live_test_authorized') or validation.get('blockers'):
+        raise ValueError('Live packaging is paused for offline triage')
     report=json.loads((evidence/'verification.json').read_text())
     if report.get('build_verified') is not True:raise ValueError('Build verification missing')
     firmware=build/(stem+'.uf2')
@@ -25,7 +28,8 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     shutil.copy2(root/'docs/LIVE-TEST.md',out/'LIVE-TEST.md')
     shutil.copy2(root/'docs/REVALIDATION-2026-11-03.md',out/'REVALIDATION-2026-11-03.md')
     shutil.copy2(root/'docs/LIVE-FINDINGS-2026-11-03.md',out/'LIVE-FINDINGS-2026-11-03.md')
-    validation=json.loads((root/'docs/validation-status.json').read_text())
+    for name in ('OFFLINE-TRIAGE-PLAN.md','OFFLINE-TRIAGE-FINDINGS.md'):
+        shutil.copy2(root/'docs'/name,out/name)
     shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)
     shutil.copy2(evidence/'verification.json',out/'verification.json')

@@ -1,5 +1,10 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
+**Hardware runs are paused for the offline triage pass.** This document retains
+the procedure for later use; it is not a request for another run. See
+[OFFLINE-TRIAGE-PLAN.md](OFFLINE-TRIAGE-PLAN.md) and
+[OFFLINE-TRIAGE-FINDINGS.md](OFFLINE-TRIAGE-FINDINGS.md).
+
 **The old 238ed609 package is withdrawn. Flash the UF2 in this new package before running.**
 The engineering blockers from the first capture have targeted fixes and offline
 regressions. See [the revalidation report](REVALIDATION-2026-11-03.md). The first replacement run and subsequent user observations are recorded in

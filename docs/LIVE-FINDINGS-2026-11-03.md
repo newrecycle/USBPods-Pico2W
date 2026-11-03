@@ -21,8 +21,9 @@ User-observed remaining failures:
 - Closing/disabling microphone capture silences the left playback AirPod.
   Re-enabling output restores the right; activating microphone capture restores
   the left. Output and capture lifecycle are therefore not independent.
-- Bass is **virtually nonexistent** and quality/depth are worse than public Full
-  firmware. This is a substantial audible regression, not a minor volume issue.
+- The initial bass/quality impression was subsequently withdrawn after a better
+  track and A/B comparison: the user judged quality on par, with a possible
+  slight soundstage difference. A firmware-specific bass regression is unconfirmed.
 - Single/double/triple presses all toggle Play/Pause. The capture contains nine
   AVRCP PLAY presses, each more than 1.3 seconds apart. It does not encode which
   gesture produced each press; reconstructing double/triple from those timings

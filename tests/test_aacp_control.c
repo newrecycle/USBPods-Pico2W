@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+static unsigned visited;
+static void visit(const uint8_t *p,size_t n,void *ctx){(void)p;(void)n;(void)ctx;visited++;}
 int main(void) {
  aacp_control s; aacp_control_reset(&s);
  assert(s.battery[0]==255 && s.pvol==-1);
@@ -30,5 +32,14 @@ int main(void) {
  aacp_control_sent(&s,slot,4);assert(aacp_control_peek(&s,tx)==-1);
  assert(aacp_control_set(&s,0x0b,90));aacp_control_reset(&s);
  assert(!s.pending && s.pvol==-1 && s.battery[0]==255);
+ uint8_t batch[]={4,0,4,0,9,0,0xaa,4,0,4,0,4,0,4,0,0x19,0,6,1};
+ assert(aacp_control_walk(batch,sizeof batch,visit,NULL)==2 && visited==2);
+ visited=0;assert(aacp_control_walk(batch,sizeof batch-1,visit,NULL)==-1 && !visited);
+ for(size_t n=1;n<11;n++){visited=0;assert(aacp_control_walk(batch,n,visit,NULL)<=0 && !visited);}
+ assert(aacp_control_walk(NULL,0,visit,NULL)==0);
+ uint8_t off[]={4,0,4,0,9,0,0x34,2,0,0,0};
+ assert(s.allow_off==-1);assert(aacp_control_receive(&s,off,sizeof off) && !s.allow_off);
+ off[7]=1;assert(aacp_control_receive(&s,off,sizeof off) && s.allow_off==1);
+ off[7]=3;assert(!aacp_control_receive(&s,off,sizeof off) && s.allow_off==1);
  puts("AACP control validation, observed state and send retry tests passed");
 }
