@@ -39,6 +39,8 @@ bool aacp_mic_capture(void){return capture;}
 bool aacp_mic_audio_ready(void){return true;}
 void aacp_mic_discontinuity(void){epochs++;}
 void aacp_mic_audio_enqueue(const uint8_t*p,uint8_t n){(void)p;(void)n;}
+void aacp_mic_audio_note_au(uint32_t ts,uint32_t us){(void)ts;(void)us;}
+void aacp_mic_audio_report(void){}
 static void event(uint8_t code,uint16_t cid){uint8_t p[]={code,0,cid&255,cid>>8,0,1,2,3,4,5,6};callback(HCI_EVENT_PACKET,0,p,sizeof p);}
 static void send_now(void){aacp_mic_poll();event(L2CAP_EVENT_CAN_SEND_NOW,0x42);}
 int main(void){
