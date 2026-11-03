@@ -44,6 +44,8 @@ static void connected(void) {
  src_suspend_ms=0;src_pending_jitter=150;src_session_streamed=false;core1_encoder_active=false;
  suspends=starts=pumps=disconnects=rebuild_calls=jitters=leds=0;
  suspend_rc=start_rc=encode_rc=0;locks=0;game=relay=false;config.eld_rate=2;config.game_level=1;now=100;
+ src_stream_established=true;src_eld_setup_pending=src_eld_early_start=false;opens=open_rc=0;
+ registry_releases=0;
  handleAAC=(void*)1;active_slot_count=6;eld_transition_configured(&src_eld_change);
  src_start_stream(0x42,1);src_stream_start_accepted();assert(is_streaming&&pumps==1);
  advance(500);assert(jitters==1);jitters=0;
@@ -127,16 +129,46 @@ int main(void) {
  assert(src_eld_change.phase==ELD_READY && src_suspend_ms && !disconnects);
  // SDK timer arithmetic and phase deadline remain bounded across tick wrap.
  connected();now=UINT32_MAX-100;request(3,false,1);advance(3000);assert(disconnects==1);
+
+ // Configuration callback schedules only; main owns the initial FDK open.
+ connected();src_stream_established=false;src_eld_schedule_setup();unsigned old_starts=starts;
+ src_codec_release_pending=true;config.eld_rate=1;game=true;config.game_level=2;
+ assert(!rebuild_calls && src_eld_setup_pending && !is_streaming);
+ src_start_stream(0x42,1);assert(starts==old_starts);
+ a2dp_source_main_work();assert(rebuild_calls==1 && opens==1 && starts==old_starts);
+ assert(registry_releases==1 && built_bitrate==192000 && active_slot_count==4);
+ assert(!src_eld_setup_pending && src_eld_change.phase==ELD_WAIT_START);
+ src_stream_established=true;src_start_stream(0x42,1);src_stream_start_accepted();assert(is_streaming);
+
+ // Peer media/START can race deferred initialization without a premature pump.
+ connected();src_eld_schedule_setup();before=pumps;old_starts=starts;
+ src_stream_start_accepted();assert(pumps==before && src_eld_early_start);
+ a2dp_source_main_work();assert(pumps==before+1 && starts==old_starts && !opens);
+ connected();src_eld_schedule_setup();before=pumps;old_starts=starts;
+ src_stream_start_accepted();src_stream_suspend_accepted();a2dp_source_main_work();
+ assert(pumps==before && starts==old_starts+1 && !src_eld_early_start);
+ src_stream_start_accepted();assert(pumps==before+1);
+ connected();src_codec_release_pending=true;a2dp_source_main_work();
+ assert(!registry_releases && handleAAC && is_streaming); // Never free a fresh active encoder.
+
+ connected();src_eld_schedule_setup();src_eld_link_reset();a2dp_is_connected_flag=false;
+ a2dp_source_main_work();assert(!rebuild_calls);
+ connected();src_eld_schedule_setup();encode_rc=33;a2dp_source_main_work();
+ assert(disconnects==1 && src_eld_error_stage==5 && !opens);
+ connected();src_stream_established=false;src_eld_schedule_setup();open_rc=12;a2dp_source_main_work();
+ assert(disconnects==1 && src_eld_error_stage==6);
+ connected();src_stream_established=false;src_eld_schedule_setup();a2dp_source_main_work();advance(3000);
+ assert(disconnects==1 && src_eld_error_stage==6);
  puts("Production ELD adapter: suspend/build/START/jitter, coalescing, deadlines and failure teardown passed");
 }
 '''
 
 names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer',
-         'src_eld_link_reset', 'src_event_matches_headset',
+         'src_eld_link_reset', 'src_eld_schedule_setup', 'src_event_matches_headset',
          'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
          'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
          'src_jitter_handler', 'a2dp_source_queue_jitter', 'a2dp_source_apply_eld_rate',
-         'a2dp_source_main_work', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
+         'src_eld_initialize', 'a2dp_source_main_work', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)
     (path / 'test.c').write_text((ROOT / 'tests/eld_adapter_mocks.h').read_text() + '\n' + '\n'.join(function(n) for n in names) + tests)

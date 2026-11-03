@@ -9,6 +9,12 @@ the new encoder to be used without the peer first pausing its decoder.
 Rapid requests could also send another SUSPEND while signaling was busy.
 
 `eld_transition.c` now owns requested/built revisions and the transition phase.
+Initial ELD setup is also deferred: the BT callback publishes intent and the
+main loop performs FDK open/free under the CYW43 context lock. USB IRQs remain
+enabled. A peer START arriving early is retained until initialization succeeds;
+a later suspend cancels that early-start intent. Deferred setup is invalidated
+on disconnect. Stale codec-family allocations can be released before the new
+encoder exists. `max_rebuild_us` includes this initial setup cost as well.
 The application adapters execute these actions:
 
 1. Stop the playback pump and cancel any old jitter-settle timer.
@@ -46,6 +52,7 @@ Use the phase and `:status` streaming field as well. Failure sets `ready=0` and
 | 3 | Rebuild | FDK error |
 | 4 | Phase deadline | Phase enum: 2 suspend, 3 rebuild, 4 start |
 | 5 | Initial encoder setup | FDK error |
+| 6 | Initial media OPEN | SDK status, `0x100` OR rejected signal, or `0x200` OR timed-out signal |
 
 Run the production controller and adapter tests from the repository root:
 
@@ -64,7 +71,7 @@ START, late AACP jitter requests, timer wrap and teardown. Separate existing
 real-FDK duplex, allocation, protocol and relay checks remain in CI. The existing
 workflow also runs on this branch so review does not require pushing to main.
 
-These are offline checks. RF behavior, timing on Cortex-M33, the cost/context of
-initial codec allocation, live microphone continuity and the 48/64 kHz cadence
+These are offline checks. RF behavior, timing on Cortex-M33, initial codec
+allocation duration, live microphone continuity and the 48/64 kHz cadence
 question remain hardware or further integration acceptance items. No live-runner
 package is finalized by this change.
