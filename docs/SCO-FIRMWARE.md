@@ -4,7 +4,7 @@
 The public repository does not include its `private/full.cmake` or proprietary
 Full modules. Connected repository search currently finds only this public fork.
 The fork now defaults to `USBPODS_REQUIRE_FULL=ON` and fails before any Lite
-fallback. Actions also checks for the missing modules before installing tools.
+fallback. A manual Full Actions build also checks for the missing modules before installing tools. The workflow now defaults to explicit Lite baseline builds at the user's request while Full inspection continues.
 
 **Status: Full build blocked on authorized Full sources.** Earlier successful
 stock0031/rpi0065 artifacts are Lite baseline evidence only. They do not satisfy
@@ -51,14 +51,14 @@ References:
 
 ## Reproduce the build
 
-Run the **Full Pico firmware build** Actions workflow after providing the authorized Full source modules. Each selection is configured to build the vendor
-Full USBPods image for the upstream universal RP2350 board (including Pico 2 W),
+Run **Pico firmware build** Actions. Its default is the explicitly requested temporary Lite baseline; select edition=full only after providing authorized Full source modules. Each radio-image selection can build either the explicit Lite baseline or vendor
+Full USBPods image, according to the edition input for the upstream universal RP2350 board (including Pico 2 W),
 plus separate SCO diagnostics for stock pico_w and pico2_w board definitions.
 
 The SDK is pinned to 2.1.1 commit
 bddd20f928ce76142793bef434d4f75f4af6e433. Its BTstack and TinyUSB patches are
 applied before configuration. Rust is pinned to 1.85.1 with the
-thumbv8m.main-none-eabi target. The build is currently blocked before compilation. When sources are supplied, jobs retain firmware manifests, artifact
+thumbv8m.main-none-eabi target. Full is blocked before compilation until its modules are supplied. Lite builds proceed. Jobs retain firmware manifests, artifact
 hashes, CMake configuration, and compile commands.
 
 Verification checks the exact complete controller payload in the linked binary,
@@ -99,3 +99,5 @@ still required, and the upstream discussion reports SCO failures with that
 version. After controller SCO works, USBPods still needs microphone descriptors,
 capture buffering, an HFP audio pipeline and playback/call mode transitions.
 Those are not provided by swapping a Bluetooth patch image.
+
+See [Public Full UF2 inspection](PUBLIC-FULL-UF2.md) for the downloaded vendor binary, exact radio-image identification, and a separate AirPods microphone implementation lead.
