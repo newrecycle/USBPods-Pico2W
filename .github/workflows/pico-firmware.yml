@@ -1,6 +1,7 @@
-name: Pico firmware build
+name: Full Pico firmware build
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 concurrency:
   group: pico-firmware-${{ github.ref }}
@@ -18,6 +19,12 @@ jobs:
         firmware: [stock0031, rpi0065]
     steps:
       - uses: actions/checkout@v4
+      - name: Require authorized Full sources before downloading toolchains
+        run: |
+          if [ ! -f private/full.cmake ]; then
+            echo "::error::Full edition is required. This public fork lacks private/full.cmake and the vendor Full modules. Supply authorized Full sources through a private build context; Lite fallback is disabled."
+            exit 1
+          fi
       - name: Install Arm build dependencies
         run: |
           sudo apt-get update -qq
@@ -41,11 +48,13 @@ jobs:
           python3 tests/test_btfw.py "$PICO_SDK_PATH/lib/cyw43-driver/firmware/cyw43_btfw_43439.h"
           python3 tools/audit_hcd.py --output evidence/uart0076-audit.json
       - name: Configure Pico 2 W firmware
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=ON
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
       - name: Build
         run: cmake --build build --parallel 2
       - name: Verify linked radio image and UF2
-        run: python3 tools/verify_build.py --build build --evidence evidence
+        run: |
+          stem="$(cat build/usbpods-output-name.txt)"
+          python3 tools/verify_build.py --build build --evidence evidence --stem "$stem"
       - name: Build SCO diagnostics for both Pico wireless boards
         run: |
           for board in pico_w pico2_w; do
@@ -56,15 +65,15 @@ jobs:
             python3 tools/verify_build.py --build "probe-$board" --evidence "evidence/$board" --stem usbpods_sco_probe
           done
       - name: Upload firmware and verification evidence
-        if: always()
+        if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: pico2w-${{ matrix.firmware }}
+          name: pico2w-full-${{ matrix.firmware }}
           if-no-files-found: error
           path: |
-            build/USBPods_Pico2W_Lite.uf2
-            build/USBPods_Pico2W_Lite.elf
-            build/USBPods_Pico2W_Lite.bin
+            build/*.uf2
+            build/*.elf
+            build/*.bin
             evidence/**/*.json
             probe-*/usbpods_sco_probe.uf2
             probe-*/usbpods_sco_probe.elf

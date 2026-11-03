@@ -1,4 +1,21 @@
-# Pico wireless firmware investigation
+# Full edition requirement and wireless firmware investigation
+
+**The requested deliverable is the vendor Full edition, not Lite.**
+The public repository does not include its `private/full.cmake` or proprietary
+Full modules. Connected repository search currently finds only this public fork.
+The fork now defaults to `USBPODS_REQUIRE_FULL=ON` and fails before any Lite
+fallback. Actions also checks for the missing modules before installing tools.
+
+**Status: Full build blocked on authorized Full sources.** Earlier successful
+stock0031/rpi0065 artifacts are Lite baseline evidence only. They do not satisfy
+the Full deliverable and are not a substitute for it. The expanded diagnostic
+verification run was canceled when the Full requirement was clarified.
+No Full artifact or working SCO patch has been produced.
+
+Keep proprietary Full sources in an authorized private build context. Do not
+commit them into this public fork. A prebuilt Full UF2 cannot substitute for the
+source modules needed to rebuild with a controller-firmware change.
+
 
 Goal: build USBPods for Pico 2 W with a compatible controller firmware update,
 and identify whether SCO/HFP can be enabled. **No SCO fix or microphone support
@@ -34,14 +51,14 @@ References:
 
 ## Reproduce the build
 
-Run the **Pico firmware build** Actions workflow. Each selection builds the full
-Lite USBPods image for the upstream universal RP2350 board (including Pico 2 W),
+Run the **Full Pico firmware build** Actions workflow after providing the authorized Full source modules. Each selection is configured to build the vendor
+Full USBPods image for the upstream universal RP2350 board (including Pico 2 W),
 plus separate SCO diagnostics for stock pico_w and pico2_w board definitions.
 
 The SDK is pinned to 2.1.1 commit
 bddd20f928ce76142793bef434d4f75f4af6e433. Its BTstack and TinyUSB patches are
 applied before configuration. Rust is pinned to 1.85.1 with the
-thumbv8m.main-none-eabi target. The jobs retain firmware manifests, artifact
+thumbv8m.main-none-eabi target. The build is currently blocked before compilation. When sources are supplied, jobs retain firmware manifests, artifact
 hashes, CMake configuration, and compile commands.
 
 Verification checks the exact complete controller payload in the linked binary,

@@ -118,6 +118,17 @@ option(USB_UAC1_FIRST "UAC1 as the default (first) USB configuration" OFF)
 # dropped in at private/; when they are absent (the normal case) the build
 # simply proceeds without them.
 option(USBPODS_LITE "Build the open-source variant" OFF)
+option(USBPODS_REQUIRE_FULL "Require the vendor Full edition; refuse Lite fallback" ON)
+if(USBPODS_REQUIRE_FULL)
+    if(USBPODS_LITE OR NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/private/full.cmake")
+        message(FATAL_ERROR
+            "Full edition requested, but its vendor modules are missing or Lite "
+            "was explicitly selected. Provide the authorized Full source bundle "
+            "including private/full.cmake. Setting USBPODS_LITE=OFF alone cannot "
+            "build Full from the public Lite sources. For a deliberate baseline "
+            "only, set USBPODS_REQUIRE_FULL=OFF and USBPODS_LITE=ON.")
+    endif()
+endif()
 if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/private/full.cmake)
     set(USBPODS_LITE ON)
     message(STATUS "usbpods: building the open-source variant")
@@ -158,6 +169,8 @@ add_executable(${PROJECT_NAME}
     ${USBPODS_VARIANT_SOURCES}
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${USBPODS_OUT_NAME})
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/usbpods-output-name.txt"
+     CONTENT "${USBPODS_OUT_NAME}\n")
 
 if (USB_UAC1_FIRST)
     target_compile_definitions(${PROJECT_NAME} PRIVATE USB_UAC1_FIRST=1)
