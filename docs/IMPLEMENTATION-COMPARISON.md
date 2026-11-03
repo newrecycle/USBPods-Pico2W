@@ -16,8 +16,15 @@ are no-ops; getters report absent/unsupported features. In Full, real private
 modules replace these stubs. The downloaded Full binary contains their logs
 and control functionality.
 
-Neither an AAC-ELD playback encoder nor AACP battery/ANC controls supplies an
-AirPods-to-computer microphone path. The microphone requires transport framing,
+The public USB audio scaffold also contains disabled microphone pieces:
+- tusb_config.h sets CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_TX to 0.
+- src/tinyusb/uac.c comments out mic_buf and tud_audio_tx_done_pre_load_cb.
+- The active tud_audio_rx_done_pre_read_cb reads speaker data arriving from the PC.
+- The descriptor headers define speaker terminals, without a microphone stream.
+
+Thus the source is not devoid of USB capture scaffolding. It lacks an enabled,
+connected microphone path. Neither an AAC-ELD playback encoder nor AACP
+battery/ANC controls supplies an AirPods-to-computer microphone path. The microphone requires transport framing,
 start/stop, AAC-ELD **decoding**, PCM buffering and a USB audio input endpoint.
 
 ## Direct comparison
