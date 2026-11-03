@@ -1,6 +1,8 @@
 # Full edition requirement and wireless firmware investigation
 
-**The requested deliverable is the vendor Full edition, not Lite.**
+**Current microphone work:** [AACP-MIC.md](AACP-MIC.md) documents the newly added AACP USB microphone transport and optional experimental decoder. This uses a distinct path from HFP/SCO. The investigation below describes the earlier radio-only baseline; no physical microphone success or generic SCO fix is claimed. Full integration additionally needs an adapter for the private AACP channel.
+
+**The requested final deliverable is the vendor Full edition, not Lite.**
 The public repository does not include its `private/full.cmake` or proprietary
 Full modules. Connected repository search currently finds only this public fork.
 The fork now defaults to `USBPODS_REQUIRE_FULL=ON` and fails before any Lite

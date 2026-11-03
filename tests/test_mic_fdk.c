@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 static void param(HANDLE_AACENCODER h,AACENC_PARAM p,UINT v) {
  assert(aacEncoder_SetParam(h,p,v)==AACENC_OK);
 }
@@ -19,6 +20,9 @@ int main(void) {
  assert(aacEncEncode(encoder,NULL,NULL,NULL,NULL)==AACENC_OK);
  HANDLE_AACDECODER decoder=aacDecoder_Open(TT_MP4_RAW,1); assert(decoder);
  UCHAR asc[]={0xf8,0xe6,0x30,0},*config[]={asc}; UINT config_size=sizeof(asc);
+ AACENC_InfoStruct encoded_info;
+ assert(aacEncInfo(encoder,&encoded_info)==AACENC_OK);
+ assert(encoded_info.confSize==config_size && !memcmp(encoded_info.confBuf,asc,config_size));
  assert(aacDecoder_ConfigRaw(decoder,config,&config_size)==AAC_DEC_OK);
  unsigned count=0; int peak=0;
  for(unsigned frame=0;frame<32;frame++) {

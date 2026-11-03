@@ -17,6 +17,7 @@ uint32_t aacp_mic_generation(void) { return atomic_load(&generation); }
 #ifdef USBPODS_MIC_DECODE
 #include <aacdecoder_lib.h>
 #include <malloc.h>
+_Static_assert(sizeof(INT_PCM)==sizeof(int16_t), "microphone requires 16-bit FDK PCM");
 #define AU_SLOTS 32u
 #define PCM_SLOTS 16u
 #define FRAME 480u

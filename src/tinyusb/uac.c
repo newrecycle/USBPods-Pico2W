@@ -98,8 +98,8 @@
  int16_t volume0_last = 0;
  int8_t mute0_last = 0; 
 
- // Buffer for microphone data
- //int32_t mic_buf[CFG_TUD_AUDIO_FUNC_1_EP_IN_SW_BUF_SZ / 4];
+ /* USB owns the alternate setting; suspend temporarily parks capture. */
+ static bool mic_usb_alt_active;
 
  // Buffer for speaker data
  int32_t spk_buf[CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ / 4];
@@ -268,6 +268,7 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
      usb_desc_set_audio_exposed(want);
      printf("[connmode] audio %s -> USB replug\n", want ? "restored" : "hidden");
      usb_replug_hold = true;         /* park the IRQ-side tud_task (race!) */
+     mic_usb_alt_active=false;
      aacp_mic_set_capture(false);
      tud_disconnect();               /* same soft replug the WebHID op uses */
      sleep_ms(150);
@@ -347,6 +348,8 @@ void tinyusb_control_task(void){
 
  void tud_mount_cb(void)
  {
+   mic_usb_alt_active=false;
+   aacp_mic_set_capture(false);
    printf("USB configured (%s first)\n", usb_desc_uac1_first() ? "UAC1" : "UAC2");
    //blink_interval_ms = BLINK_MOUNTED;
  }
@@ -354,6 +357,7 @@ void tinyusb_control_task(void){
  // Invoked when device is unmounted
  void tud_umount_cb(void)
  {
+   mic_usb_alt_active=false;
    aacp_mic_set_capture(false);
    //blink_interval_ms = BLINK_NOT_MOUNTED;
  }
@@ -371,6 +375,7 @@ void tinyusb_control_task(void){
  // Invoked when usb bus is resumed
  void tud_resume_cb(void)
  {
+  aacp_mic_set_capture(mic_usb_alt_active);
   printf("tud_resume_cb\n");
  }
  
@@ -610,7 +615,8 @@ void tinyusb_control_task(void){
    uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
-     aacp_mic_set_capture(alt == 1);
+     mic_usb_alt_active=(alt == 1);
+     aacp_mic_set_capture(mic_usb_alt_active);
      return true;
    }
 

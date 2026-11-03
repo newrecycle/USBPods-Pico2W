@@ -1,6 +1,8 @@
 # AirPods microphone fork versus the radio-only update
 
-Inspected 2026-11-03. This compares the current public USBPods source, our explicit
+**Historical baseline:** this comparison describes the fork before the microphone implementation. The current fork now has an AACP transport and optional experimental AAC-ELD decoder; see [AACP-MIC.md](AACP-MIC.md) for the code, builds, tests and remaining hardware checks.
+
+Inspected 2026-11-03. This compares the original public USBPods source, our explicit
 Lite baseline builds, the vendor Full production UF2, and han-um's microphone
 fork. Static/binary findings are separated from author-reported hardware tests.
 
