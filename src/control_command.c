@@ -4,8 +4,24 @@
 static bool parse(char *p,control_command *out) {
  memset(out,0,sizeof(*out));
  if(!strcmp(p,"status")){out->status=true;return true;}
+ static const struct { const char *name;uint8_t id; } queries[]={
+   {"info",CONTROL_INFO},{"scan",CONTROL_SCAN},{"scanlist",CONTROL_SCANLIST},
+   {"scanstop",CONTROL_SCANSTOP},{"connect",CONTROL_CONNECT},{"disconnect",CONTROL_DISCONNECT},
+   {"settings",CONTROL_SETTINGS},{"phonedisc",CONTROL_PHONEDISC},{"reboot",CONTROL_REBOOT},
+   {"telemetry",CONTROL_TELEMETRY},{"savedlist",CONTROL_SAVEDLIST}
+ };
+ for(unsigned i=0;i<sizeof(queries)/sizeof(queries[0]);i++)if(!strcmp(p,queries[i].name)){out->id=queries[i].id;return true;}
  char *arg=strchr(p,' ');if(!arg)return false;*arg++=0;
  static const struct { const char *name; uint8_t id; } cmds[]={
+   {"pair",CONTROL_PAIR},{"uart",CONTROL_UART},{"debug",CONTROL_DEBUG},
+   {"game",CONTROL_GAME},{"earpause",CONTROL_EARPAUSE},{"stem",CONTROL_STEM},
+   {"gamelevel",CONTROL_GAMELEVEL},{"eldrate",CONTROL_ELDRATE},
+   {"usbvol",CONTROL_USBVOL},{"phvol",CONTROL_PHVOL},{"connmode",CONTROL_CONNMODE},
+   {"slot",CONTROL_SLOT},{"savedconnect",CONTROL_SAVEDCONNECT},{"saveddelete",CONTROL_SAVEDDELETE},
+   {"phonepair",CONTROL_PHONEPAIR},{"phoneconnect",CONTROL_PHONECONNECT},{"relayaac",CONTROL_RELAYAAC},
+   {"uac1",CONTROL_UAC1},{"rate44",CONTROL_RATE44},{"bootconn",CONTROL_BOOTCONN},
+   {"pausedc",CONTROL_PAUSEDC},{"swvol",CONTROL_SWVOL},{"btnmode",CONTROL_BTNMODE},
+   {"ldacq",CONTROL_LDACQ},{"lhdcrate",CONTROL_LHDCRATE},
    {"noise",0x0d},{"pvol",0x26},{"ca",0x28},{"aa",0x2e},{"jitter",0x0b}
  };
  unsigned value=0;if(!*arg)return false;

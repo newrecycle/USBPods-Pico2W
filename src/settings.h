@@ -36,7 +36,7 @@
 #define SETTINGS_SAVED_N        8   /* known headsets, MRU order  */
 /* Lite (open-source) caps the USABLE list at the two slot targets. The
    STORAGE layout stays identical, so full<->lite reflashes keep settings. */
-#ifdef USBPODS_LITE
+#if defined(USBPODS_LITE) && !defined(USBPODS_RECONSTRUCTED)
 #define SETTINGS_SAVED_LIMIT    2
 #else
 #define SETTINGS_SAVED_LIMIT    SETTINGS_SAVED_N
@@ -157,6 +157,8 @@ typedef struct __attribute__((packed)) {
                                                our SLC came up. Battery
                                                percentage is not worth those.
                                                Reboot to apply. */
+    uint8_t ear_pause;                      /* opt-in local wear policy */
+    uint8_t stem_hid;                       /* opt-in AACP stem -> host HID */
 } user_settings_t;
 
 void settings_init(void);            /* load / migrate; call EARLY in main() */

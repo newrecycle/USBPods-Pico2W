@@ -8,20 +8,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Slot queue constants
-#define AUDIO_SLOT_COUNT_SBC   16   // SBC: 128 samples/slot, 16*2.67ms = 43ms buffer
-#define AUDIO_SLOT_COUNT_AAC   16   // AAC-LC: 1024 samples/slot, 16*21.3ms = 341ms buffer
-#define AUDIO_SLOT_COUNT_ELD      6 // AAC-ELD: 480 samples/slot, 6*10ms = 60ms buffer
-#define AUDIO_SLOT_COUNT_ELD_320  9 // 320 kbps: bigger AUs need TX-jitter headroom — 90ms
-#define AUDIO_SLOT_COUNT_ELD_GAME 4 // gaming mode: latency first — 40ms
-#define AUDIO_SLOT_COUNT_LDAC  16   // LDAC: 256 samples/slot, 16*5.3ms = 85ms buffer
-#define AUDIO_SLOT_COUNT_MAX   16   // pool size = max of all above. 24 sized the
-                                    // pool at 96 KB for a slot shape no codec
-                                    // uses (AAC 16x1024 is the real max) —
-                                    // trimmed 32 KB to fund the relay AAC
-                                    // decoder's configure-time heap (its
-                                    // config mallocs failing surfaces as
-                                    // endless LATM "decode err 0x1001").
+// Bounded source staging leaves RAM for the microphone/SBC relay.
+#define AUDIO_SLOT_COUNT_SBC      8
+#define AUDIO_SLOT_COUNT_AAC      8
+#define AUDIO_SLOT_COUNT_ELD      6
+#define AUDIO_SLOT_COUNT_ELD_320  9
+#define AUDIO_SLOT_COUNT_ELD_GAME 4
+#define AUDIO_SLOT_COUNT_LDAC     8
+#define AUDIO_SLOT_COUNT_MAX      9
 #define AUDIO_SLOT_MAX_SAMPLES 1024
 #define AUDIO_SLOT_MAX_INT16   (AUDIO_SLOT_MAX_SAMPLES * 2)  // stereo
 

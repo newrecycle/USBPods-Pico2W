@@ -4,9 +4,18 @@
 #include "btstack_aap.h"
 #include "aacp_mic.h"
 #include "aacp_control.h"
+#include "../src/settings.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+static user_settings_t config;
+user_settings_t *settings(void){return &config;}
+void settings_mark_dirty(void){}
+static unsigned host_keys;static uint16_t last_usage;
+void usb_hid_consumer(uint16_t usage){host_keys++;last_usage=usage;}
+bool a2dp_source_is_playing(void){return true;}
+void a2dp_source_on_aap_wake(void){}
+void a2dp_source_apply_eld_rate(void){}
 static btstack_packet_handler_t callback;
 static uint32_t now,epochs;
 static int locks;
@@ -48,6 +57,10 @@ int main(void){
  uint8_t reply[]={4,0,4,0,9,0,0x0d,2,0,0,0};
  callback(L2CAP_DATA_PACKET,0x41,reply,11);assert(aap_get_noise_mode()==0);
  callback(L2CAP_DATA_PACKET,0x42,reply,11);assert(aap_get_noise_mode()==2);
+ aap_set_ear_pause(true);
+ uint8_t ear[]={4,0,4,0,6,0,0,1};callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(!host_keys);
+ ear[6]=1;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==1 && last_usage==0xb1);
+ ear[7]=0;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==2 && last_usage==0xb0);
  event(L2CAP_EVENT_CHANNEL_CLOSED,0x41);assert(aap_channel_open());
  aap_set_aa(50);uint32_t before=epochs;event(L2CAP_EVENT_CHANNEL_CLOSED,0x42);
  assert(!aap_channel_open() && epochs>before && aap_get_noise_mode()==0 && aap_get_aa()==-1);

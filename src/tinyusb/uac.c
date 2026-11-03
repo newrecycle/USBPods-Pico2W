@@ -1,4 +1,5 @@
 #include "../btstack/aacp_mic.h"
+#include "../device_control.h"
 /*
  * The MIT License (MIT)
  *
@@ -203,12 +204,16 @@
    if (hid_key_phase == 0 && hid_key_pending) {
      hid_key_cur = hid_key_pending;
      hid_key_pending = 0;
-     tud_hid_report(1, &hid_key_cur, 2);   /* consumer collection = report 1 */
-     hid_key_phase = 1;
+     if (tud_hid_report(1, &hid_key_cur, 2)) {
+       printf("[hid] sent usage=0x%04x phase=press\n",hid_key_cur);
+       hid_key_phase = 1;
+     } else hid_key_pending=hid_key_cur;
    } else if (hid_key_phase == 1) {
      uint16_t release = 0;
-     tud_hid_report(1, &release, 2);
-     hid_key_phase = 0;
+     if (tud_hid_report(1, &release, 2)) {
+       printf("[hid] sent usage=0x0000 phase=release\n");
+       hid_key_phase = 0;
+     }
    } else if (s_vol_target_pct >= 0 && usb_uac1_active()) {
      int d = s_vol_target_pct - host_vol_pct();
      if ((d > -4 && d < 4) || s_vol_budget == 0) {
@@ -248,7 +253,7 @@ volatile bool usb_replug_hold;
 static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
  {
    uint8_t mode = settings()->connmode;
-#ifdef USBPODS_LITE
+#if defined(USBPODS_LITE) && !defined(USBPODS_RECONSTRUCTED)
    /* Lite is MANUAL only: "USB audio follows headset" (2) and "auto-dial when
       the host plays" (3) are Full features, configured from the web UI that
       Lite does not have. A stored 2/3 (set under Full, or left over from an
@@ -336,6 +341,7 @@ void tinyusb_control_task(void){
   audio_control_task();
   hid_media_task();
   webhid_task();
+  device_control_task();
   usb_mode_task();
 }
 
@@ -1090,3 +1096,4 @@ void audio_control_task(void)
 
   }
  
+

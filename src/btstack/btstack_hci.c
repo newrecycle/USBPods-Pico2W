@@ -30,7 +30,7 @@ bool bt_pairing_active(void) { return s_pairing; }
 
 /* ---- Web scan-list mode: collect audio devices instead of auto-pairing ----
    (The BOOT long-press keeps the headless auto-pair path: s_list_mode off.) */
-#define SCAN_MAX 4
+#define SCAN_MAX 16
 typedef struct { bd_addr_t addr; int8_t rssi; char name[24]; } scan_hit_t;
 static scan_hit_t s_found[SCAN_MAX];
 static uint8_t    s_found_n;
@@ -70,7 +70,7 @@ static bool slot_mac_valid(uint8_t slot){
    so a slot owns its device outright: replacing it forgets the old one for
    good — link key and saved record. Full keeps the history, because there the
    saved list is a feature (assign any remembered headset to a slot). */
-#ifdef USBPODS_LITE
+#if defined(USBPODS_LITE) && !defined(USBPODS_RECONSTRUCTED)
 static void slot_replace_purge(uint8_t slot, const uint8_t *new_mac){
     uint8_t old_mac[6], other[6];
     if (!slot_mac_valid(slot)) return;                 /* slot was empty */

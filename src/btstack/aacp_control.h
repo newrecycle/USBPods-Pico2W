@@ -8,6 +8,8 @@ typedef struct {
  uint8_t battery[3], noise;
  int pvol, ca, aa;
  uint8_t pending, values[5];
+ bool ear_valid,worn;
+ uint32_t stem_count;uint8_t stem;
 } aacp_control;
 void aacp_control_reset(aacp_control *s);
 /* Validates the entire notification before publishing state. */

@@ -14,6 +14,7 @@
  */
 
 #include <string.h>
+#include <stdio.h>
 
 #include "pico/stdio.h"
 #include "pico/stdio/driver.h"
@@ -37,6 +38,7 @@ static volatile uint32_t s_tx_dropped;
 #define UTXR_SZ 2048
 static uint8_t  s_utxr[UTXR_SZ];
 static volatile uint32_t s_utxr_w, s_utxr_r;
+static volatile uint32_t s_uart_dropped;
 
 static void cdc_out_chars(const char *buf, int len)
 {
@@ -52,7 +54,7 @@ static void cdc_out_chars(const char *buf, int len)
     }
     for (int i = 0; i < len; i++) {    /* mirror to the UART ring */
         uint32_t next = (s_utxr_w + 1) & (UTXR_SZ - 1);
-        if (next == s_utxr_r) break;   /* full: drop silently */
+        if (next == s_utxr_r) { s_uart_dropped+=(uint32_t)(len-i); break; }   /* full: drop silently */
         s_utxr[s_utxr_w] = (uint8_t)buf[i];
         s_utxr_w = next;
     }
@@ -174,4 +176,8 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *coding)
     if (coding->bit_rate == 1200) {
         reset_usb_boot(0, 0);
     }
+}
+
+void usb_serial_diagnostics(void) {
+ printf("[serial] cdc_drop=%lu uart_drop=%lu\n",(unsigned long)s_tx_dropped,(unsigned long)s_uart_dropped);
 }

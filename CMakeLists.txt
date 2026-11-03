@@ -143,6 +143,7 @@ if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/private/full.cmake)
     set(USBPODS_LITE ON)
     message(STATUS "usbpods: building the open-source variant")
 endif()
+option(USBPODS_RELAY "Reconstructed phone relay" ON)
 option(USBPODS_MIC_DECODE "Experimental AAC-ELD microphone decoding (Pico 2 W only)" OFF)
 if(NOT USBPODS_LITE)
     message(FATAL_ERROR "AACP microphone transport currently requires the public Lite build; Full needs an adapter to its private AACP channel")
@@ -164,6 +165,7 @@ add_executable(${PROJECT_NAME}
     src/main.c
     src/console.c
     src/control_command.c
+    src/device_control.c
     src/settings.c
     src/resamp44.c
     src/pico_w_led.c
@@ -187,12 +189,24 @@ add_executable(${PROJECT_NAME}
     src/btstack/aacp_mic_audio.c
     ${USBPODS_VARIANT_SOURCES}
 )
+if(USBPODS_RELAY)
+    target_sources(${PROJECT_NAME} PRIVATE src/btstack/btstack_sink_relay.c src/btstack/relay_rtp.c)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_RELAY=1 USBPODS_RECONSTRUCTED=1)
+endif()
 if(USBPODS_MIC_DECODE)
     target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_MIC_DECODE=1)
     set(USBPODS_OUT_NAME USBPods_Pico2W_Lite_AACELD_Mic)
 else()
     set(USBPODS_OUT_NAME USBPods_Pico2W_Lite_AACP_Transport)
 endif()
+if(USBPODS_RELAY)
+    string(REPLACE "Lite" "Reconstructed" USBPODS_OUT_NAME "${USBPODS_OUT_NAME}")
+endif()
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} OUTPUT_VARIABLE USBPODS_BUILD_SHA OUTPUT_STRIP_TRAILING_WHITESPACE)
+if(NOT USBPODS_BUILD_SHA MATCHES "^[0-9a-f]+$")
+    set(USBPODS_BUILD_SHA unknown)
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_BUILD_SHA="${USBPODS_BUILD_SHA}")
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${USBPODS_OUT_NAME})
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/usbpods-output-name.txt"
      CONTENT "${USBPODS_OUT_NAME}\n")
@@ -211,6 +225,7 @@ endif()
 # Including header files directly from project directory
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/src
 )
 
 

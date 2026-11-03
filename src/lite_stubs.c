@@ -32,6 +32,7 @@ void webhid_task(void){}
    answers "no phone", the mixer adds nothing, and the pump keeps its full
    TX budget (the relay coex caps never engage). */
 
+#ifndef USBPODS_RELAY
 void bt_sink_relay_init(void){}
 bool bt_sink_relay_is_phone_addr(const uint8_t *addr){ (void)addr; return false; }
 bool bt_sink_relay_owns_cid(uint16_t avdtp_cid){ (void)avdtp_cid; return false; }
@@ -48,6 +49,8 @@ void bt_sink_relay_dump(void){}
 void bt_sink_relay_toggle_aac(void){}
 void bt_sink_relay_sync_codec_pref(void){}
 void bt_sink_relay_refresh_aac_caps(void){}
+
+#endif
 
 /* ---- license system ----------------------------------------------------- */
 
@@ -69,11 +72,6 @@ void aap_probe_4c(void){}
 void aap_send_09_03(uint8_t v){ (void)v; }
 
 
-bool aap_get_ear_pause(void){ return false; }
-bool aap_get_game(void){ return false; }
-void aap_set_ear_pause(bool on){ (void)on; }
-void aap_set_game(bool on){ (void)on; }
-uint8_t aap_game_jitter(void){ return 90; }        /* full: settings game_level */
 uint32_t aap_last_lock_ms(void){ return 0; }       /* never held the BT lock */
 volatile bool aap_rx_log = false;                  /* 'A' key raw-frame logging */
 

@@ -40,7 +40,12 @@ bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
  if(p[0]!=4) return false;
  switch(p[4]) {
  case 0x2b: return true; /* feature acknowledgment */
- case 0x06: return n==8; /* ear notification; no host media side effects */
+ case 0x06:
+   if(n!=8 || p[6]>3 || p[7]>3)return false;
+   s->ear_valid=true;s->worn=p[6]==0 || p[7]==0;return true;
+ case 0x19:
+   if(n!=8 || p[6]<5 || p[6]>7 || p[7]<1 || p[7]>2)return false;
+   s->stem=p[6];s->stem_count++;return true;
  case 0x04: {
    if(n<7 || p[6]>3 || n!=7u+5u*p[6]) return false;
    uint8_t battery[3];memcpy(battery,s->battery,3);

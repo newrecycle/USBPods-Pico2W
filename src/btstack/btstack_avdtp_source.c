@@ -4326,7 +4326,7 @@ int btstack_main(int argc, const char * argv[]){
     avdtp_source_register_packet_handler(&packet_handler);
 
     // BT sink relay: phone -> Pico -> headset (sink SEP + SDP + decoder)
-    bt_sink_relay_init();
+    /* Relay initializes after SDP below. */
 
     // Initialize AVRCP Service
     avrcp_init();
@@ -4342,6 +4342,7 @@ int btstack_main(int argc, const char * argv[]){
 
     // Initialize SDP
     sdp_init();
+    bt_sink_relay_init();
     aacp_mic_init();
     memset(sdp_avdtp_source_service_buffer, 0, sizeof(sdp_avdtp_source_service_buffer));
     a2dp_source_create_sdp_record(sdp_avdtp_source_service_buffer, 0x10002, AVDTP_SOURCE_FEATURE_MASK_PLAYER, NULL, NULL);
@@ -4413,3 +4414,4 @@ int btstack_main(int argc, const char * argv[]){
     return 0;
 
 }
+

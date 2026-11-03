@@ -3,6 +3,11 @@
 // This module owns ONE PSM 0x1001 channel in the public Lite build.
 #include "btstack.h"
 #include "aacp_control.h"
+#include "../settings.h"
+extern bool a2dp_source_is_playing(void);
+extern void a2dp_source_on_aap_wake(void);
+extern void a2dp_source_apply_eld_rate(void);
+#include "../tinyusb/uac.h"
 #include "pico/cyw43_arch.h"
 #include "pico/async_context.h"
 #include "btstack_aap.h"
@@ -20,6 +25,7 @@ static uint32_t due, deadline, last_report;
 static aacp_mic_session session;
 static aacp_control controls;
 static bool initialized;
+static bool paused_by_ear;
 static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
@@ -28,6 +34,7 @@ static void release_channel(void) {
  uint16_t old=cid; cid=0; opened=requested=false;
  memset(&session,0,sizeof(session));
  aacp_control_reset(&controls);
+ paused_by_ear=false;
  if (old) l2cap_disconnect(old);
  due=btstack_run_loop_get_time_ms()+3000;
 }
@@ -56,7 +63,23 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    int frames=aacp_mic_parse(p,n,au,NULL);
    if (frames<0) malformed++;
    else if (frames>0) sdus++;
-   else if (aacp_control_receive(&controls,p,n)) session.confirmed=true;
+   else {
+     bool valid=controls.ear_valid,worn=controls.worn;uint32_t stem=controls.stem_count;
+     if (aacp_control_receive(&controls,p,n)) {
+       session.confirmed=true;
+       if (controls.ear_valid && valid && worn!=controls.worn && settings()->ear_pause) {
+         if (!controls.worn && a2dp_source_is_playing()) {
+           usb_hid_consumer(0x00b1);paused_by_ear=true;
+         } else if (controls.worn && paused_by_ear) {
+           usb_hid_consumer(0x00b0);paused_by_ear=false;a2dp_source_on_aap_wake();
+         }
+       }
+       if (controls.stem_count!=stem && settings()->stem_hid) {
+         uint16_t usage=controls.stem==5?0x00cd:controls.stem==6?0x00b5:0x00b6;
+         usb_hid_consumer(usage);
+       }
+     }
+   }
    return;
  }
  if (type!=HCI_EVENT_PACKET) return;
@@ -156,3 +179,19 @@ uint8_t aap_get_noise_mode(void) {
 int aap_get_pvol(void) { if (!control_lock()) return -1; int v=opened?controls.pvol:-1; control_unlock(); return v; }
 int aap_get_ca(void) { if (!control_lock()) return -1; int v=opened?controls.ca:-1; control_unlock(); return v; }
 int aap_get_aa(void) { if (!control_lock()) return -1; int v=opened?controls.aa:-1; control_unlock(); return v; }
+
+bool aap_get_ear_pause(void) { return settings()->ear_pause!=0; }
+bool aap_get_game(void) { return (settings()->usbset&USBSET_GAME)!=0; }
+void aap_set_ear_pause(bool on) {
+ if (!control_lock()) return;
+ settings()->ear_pause=on;settings_mark_dirty();if(!on)paused_by_ear=false;
+ control_unlock();
+}
+uint8_t aap_game_jitter(void) { return settings()->game_level==2?60:90; }
+void aap_set_game(bool on) {
+ if (!control_lock()) return;
+ if(on)settings()->usbset|=USBSET_GAME;else settings()->usbset&=(uint8_t)~USBSET_GAME;
+ settings_mark_dirty();a2dp_source_apply_eld_rate();
+ if(opened)(void)aacp_control_set(&controls,0x0b,on?aap_game_jitter():150);
+ control_unlock();
+}
