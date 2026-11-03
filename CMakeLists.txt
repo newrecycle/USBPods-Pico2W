@@ -178,6 +178,8 @@ add_executable(${PROJECT_NAME}
     src/btstack/btstack_hci.c
     src/btstack/btstack_hfp_battery.c
     src/tinyusb/uac.c
+    src/tinyusb/usb_capture_lifecycle.c
+    src/tinyusb/usb_hid_media.c
     src/tinyusb/uac1_device.c
     src/tinyusb/usb_serial.c
     src/tinyusb/usb_descriptors.c

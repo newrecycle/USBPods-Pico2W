@@ -2,6 +2,8 @@ void tinyusb_main(void);
 void tinyusb_task(void);
 void tinyusb_control_task(void);
 #include <stdint.h>
+#include "usb_capture_lifecycle.h"
+#include "usb_hid_media.h"
 /* Queue a HID consumer-control key toward the USB host (press+release are
    sequenced by the control task; 0x00CD play/pause, 0x00B5 next, 0x00B6 prev). */
 void usb_hid_consumer(uint16_t usage);

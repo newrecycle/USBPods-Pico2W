@@ -7,6 +7,12 @@ static unsigned callbacks;
 static void frame(const uint8_t *p,uint8_t n,uint32_t ts,void *ctx) {
  (void)ctx; assert(n==2 && p[0]==0xaa && p[1]==0xbb && ts==0x12345678); callbacks++;
 }
+static unsigned burst_callbacks;
+static void burst(const uint8_t *p,uint8_t n,uint32_t ts,void *ctx) {
+ (void)ctx;
+ assert(n==1 && p[0]==burst_callbacks && ts==burst_callbacks*480u);
+ burst_callbacks++;
+}
 int main(void) {
  uint8_t p[40]={4,0,4,0,0x58,0,1,0};
  p[22]=0x78; p[23]=0x56; p[24]=0x34; p[25]=0x12; p[26]=2; p[27]=0xaa; p[28]=0xbb;
@@ -23,6 +29,18 @@ int main(void) {
  // Exhaust every possible AU length against the boundary.
  p[4]=0x58;
  for (unsigned n=0;n<256;n++) { p[26]=n; assert(aacp_mic_parse(p,29,NULL,NULL)==(n==2?1:-1)); }
+ // A single burst SDU can contain many AUs; none may be emitted on
+ // truncated final records (even when preceding records were valid).
+ uint8_t batch[22+20*6]={4,0,4,0,0x58,0,1,0};
+ for (uint32_t i=0;i<20;i++) {
+   size_t off=22+i*6,ts=i*480u;
+   for (unsigned j=0;j<4;j++) batch[off+j]=(uint8_t)(ts>>(8*j));
+   batch[off+4]=1;batch[off+5]=(uint8_t)i;
+ }
+ burst_callbacks=0;
+ assert(aacp_mic_parse(batch,sizeof(batch),burst,NULL)==20 && burst_callbacks==20);
+ burst_callbacks=0;
+ assert(aacp_mic_parse(batch,sizeof(batch)-1,burst,NULL)==-1 && burst_callbacks==0);
  aacp_mic_session s={0};
  for (int i=0;i<3;i++) {
    assert(aacp_mic_next(&s,true)==i);
@@ -42,3 +60,4 @@ int main(void) {
  uint16_t n; assert(!aacp_mic_command(5,&n) && !n);
  puts("AACP transactional parser and session tests passed");
 }
+
