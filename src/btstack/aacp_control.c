@@ -65,6 +65,7 @@ bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
  case 0x09:
    if(n!=11 || p[8] || p[9] || p[10]) return false;
    for(unsigned i=0;i<sizeof(ids);i++) if(p[6]==ids[i] && valid(i,p[7])) {
+     s->observed[i]++;
      switch(i) {
      case 1: s->noise=p[7];break;
      case 2: s->pvol=p[7]==1;break;

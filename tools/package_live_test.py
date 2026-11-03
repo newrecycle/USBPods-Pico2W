@@ -24,6 +24,7 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
         shutil.copy2(root/'tools'/name,out/name)
     shutil.copy2(root/'docs/LIVE-TEST.md',out/'LIVE-TEST.md')
     shutil.copy2(root/'docs/REVALIDATION-2026-11-03.md',out/'REVALIDATION-2026-11-03.md')
+    shutil.copy2(root/'docs/LIVE-FINDINGS-2026-11-03.md',out/'LIVE-FINDINGS-2026-11-03.md')
     validation=json.loads((root/'docs/validation-status.json').read_text())
     shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)

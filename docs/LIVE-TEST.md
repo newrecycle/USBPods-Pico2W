@@ -2,8 +2,9 @@
 
 **The old 238ed609 package is withdrawn. Flash the UF2 in this new package before running.**
 The engineering blockers from the first capture have targeted fixes and offline
-regressions. See [the revalidation report](REVALIDATION-2026-11-03.md). Physical
-pairing, audio and microphone behavior still require the controlled run below.
+regressions. See [the revalidation report](REVALIDATION-2026-11-03.md). The first replacement run and subsequent user observations are recorded in
+[LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md). The new transition
+recovery and Windows capture changes require the controlled run below.
 
 This package is an **offline-verified test candidate**, not a claim of working
 hardware. It reconstructs controls/settings, AACP notifications, wear/stem
@@ -88,13 +89,30 @@ feature changes. Unsupported negotiated bitrates are explicitly skipped.
 Microphone cadence must match the 64 kHz PCM timeline; return failed results too. Configuration readback does not measure
 end-to-end acoustic latency or actual average VBR throughput.
 
-An optional external 3.3 V UART adapter can be selected explicitly with
-`-UartPort`/`--uart`; it mirrors application output at 115200 baud and does
-not expose a separate controller HCI UART. CDC already receives that application
-output while USB is operational. The raw HID reader may be
-blocked by Windows, so successful firmware submission logs and counters are
-collected separately. Listen to the WAV clips before answering the pitch/speed
-question; hearing your own voice directly does not validate recorded timing.
+Diagnostics use **USB CDC only**. Leave COM3 open through the runner; do not
+open another terminal on it. Application, codec, AACP and firmware HID logs are
+recorded while playback and capture are active. Raw HID access may be blocked
+by Windows; that limitation is reported separately from firmware submission.
+
+Windows WASAPI shared capture uses the endpoint's reported mixer rate and
+channel count (the first Windows run reports 48 kHz/two channels). WAVs preserve
+that host format. Firmware microphone cadence still measures the independent
+64 kHz mono USB timeline. Input volume is a separate Windows control; check its
+meter before starting and close other microphone previews/dictation while the
+runner owns capture. No recorded clip means the runner skips the pitch prompt.
+
+The added channel check keeps playback open while closing and reopening only
+microphone capture, with isolated left/right listening prompts. A familiar-music
+comparison checks bass/depth against Full while recording continues. The
+script's tone is silent during that comparison; stop your music when prompted.
+
+Control writes are checked against actual L2CAP submission counters. A new
+per-control notification sequence is required for automated readback PASS.
+Missing echoes remain UNVERIFIED; a queued ACK or cached old value cannot
+establish application. Known control writes trigger a bounded notification
+refresh, and the previous state is restored by wire submission. Stem logs now
+include any received gesture and button-configuration notifications; repeated
+AVRCP PLAY messages are recorded without guessing missing gesture types.
 
 The host runner has contract tests and simulated audio/WAV/failure-cleanup tests.
 Windows PortAudio, native PowerShell launch and physical devices remain live

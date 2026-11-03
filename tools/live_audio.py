@@ -77,16 +77,36 @@ def health(before, after):
         if n:errors.append(f'USB {key}: +{n}')
     return errors
 
+def capture_format(sd, device):
+    """Use the selected endpoint's real host format; never relabel PCM clocks."""
+    info=sd.query_devices(device)
+    api=sd.query_hostapis(info['hostapi'])['name']
+    if 'WASAPI' in api.upper():
+        # Windows shared capture exposes its mixer rate/channel layout, which
+        # can differ from the independent 64 kHz mono USB clock. Preserve that
+        # actual host format in WAVs instead of requesting an unsupported rate.
+        rate=int(info['default_samplerate'])
+        channels=int(info['max_input_channels'])
+        if not 1<=channels<=2:raise RuntimeError('Unexpected USB microphone host channel layout: '+str(info))
+        extra=sd.WasapiSettings(exclusive=False)
+        mode='wasapi-shared'
+    else:
+        rate,channels,extra,mode=64000,1,None,'native-request'
+    sd.check_input_settings(device=device,channels=channels,samplerate=rate,dtype='int16',extra_settings=extra)
+    return dict(samplerate=rate,channels=channels,extra_settings=extra,host_api=api,mode=mode)
+
 class AudioSession:
     """Callbacks only copy/queue samples. A worker owns WAV files and metrics."""
-    def __init__(self,root,recorder,sd,np,output,inp):
+    def __init__(self,root,recorder,sd,np,output,inp,input_format=None):
         self.root,self.recorder,self.sd,self.np=root,recorder,sd,np
         self.output,self.inp=output,inp
+        self.input_format=input_format or dict(samplerate=64000,channels=1,extra_settings=None,mode='native-request')
+        self.input_rate=self.input_format['samplerate'];self.input_channels=self.input_format['channels']
         self.phase='capture_open';self.position=0
         self.rng=np.random.default_rng(0)
         self.queue=queue.Queue(maxsize=512);self.stop=threading.Event()
         self.lock=threading.Lock();self.metrics={};self.errors=[];self.output_errors={};self.drops=0
-        self.files={};self.clip_samples={};self.stack=contextlib.ExitStack()
+        self.files={};self.clip_samples={};self.stack=contextlib.ExitStack();self.input_stack=contextlib.ExitStack()
     def set_phase(self,name):
         self.phase=name;self.recorder.log('phases.jsonl',{'phase':name})
     def tone(self,outdata,frames,timing,status):
@@ -96,6 +116,9 @@ class AudioSession:
         # Quiet broadband sections exercise more than the inexpensive sine case.
         noise=(t.astype(np.int64)%8>=4)
         values+=self.rng.uniform(-140,140,(frames,2))*noise[:,None]
+        if self.phase.endswith('_left'):values[:,1]=0
+        if self.phase.endswith('_right'):values[:,0]=0
+        if self.phase=='music_quality':values[:]=0
         self.position+=frames;outdata[:]=values.astype('<i2').tobytes()
         if status:self.output_errors.setdefault(self.phase,[]).append(str(status))
     def capture(self,indata,frames,timing,status):
@@ -113,11 +136,11 @@ class AudioSession:
                     m['peak']=max(m['peak'],int(self.np.abs(samples).max(initial=0)))
                     m['clipped']+=int((self.np.abs(samples)>=32760).sum())
                     if status and status not in m['host_errors']:m['host_errors'].append(status)
-                saved=self.clip_samples.get(phase,0);count=min(len(samples),max(0,12*64000-saved))
+                saved=self.clip_samples.get(phase,0);count=min(len(samples),max(0,12*self.input_rate*self.input_channels-saved))
                 if count:
                     if phase not in self.files:
                         wav=wave.open(str(self.root/(phase+'.wav')),'wb')
-                        wav.setnchannels(1);wav.setsampwidth(2);wav.setframerate(64000);self.files[phase]=wav
+                        wav.setnchannels(self.input_channels);wav.setsampwidth(2);wav.setframerate(self.input_rate);self.files[phase]=wav
                     self.files[phase].writeframes(data[:count*2]);self.clip_samples[phase]=saved+count
             except Exception as e:
                 self.errors.append('audio writer: '+str(e));self.stop.set();break
@@ -126,13 +149,19 @@ class AudioSession:
         try:
             self.stack.enter_context(self.sd.RawOutputStream(device=self.output,channels=2,samplerate=48000,
                                     blocksize=0,dtype='int16',callback=self.tone))
-            self.stack.enter_context(self.sd.RawInputStream(device=self.inp,channels=1,samplerate=64000,
-                                    blocksize=640,dtype='int16',callback=self.capture))
+            self.set_capture(True)
         except BaseException:
             self.close();raise
         return self
+    def set_capture(self, enabled):
+        self.input_stack.close();self.input_stack=contextlib.ExitStack()
+        if enabled:
+            self.input_stack.enter_context(self.sd.RawInputStream(device=self.inp,channels=self.input_channels,samplerate=self.input_rate,
+                extra_settings=self.input_format.get('extra_settings'),blocksize=0,dtype='int16',callback=self.capture))
     def close(self):
-        try:self.stack.close()
+        try:
+            try:self.input_stack.close()
+            finally:self.stack.close()
         finally:
             self.stop.set();self.thread.join(timeout=5)
             if self.thread.is_alive():self.errors.append('Audio writer did not drain within five seconds')
@@ -141,7 +170,9 @@ class AudioSession:
             with self.lock:
                 result={k:{**v,'rms':math.sqrt(v['sumsq']/max(v['samples'],1))} for k,v in self.metrics.items()}
             (self.root/'audio-metrics.json').write_text(json.dumps({'phases':result,'errors':self.errors,
-                     'output_status':self.output_errors,'collector_dropped_buffers':self.drops,'input_rate':64000,'output_rate':48000},indent=2))
+                     'output_status':self.output_errors,'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
+                     'usb_microphone_rate':64000,'host_capture_mode':self.input_format.get('mode'),
+                     'output_rate':48000},indent=2))
     def __exit__(self,*exc):self.close()
     def phase_errors(self,name):
         with self.lock:m=dict(self.metrics.get(name,{}))
@@ -157,14 +188,15 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
     devices=list(sd.query_devices());(root/'audio-devices.json').write_text(json.dumps(devices,indent=2))
     output=select_audio(sd,'output',args.output_device);inp=select_audio(sd,'input',args.input_device)
     sd.check_output_settings(device=output,channels=2,samplerate=48000,dtype='int16')
-    sd.check_input_settings(device=inp,channels=1,samplerate=64000,dtype='int16')
+    input_format=capture_format(sd,inp)
+    (root/'audio-format.json').write_text(json.dumps({k:v for k,v in input_format.items() if k!='extra_settings'},indent=2))
     def dwell(seconds,label):
         end=time.monotonic()+seconds
         while time.monotonic()<end:
             time.sleep(min(5,max(0,end-time.monotonic())))
             snapshot(link,recorder,label)
             if audio.stop.is_set():raise RuntimeError('Audio collector stopped: '+str(audio.errors))
-    with AudioSession(root,recorder,sd,np,output,inp) as audio:
+    with AudioSession(root,recorder,sd,np,output,inp,input_format) as audio:
         link.wait(lambda s:s.get('capture') and s.get('confirmed'),15)
         dwell(3,'capture_warmup')
         limits=link.request('eldstatus')
@@ -189,6 +221,28 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             after=snapshot(link,recorder,name+'_end')
             errors=health(before,after)+audio.phase_errors(name)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'applied':applied,'before':before,'after':after})
+        def channel_check(label):
+            for side in ('left','right'):
+                audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)
+                answer=prompt(f'{label}: tone is {side.upper()} only. Is it audible in only that AirPod? Type yes/no, or Enter for unverified:')
+                result(label+'_'+side,'PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
+        channel_check('mic_active')
+        audio.set_phase('music_quality')
+        prompt('Play familiar music through USBPods now, using the same material/volume as the Full firmware comparison. Microphone capture remains active. Press Enter when playing:')
+        dwell(12,'music_quality')
+        answer=prompt('Compared with Full firmware, are bass and depth comparable? Type yes/no, or Enter for unverified:')
+        result('full_quality_comparison','PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
+        prompt('Stop that music, then press Enter to check microphone close/reopen while script playback continues:')
+        audio.set_phase('mic_closing');audio.set_capture(False)
+        link.wait(lambda s:not s.get('capture'),15);dwell(3,'mic_closed_settle')
+        await_profile(link,baseline);channel_check('mic_closed')
+        audio.set_phase('mic_reopening');audio.set_capture(True)
+        link.wait(lambda s:s.get('capture') and s.get('confirmed'),15);dwell(3,'mic_reopened_settle')
+        await_profile(link,baseline);channel_check('mic_reopened')
+        audio.set_phase('mic_reopened_steady')
+        before=snapshot(link,recorder,'mic_reopened_begin');dwell(5,'mic_reopened_steady')
+        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after)
+        result('mic_close_reopen_duplex','FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
         for cycle in range(3):
             name=f'capture_reconnect_{cycle+1}';audio.set_phase(name)
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)

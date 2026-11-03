@@ -64,11 +64,13 @@ static void quoted(char out[51],const char *s) {
 }
 static void status(void) {
  uint8_t b[3];aap_get_battery(b);const uint8_t *peer=a2dp_source_peer_addr();
- printf("\n[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"tx_packets\":%lu,\"send_failures\":%lu,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"fault_hold\":%u,\"peer\":\"%s\"}\n",
+ aacp_control_diagnostics ctl=aap_control_diagnostics();
+ printf("\n[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"tx_packets\":%lu,\"send_failures\":%lu,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"fault_hold\":%u,\"peer\":\"%s\",\"control_tx\":%lu,\"control_last_id\":%u,\"control_last_value\":%u,\"control_rx_seq\":[%lu,%lu,%lu,%lu,%lu]}\n",
  aap_channel_open(),aap_protocol_seen(),get_a2dp_connected_flag(),check_is_streaming(),(unsigned long)a2dp_source_tx_packets(),(unsigned long)a2dp_source_send_failures(),get_cur_codec(),
  aap_get_noise_mode(),aap_get_pvol(),aap_get_ca(),aap_get_aa(),b[0],b[1],b[2],
  aacp_mic_capture(),aacp_mic_audio_ready(),bt_sink_relay_connected(),bt_sink_relay_streaming(),a2dp_source_fault_hold(),
- peer?bd_addr_to_str((uint8_t*)peer):"");
+ peer?bd_addr_to_str((uint8_t*)peer):"",(unsigned long)ctl.transmitted,ctl.last_id,ctl.last_value,
+ (unsigned long)ctl.observed[0],(unsigned long)ctl.observed[1],(unsigned long)ctl.observed[2],(unsigned long)ctl.observed[3],(unsigned long)ctl.observed[4]);
 }
 static void list(bool scan) {
  /* Format one record before emitting it: background logs must not split

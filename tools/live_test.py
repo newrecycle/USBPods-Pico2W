@@ -182,6 +182,29 @@ class Link:
             time.sleep(.5)
         raise TimeoutError(f'Device state timeout; last={last}')
 
+CONTROL_WIRE = {'noise':(0x0d,1),'pvol':(0x26,2),'ca':(0x28,3),'aa':(0x2e,4),'jitter':(0x0b,0)}
+def submit_peer_control(link, command, value):
+    identifier,_=CONTROL_WIRE[command]
+    before=link.request('status')
+    link.request(f'{command} {value}')
+    wire_value=(1 if value else 2) if command in ('pvol','ca') else value
+    sent=link.wait(lambda s:((s.get('control_tx',0)-before.get('control_tx',0))&0xffffffff)>0 and
+                   s.get('control_last_id')==identifier and s.get('control_last_value')==wire_value,5)
+    return before,sent
+
+def observe_peer_control(link, command, value, before, seconds=3):
+    _,index=CONTROL_WIRE[command]
+    previous=before.get('control_rx_seq',[0]*5)[index]
+    deadline=time.monotonic()+seconds;last=before
+    while time.monotonic()<deadline:
+        last=link.request('status')
+        seq=last.get('control_rx_seq',[0]*5)[index]
+        if seq!=previous and last.get(command)==value:return True
+        time.sleep(.25)
+    if last.get('control_rx_seq',[0]*5)[index]!=previous:
+        raise RuntimeError('Fresh peer notification differs from requested '+command+': '+str(last.get(command)))
+    return False # Several AirPods control writes do not produce an echo.
+
 def select_audio(sd, kind, explicit):
     devices=sd.query_devices()
     if explicit is not None:return explicit
@@ -217,7 +240,7 @@ def collect_hid(recorder, cdc):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest',type=Path,default=Path(__file__).with_name('candidate.json'))
-    parser.add_argument('--cdc');parser.add_argument('--uart',help='Optional external UART adapter; all application diagnostics use USB CDC by default')
+    parser.add_argument('--cdc',help='USB CDC diagnostic/control port; no UART adapter is used')
     target=parser.add_mutually_exclusive_group()
     target.add_argument('--target-name');target.add_argument('--target-mac')
     parser.add_argument('--input-device',type=int);parser.add_argument('--output-device',type=int)
@@ -266,11 +289,6 @@ def main():
             raise RuntimeError('Saved UAC2/manual/48k mode. Replug the Pico and rerun; no AirPods pairing was attempted.')
         if info['mic_decode'] and not link.request('status').get('decoder_ready'):raise RuntimeError('Microphone decoder allocation failed; do not proceed with pairing')
         result('diagnostic_transport','PASS',{'transport':'usb-cdc','port':cdc.device,'log':'cdc.jsonl','includes':'application, AACP, codec, USB and firmware HID submission logs'})
-        uart=args.uart
-        if uart:
-            if uart==cdc.device:raise ValueError('UART adapter and CDC must be different ports')
-            u=serial.Serial(uart,115200,timeout=.1,write_timeout=1);recorder.handles.append(u);recorder.serial_reader(u,'uart.jsonl')
-            link.request('uart 1');result('uart_connection','PASS',uart)
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
         except Exception as e:result('hid_connection','SKIP',str(e))
         link.request('disconnect')
@@ -299,14 +317,17 @@ def main():
         for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
             initial=link.request('status')[field]
             if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
+            observed=[]
             try:
                 for value in values:
-                    link.request(f'{command} {value}')
-                    link.wait(lambda s:s.get(field)==value,5)
-                result(command,'PASS','Read back every requested value from peer notifications')
+                    before,sent=submit_peer_control(link,command,value)
+                    echo=observe_peer_control(link,command,value,before)
+                    observed.append({'requested':value,'wire_sent':True,'fresh_peer_readback':echo,'control_tx':sent['control_tx']})
+                result(command,'PASS' if all(x['fresh_peer_readback'] for x in observed) else 'UNVERIFIED',
+                       {'changes':observed,'reason':'Missing echo is not proof of application; physical control behavior requires observation'})
             except Exception as e:result(command,'FAIL',str(e))
             finally:
-                try:link.request(f'{command} {initial}')
+                try:submit_peer_control(link,command,initial)
                 except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
         link.request('jitter 150');result('jitter','UNVERIFIED','Queued exact reference command; no independent peer readback')
         for command,field,values in [('usbvol','usbvol',[75,100]),('phvol','phvol',[75,100]),('btnmode','btnmode',[1,2,3,4]),('ldacq','ldacq',[1,2,3]),('lhdcrate','lhdcrate',[1,2,3,4])]:
@@ -323,7 +344,7 @@ def main():
         capture_ca=link.request('status').get('ca',-1)
         try:
             if capture_ca>0:
-                link.request('ca 0');link.wait(lambda s:s.get('ca')==0,5)
+                submit_peer_control(link,'ca',0)
             if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
             from live_audio import run_matrix
             run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
@@ -331,23 +352,24 @@ def main():
             result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
         finally:
             if capture_ca>0:
-                try:link.request('ca '+str(capture_ca))
+                try:submit_peer_control(link,'ca',capture_ca)
                 except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
         link.request('telemetry')
         link.wait(lambda s:not s.get('capture'),10)
         heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')
         result('playback_quality','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
-        heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
-        result('microphone_pitch','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+        wavs=sorted(root.glob('*.wav'))
+        if wavs:
+            print('Recorded clips:',', '.join(p.name for p in wavs),flush=True)
+            heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
+            result('microphone_pitch','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+        else:result('microphone_pitch','UNVERIFIED','Audio capture produced no WAV files; no listening prompt was presented')
         link.request('earpause 1');link.request('stem 1')
         note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
         result('ear_and_stem','UNVERIFIED',note or 'No physical observation supplied; see firmware HID and raw HID logs')
         if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
         result('persistence_suspend_uac_slots_other_codecs','UNVERIFIED','Requires the guided matrix in LIVE-TEST.md; destructive/USB-reenumeration tests are not silently automated')
         link.request('savedlist');link.request('telemetry')
-        if uart:
-            time.sleep(.3)
-            if recorder.bytes.get('uart.jsonl',0)==0:result('uart_connection','FAIL','Port opened, but no UART data was observed')
     except (Exception,KeyboardInterrupt) as e:
         result('run','FAIL',str(e));(root/'exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
         # Preserve the failure state before cleanup can rebuild or reconnect.

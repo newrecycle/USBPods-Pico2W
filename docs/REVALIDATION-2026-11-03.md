@@ -1,3 +1,5 @@
+> Updated physical evidence and transition/capture corrections: [LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md). The findings below describe the earlier offline pass.
+
 # Reconstruction revalidation — 2026-11-03
 
 This revision is eligible for controlled physical verification only after its

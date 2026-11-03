@@ -176,3 +176,14 @@ USB CDC connection. No external UART adapter is required.
 Host mocks now exercise bursts, raw timestamp discontinuities, generation
 restarts, overflow/high-water, stale AU/PCM discard and simulated decode
 duration. They do not demonstrate real-device timing or acoustic quality.
+
+### Physical follow-up and transition recovery
+
+Native Windows microphone use and concurrent playback were reported functional.
+The runner's forced WASAPI capture format was a separate host issue. Successful
+microphone START/STOP wire sends now queue source recovery through the existing
+serialized ELD transition owner (START delayed 800 ms, STOP next main poll),
+with stale intent and disconnect cancellation. See
+[LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md) for the exact evidence,
+known left/right and bass failures, and remaining physical checks. Diagnostics
+for this project use USB CDC only.

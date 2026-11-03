@@ -48,6 +48,36 @@ class Contracts(unittest.TestCase):
                 if passes:live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
                 else:
                     with self.assertRaises(RuntimeError):live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
+    def test_control_no_echo_is_unverified_and_stale_value_is_not_readback(self):
+        class Link:
+            def __init__(self,fresh=False):self.fresh=fresh
+            def request(self,cmd):return dict(ca=0,control_rx_seq=[0,0,0,int(self.fresh),0])
+        class Clock:
+            def __init__(self):self.now=0
+            def monotonic(self):return self.now
+            def sleep(self,n):self.now+=n
+        for fresh in (False,True):
+            with mock.patch.object(live,'time',Clock()):
+                self.assertEqual(live.observe_peer_control(Link(fresh),'ca',0,dict(control_rx_seq=[0]*5),seconds=1),fresh)
+        with mock.patch.object(live,'time',Clock()):
+            with self.assertRaisesRegex(RuntimeError,'differs'):
+                live.observe_peer_control(Link(True),'ca',1,dict(control_rx_seq=[0]*5),seconds=1)
+
+    def test_windows_capture_uses_mixer_format(self):
+        class SD:
+            def query_devices(self,device):
+                self.device=device
+                return dict(hostapi=2,default_samplerate=48000,max_input_channels=2)
+            def query_hostapis(self,index):return {'name':'Windows WASAPI'}
+            def WasapiSettings(self,**kw):self.extra=kw;return kw
+            def check_input_settings(self,**kw):
+                self.checked=kw
+                if kw['samplerate']!=48000 or kw['channels']!=2:raise ValueError('Invalid sample rate')
+        sd=SD();fmt=live_audio.capture_format(sd,12)
+        self.assertEqual((fmt['samplerate'],fmt['channels']),(48000,2))
+        self.assertEqual(sd.checked['device'],12)
+        self.assertFalse(sd.extra['exclusive'])
+
     def test_recorded_pair_ack_with_console_indent(self):
         # Exact framing of the ACK in the failed 20261103T192956Z capture.
         line=' [control] {"kind":"ack","queued":1,"id":132,"value":0,"reboot_required":0}'
@@ -186,6 +216,30 @@ class Contracts(unittest.TestCase):
             metrics=json.loads((root/'audio-metrics.json').read_text())
             self.assertEqual(metrics['phases']['capture_open']['samples'],13*64000)
             self.assertEqual(metrics['collector_dropped_buffers'],0)
+
+    @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy not installed in host test environment')
+    def test_shared_stereo_capture_metadata_and_input_only_close(self):
+        import numpy as np
+        opened=[]
+        class Stream:
+            def __init__(self,**kw):self.kw=kw
+            def __enter__(self):opened.append(self);return self
+            def __exit__(self,*exc):opened.remove(self)
+        class SD:RawOutputStream=Stream;RawInputStream=Stream
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            fmt=dict(samplerate=48000,channels=2,extra_settings=None,mode='wasapi-shared')
+            with live_audio.AudioSession(root,FakeRecorder(),SD,np,1,2,fmt) as audio:
+                self.assertEqual(len(opened),2)
+                data=np.tile(np.array([1200,-600],dtype='<i2'),48000).tobytes()
+                audio.capture(data,48000,None,None)
+                audio.set_capture(False);self.assertEqual(len(opened),1)
+                self.assertEqual(opened[0].kw['device'],1)
+                audio.set_capture(True);self.assertEqual(len(opened),2)
+            with wave.open(str(root/'capture_open.wav')) as wav:
+                self.assertEqual((wav.getnchannels(),wav.getframerate(),wav.getnframes()),(2,48000,48000))
+                self.assertEqual(wav.readframes(1),np.array([1200,-600],dtype='<i2').tobytes())
+            self.assertFalse(opened)
 
     @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy not installed in host test environment')
     def test_audio_open_failure_cleans_up(self):

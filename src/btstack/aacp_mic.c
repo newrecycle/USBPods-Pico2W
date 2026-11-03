@@ -28,10 +28,19 @@ static aacp_mic_session session;
 static aacp_control controls;
 static bool initialized;
 static bool paused_by_ear;
+/* Upstream resets A2DP after 0x58 START (+800 ms) and STOP. A successful
+ * wire transition replaces the previous request; the main-loop poll submits
+ * recovery through the source's serialized SUSPEND/rebuild/START owner. */
+static bool playback_reset_pending;
+static uint32_t playback_reset_due;
+static bool refresh_pending;
+static uint32_t refresh_due;
+static aacp_control_diagnostics wire_controls;
 static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
 static void release_channel(void) {
+ playback_reset_pending=false;refresh_pending=false;
  aacp_mic_discontinuity();
  uint16_t old=cid; cid=0; opened=requested=false;
  memset(&session,0,sizeof(session));
@@ -67,9 +76,18 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    if (frames<0) malformed++;
    else if (frames>0) sdus++;
    else {
+     /* Bounded, non-secret diagnostics for otherwise unsupported button
+        configuration and gestures. Never dump arbitrary AACP packets/keys. */
+     if(n==11 && !memcmp(p,"\x04\x00\x04\x00\x09\x00",6) &&
+        (p[6]==5 || (p[6]>=0x14 && p[6]<=0x18) || p[6]==0x39))
+       printf("[aacp] button config id=0x%02x values=%u,%u,%u,%u\n",p[6],p[7],p[8],p[9],p[10]);
+     if(n==8 && !memcmp(p,"\x04\x00\x04\x00\x19\x00",6))
+       printf("[aacp] stem type=%u bud=%u\n",p[6],p[7]);
      bool valid=controls.ear_valid,worn=controls.worn;uint32_t stem=controls.stem_count;
      if (aacp_control_receive(&controls,p,n)) {
        session.confirmed=true;
+       if(n==11 && p[4]==0x09)
+         printf("[aacp] control notify id=0x%02x value=%u\n",p[6],p[7]);
        if (controls.ear_valid && valid && worn!=controls.worn && settings()->ear_pause) {
          if (!controls.worn && a2dp_source_is_playing()) {
            usb_hid_consumer(0x00b1);paused_by_ear=true;
@@ -116,14 +134,28 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    uint16_t len=11; const uint8_t *data;
    if (command>=0) data=aacp_mic_command(command,&len);
    else {
-     if (!session.confirmed || (slot=aacp_control_peek(&controls,ctl))<0) break;
-     data=ctl;
+     if (!session.confirmed)break;
+     slot=aacp_control_peek(&controls,ctl);
+     if(slot>=0)data=ctl;
+     else if(refresh_pending && expired(btstack_run_loop_get_time_ms(),refresh_due)) {
+       command=2;data=aacp_mic_command(command,&len);
+     } else break;
    }
    if (l2cap_send(cid,(uint8_t *)data,len)==ERROR_CODE_SUCCESS) {
      if (command>=0) aacp_mic_sent(&session,command);
-     else aacp_control_sent(&controls,slot,ctl[7]);
+     else {
+       aacp_control_sent(&controls,slot,ctl[7]);
+       wire_controls.transmitted++;wire_controls.last_id=ctl[6];wire_controls.last_value=ctl[7];
+       refresh_pending=true;refresh_due=btstack_run_loop_get_time_ms()+100;
+       printf("[aacp] control sent id=0x%02x value=%u\n",ctl[6],ctl[7]);
+     }
+     if(command==2)refresh_pending=false;
      send_errors=0;
-     if (command>=3) printf("[mic] %s sent\n",command==3?"START":"STOP");
+     if (command>=3) {
+       playback_reset_pending=true;
+       playback_reset_due=btstack_run_loop_get_time_ms()+(command==3?800u:0u);
+       printf("[mic] %s sent; playback recovery queued\n",command==3?"START":"STOP");
+     }
    } else if (++send_errors>=3) release_channel();
    break;
  }
@@ -138,12 +170,20 @@ void aacp_mic_poll(void) {
    if (status) { cid=0; due=now+3000; }
  }
  if (cid && (!opened || !session.confirmed || requested) && expired(now,deadline)) release_channel();
- if (opened && !requested && (aacp_mic_next(&session,wanted())>=0 || (session.confirmed && controls.pending))) {
+ if (opened && !requested && (aacp_mic_next(&session,wanted())>=0 || (session.confirmed && (controls.pending || (refresh_pending && expired(now,refresh_due)))))) {
    requested=true;
    if (session.confirmed) deadline=now+3000;
    if (l2cap_request_can_send_now_event(cid)!=ERROR_CODE_SUCCESS) {
      requested=false; if (++send_errors>=3) release_channel();
    }
+ }
+ /* USB intent may change again before its wire command is sent. Wait for
+    the latest successful state, never recover an obsolete START or STOP. */
+ if (playback_reset_pending && opened && session.confirmed &&
+     wanted()==session.started && expired(now,playback_reset_due)) {
+   playback_reset_pending=false;
+   printf("[mic] playback recovery after %s\n",session.started?"START":"STOP");
+   a2dp_source_apply_eld_rate();
  }
  if (now-last_report>=2000) {
    last_report=now;
@@ -163,6 +203,12 @@ static bool control_lock(void) {
  async_context_acquire_lock_blocking(cyw43_arch_async_context()); return true;
 }
 static void control_unlock(void) { async_context_release_lock(cyw43_arch_async_context()); }
+aacp_control_diagnostics aap_control_diagnostics(void) {
+ aacp_control_diagnostics out={0};
+ if(!control_lock())return out;
+ out=wire_controls;memcpy(out.observed,controls.observed,sizeof out.observed);
+ control_unlock();return out;
+}
 bool aacp_control_submit(uint8_t id,uint8_t value) {
  if (!control_lock()) return false;
  bool queued=opened && aacp_control_set(&controls,id,value);

@@ -15,8 +15,8 @@ static unsigned host_keys;static uint16_t last_usage;
 void usb_hid_consumer(uint16_t usage){host_keys++;last_usage=usage;}
 bool a2dp_source_is_playing(void){return true;}
 void a2dp_source_on_aap_wake(void){}
-static unsigned rate_sequence,jitter_sequence,sequence;
-void a2dp_source_apply_eld_rate(void){rate_sequence=++sequence;}
+static unsigned rate_sequence,jitter_sequence,sequence,rate_calls;
+void a2dp_source_apply_eld_rate(void){rate_sequence=++sequence;rate_calls++;}
 void a2dp_source_queue_jitter(uint8_t ms){assert(ms==60 || ms==90 || ms==150);jitter_sequence=++sequence;}
 static btstack_packet_handler_t callback;
 static uint32_t now,epochs;
@@ -55,12 +55,31 @@ int main(void){
  uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x41,ack,6);assert(!aap_protocol_seen());
  callback(L2CAP_DATA_PACKET,0x42,ack,6);assert(aap_protocol_seen());
  aap_set_noise_mode(2);assert(aap_get_noise_mode()==0);send_now();assert(last_len==19); // mic START first
+ assert(!rate_calls);now+=799;aacp_mic_poll();assert(!rate_calls);
+ now++;aacp_mic_poll();assert(rate_calls==1); // delayed START recovery, outside send callback
  capture=false;send_now();assert(last_len==12); // STOP before control writes
+ assert(rate_calls==1);aacp_mic_poll();assert(rate_calls==2); // STOP recovery is deferred too
  send_rc=1;send_now();assert(last_len==11 && last[6]==0x0d && last[7]==2);
+ assert(!aap_control_diagnostics().transmitted);
  send_rc=0;send_now();assert(last_len==11 && last[6]==0x0d);
+ assert(aap_control_diagnostics().transmitted==1 && aap_control_diagnostics().last_value==2);
+ now+=100;send_now();assert(last_len==10); // refresh notifications after successful write
  uint8_t reply[]={4,0,4,0,9,0,0x0d,2,0,0,0};
  callback(L2CAP_DATA_PACKET,0x41,reply,11);assert(aap_get_noise_mode()==0);
  callback(L2CAP_DATA_PACKET,0x42,reply,11);assert(aap_get_noise_mode()==2);
+ assert(aap_control_diagnostics().observed[1]==1);
+ // Failed wire sends never schedule recovery. Rapid toggles coalesce.
+ unsigned calls=rate_calls;capture=true;send_rc=1;send_now();assert(last_len==19);
+ now+=800;aacp_mic_poll();assert(rate_calls==calls);
+ send_rc=0;send_now();now+=400;capture=false;send_now();assert(last_len==12);
+ aacp_mic_poll();assert(rate_calls==++calls);
+ capture=true;send_now();now+=799;aacp_mic_poll();assert(rate_calls==calls);
+ now++;aacp_mic_poll();assert(rate_calls==++calls);
+ now+=1000;aacp_mic_poll();assert(rate_calls==calls); // exactly once
+ // A new USB intent blocks an old recovery before its command can be sent.
+ capture=false;send_now();capture=true;aacp_mic_poll();assert(rate_calls==calls);
+ send_now();now+=800;aacp_mic_poll();assert(rate_calls==++calls);
+ capture=false;send_now();aacp_mic_poll();assert(rate_calls==++calls);
  aap_set_game(true);assert(rate_sequence<jitter_sequence);assert(aap_get_game());
  aap_set_game(false);assert(rate_sequence<jitter_sequence);assert(!aap_get_game());
  aap_set_ear_pause(true);
@@ -68,9 +87,10 @@ int main(void){
  ear[6]=1;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==1 && last_usage==0xb1);
  ear[7]=0;callback(L2CAP_DATA_PACKET,0x42,ear,8);assert(host_keys==2 && last_usage==0xb0);
  event(L2CAP_EVENT_CHANNEL_CLOSED,0x41);assert(aap_channel_open());
- aap_set_aa(50);uint32_t before=epochs;event(L2CAP_EVENT_CHANNEL_CLOSED,0x42);
+ aap_set_aa(50);capture=true;send_now();calls=rate_calls;
+ uint32_t before=epochs;event(L2CAP_EVENT_CHANNEL_CLOSED,0x42);capture=false;
  assert(!aap_channel_open() && epochs>before && aap_get_noise_mode()==0 && aap_get_aa()==-1);
- now+=3000;aacp_mic_poll();event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
+ now+=3000;aacp_mic_poll();assert(rate_calls==calls);event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
  send_now();send_now();send_now();callback(L2CAP_DATA_PACKET,0x42,ack,6);
  last_len=0;send_now();assert(!last_len); // stale control not replayed after reconnect
  aap_set_ca(true);request_rc=1;for(int i=0;i<3;i++)aacp_mic_poll();assert(!aap_channel_open());

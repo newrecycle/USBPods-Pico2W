@@ -1,12 +1,22 @@
 {
   "schema": 1,
   "live_test_authorized": true,
-  "status": "offline_verified_pending_hardware",
+  "status": "offline_verified_transition_candidate_pending_hardware",
   "blockers": [],
   "physical_validation_required": [
     "AirPods Pro 3 connection and sustained AVDTP TX",
     "Peer-supported AAC-ELD rates and both game modes",
     "Microphone cadence, pitch, USB drift and duplex soak",
-    "Reconnect, notified controls and physical HID behavior"
+    "Reconnect, notified controls and physical HID behavior",
+    "Channel independence across microphone close/open",
+    "Bass/depth comparison with Full using the same familiar music",
+    "Fresh control-notification behavior and stem configuration/gesture evidence"
+  ],
+  "known_hardware_findings": [
+    "25ec7794: native Windows mic and concurrent playback reported working",
+    "25ec7794 runner: forced 64 kHz WASAPI capture rejected before capture began",
+    "25ec7794: microphone close/open changes audible playback channels",
+    "25ec7794: bass virtually nonexistent relative to public Full firmware",
+    "25ec7794: all observed AVRCP gestures reported PLAY; multi-press mapping unresolved"
   ]
 }

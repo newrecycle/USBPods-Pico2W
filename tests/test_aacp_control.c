@@ -15,7 +15,7 @@ int main(void) {
  uint8_t c[]={4,0,4,0,9,0,0x26,1,0,0,0};
  c[0]=0xff;assert(!aacp_control_receive(&s,c,11));c[0]=4;
  assert(!aacp_control_receive(&s,c,8));
- assert(aacp_control_receive(&s,c,11) && s.pvol==1);
+ assert(aacp_control_receive(&s,c,11) && s.pvol==1 && s.observed[2]==1);
  c[7]=2;assert(aacp_control_receive(&s,c,11) && s.pvol==0);
  c[7]=3;assert(!aacp_control_receive(&s,c,11) && s.pvol==0);
  c[6]=0x2e;c[7]=101;assert(!aacp_control_receive(&s,c,11));

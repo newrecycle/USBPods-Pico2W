@@ -1799,7 +1799,8 @@ void a2dp_source_parkwatch_init(void){
    resyncs cleanly). No-op unless an ELD stream is up; otherwise the new
    rate simply applies at the next encoder init. */
 void a2dp_source_apply_eld_rate(void) {
-    if (cur_codec != CODEC_ID_AACELD || !a2dp_is_connected_flag) return;
+    if (cur_codec != CODEC_ID_AACELD || !a2dp_is_connected_flag ||
+        src_fault_hold || src_user_dc_hold) return;
     unsigned actions=eld_transition_request(&src_eld_change,is_streaming);
     if(!actions)return;
     src_eld_error_stage=0;src_eld_last_error=0;
