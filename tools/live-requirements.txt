@@ -1,0 +1,4 @@
+pyserial>=3.5,<4
+hidapi>=0.14,<1
+sounddevice>=0.5,<1
+numpy>=2,<3

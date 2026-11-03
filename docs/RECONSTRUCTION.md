@@ -121,9 +121,11 @@ USB capture/HID helpers are integrated; `:telemetry` emits `micstats`,
 `usbcapture` and `hidstats` JSON as well as existing text diagnostics. HID
 submission logs remain available when the host blocks raw HID observation.
 
-Before finalizing the hardware runner, consolidate the instrumented hardware
-matrix into as few sessions as possible and select the exact combined CI
-revision. The runner draft is not yet published as a live-test package.
+The hardware runner consolidates six rate/game stages, open-capture reconnects
+and a sustained duplex soak into one session, with optional simultaneous phone
+relay. It pins the exact verified UF2/source revision and bundles CDC, UART,
+HID, diagnostic snapshots and short WAV clips. See [LIVE-TEST.md](LIVE-TEST.md).
+This is the first physical acceptance candidate, not hardware success evidence.
 Mic cadence/pitch (48 kHz ASC versus 64 kHz
 USB clock), RF coexistence, lifecycle timing and phone marker conventions remain
 questions for that later hardware pass.

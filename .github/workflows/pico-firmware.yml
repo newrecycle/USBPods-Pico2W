@@ -145,6 +145,7 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/tinyusb tests/test_usb_host_input.c src/tinyusb/usb_capture_lifecycle.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-input
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
+          python3 tests/test_live_runner.py
           cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread -I src/tinyusb tests/test_usb_hid_threads.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-hid-threads
           timeout 20 /tmp/test-usb-hid-threads
           python3 tests/test_verify_uf2.py
@@ -189,6 +190,7 @@ jobs:
           stem="$(cat build/usbpods-output-name.txt)"
           python3 tools/verify_build.py --build build --evidence evidence --stem "$stem"
       - name: Build SCO diagnostics for both Pico wireless boards
+        # The application candidate above is packaged only after binary checks.
         run: |
           for board in pico_w pico2_w; do
             cmake -S tests/sco_probe -B "probe-$board" -G Ninja -DPICO_BOARD="$board" -DCMAKE_BUILD_TYPE=Release
@@ -200,6 +202,11 @@ jobs:
       - name: Show compiler cache statistics
         if: always()
         run: ccache --show-stats
+      - name: Package microphone live-test candidate
+        if: matrix.decode == 'ON'
+        run: |
+          stem="$(cat build/usbpods-output-name.txt)"
+          python3 tools/package_live_test.py --build build --evidence evidence --output live-test-candidate --stem "$stem" --source-sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID"
       - name: Upload firmware and verification evidence
         if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4
@@ -217,4 +224,5 @@ jobs:
             build/CMakeCache.txt
             build/compile_commands.json
             build/*.map
+            live-test-candidate/**
 
