@@ -67,6 +67,10 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_relay_rtp.c src/btstack/relay_rtp.c -o /tmp/test-relay
           /tmp/test-relay
           python3 tests/test_relay_lifecycle.py
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_profile.c src/btstack/eld_profile.c -o /tmp/test-eld-profile
+          /tmp/test-eld-profile
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/encoder_mocks -I src/btstack tests/test_eld_encoder.c src/btstack/eld_encoder.c src/btstack/eld_profile.c -o /tmp/test-eld-encoder
+          /tmp/test-eld-encoder
           python3 tests/test_verify_uf2.py
       - name: Test real FDK AAC-ELD microphone profile
         if: matrix.decode == 'ON'
@@ -75,6 +79,8 @@ jobs:
           cmake --build host-fdk --parallel 2
           cc -std=c11 -Wall -Wextra -Werror -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_mic_fdk.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-mic-fdk
           /tmp/test-mic-fdk
+          cc -std=c11 -Wall -Wextra -Werror -DUSBPODS_MIC_DECODE=1 -I tests/time_mocks -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_duplex_fdk.c src/btstack/eld_profile.c src/btstack/eld_encoder.c src/btstack/aacp_mic_audio.c src/resamp44.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-eld-duplex
+          timeout 90 /tmp/test-eld-duplex
       - name: Select and validate unchanged controller firmware
         env:
           BTFW_SELECTION: ${{ matrix.firmware }}

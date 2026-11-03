@@ -5,7 +5,7 @@ static bool parse(char *p,control_command *out) {
  memset(out,0,sizeof(*out));
  if(!strcmp(p,"status")){out->status=true;return true;}
  static const struct { const char *name;uint8_t id; } queries[]={
-   {"info",CONTROL_INFO},{"scan",CONTROL_SCAN},{"scanlist",CONTROL_SCANLIST},
+   {"eldstatus",CONTROL_ELDSTATUS},{"info",CONTROL_INFO},{"scan",CONTROL_SCAN},{"scanlist",CONTROL_SCANLIST},
    {"scanstop",CONTROL_SCANSTOP},{"connect",CONTROL_CONNECT},{"disconnect",CONTROL_DISCONNECT},
    {"settings",CONTROL_SETTINGS},{"phonedisc",CONTROL_PHONEDISC},{"reboot",CONTROL_REBOOT},
    {"telemetry",CONTROL_TELEMETRY},{"savedlist",CONTROL_SAVEDLIST}

@@ -1097,3 +1097,5 @@ void audio_control_task(void)
   }
  
 
+
+uint32_t usb_pipeline_rate(void) { return sample_rates[0]; }

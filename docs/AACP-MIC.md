@@ -1,5 +1,7 @@
 # Experimental AirPods microphone
 
+Current reconstruction status and AAC-ELD priority matrix: [RECONSTRUCTION.md](RECONSTRUCTION.md). Older sections below record the staged implementation; the current independent build also includes a bounded phone relay and CDC device settings. Vendor Full source remains separate.
+
 This change adds an application-level AirPods AACP microphone path alongside the pinned `0065` Raspberry Pi SDIO controller image. It does not claim to fix generic HFP/SCO (pico-sdk issue 1461). The microphone travels over L2CAP PSM `0x1001`, independently of the existing AAC-ELD A2DP speaker stream.
 
 Two explicit Lite test builds are produced for Pico 2 W:

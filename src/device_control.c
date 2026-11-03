@@ -6,6 +6,7 @@
 #include "btstack/btstack_aap.h"
 #include "btstack/aacp_control.h"
 #include "btstack/aacp_mic.h"
+#include "btstack/eld_profile.h"
 #include "btstack/btstack_avdtp_source.h"
 #include "btstack/btstack_hci.h"
 #include "btstack/btstack_sink_relay.h"
@@ -71,6 +72,13 @@ static bool dispatch(control_command c) {
  switch(c.id) {
  case CONTROL_INFO:
    printf("[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1}\n",USBPODS_BUILD_SHA,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active());return true;
+ case CONTROL_ELDSTATUS: {
+   eld_runtime_status state;a2dp_source_eld_status(&state);
+   printf("[control] {\"kind\":\"eldstatus\",\"selected_rate\":%u,\"game\":%u,\"gamelevel\":%u,\"ready\":%u,\"pending\":%u,\"desired_bitrate\":%lu,\"active_bitrate\":%lu,\"active_vbr\":%u,\"active_sbr\":%u,\"active_slots\":%u,\"input_rate\":%u,\"failures\":%lu,\"rebuilds\":%lu}\n",
+      s->eld_rate?s->eld_rate:2,aap_get_game(),s->game_level?s->game_level:1,state.ready,state.pending,
+      (unsigned long)state.desired.bitrate,(unsigned long)state.active.bitrate,state.active.vbr,state.active.sbr,state.active.slots,state.active.input_rate,
+      (unsigned long)state.failures,(unsigned long)state.rebuilds);return true;
+ }
  case CONTROL_SETTINGS:
    printf("[control] {\"kind\":\"settings\",\"usbset\":%u,\"slot\":%u,\"connmode\":%u,\"usbvol\":%u,\"phvol\":%u,\"gamelevel\":%u,\"eldrate\":%u,\"earpause\":%u,\"stem\":%u,\"debug\":%u,\"btnmode\":%u,\"ldacq\":%u,\"lhdcrate\":%u}\n",s->usbset,read_uint8_last_flash(),s->connmode,s->usb_vol_p1?s->usb_vol_p1-1:100,s->relay_vol_p1?s->relay_vol_p1-1:100,s->game_level?s->game_level:1,s->eld_rate?s->eld_rate:2,s->ear_pause,s->stem_hid,s->dbg_mode,s->btn_mode?s->btn_mode:1,s->ldac_quality?s->ldac_quality:2,s->lhdc_rate?s->lhdc_rate:2);return true;
  case CONTROL_SCAN:bt_scan_start_list();return true;
@@ -118,7 +126,7 @@ bool device_control_character(char c) {
  async_context_acquire_lock_blocking(cyw43_arch_async_context());
  if(cmd.status)status();else{
    bool ok=dispatch(cmd);
-   if(cmd.id!=CONTROL_INFO&&cmd.id!=CONTROL_SETTINGS&&cmd.id!=CONTROL_SCANLIST&&cmd.id!=CONTROL_SAVEDLIST)
+   if(cmd.id!=CONTROL_ELDSTATUS&&cmd.id!=CONTROL_INFO&&cmd.id!=CONTROL_SETTINGS&&cmd.id!=CONTROL_SCANLIST&&cmd.id!=CONTROL_SAVEDLIST)
      printf("[control] {\"kind\":\"ack\",\"queued\":%u,\"id\":%u,\"value\":%u,\"reboot_required\":%u}\n",ok,cmd.id,cmd.value,cmd.id==CONTROL_UAC1||cmd.id==CONTROL_RATE44);
  }
  async_context_release_lock(cyw43_arch_async_context());return true;

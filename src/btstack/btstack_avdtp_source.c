@@ -1,4 +1,7 @@
 #include "aacp_mic.h"
+#include "eld_encoder.h"
+#include "pico/async_context.h"
+#include "pico/cyw43_arch.h"
 #include <sys/cdefs.h>
 #include "hardware/watchdog.h"   /* scratch[7] hang forensics */
 /*
@@ -1212,30 +1215,19 @@ static void src_dial_maybe_redial_after_drop(void);
    src_eld_au_space(), so the AUs-per-packet count adapts to ANY rate.
    (A hardcoded 400 B threshold structurally broke rates ~390-460 k: the
    fill/send-trigger gap caused an encode error storm.) */
-static uint32_t src_eld_bitrate(void) {
-    extern bool aap_get_game(void);
-    uint32_t r;
-    if (aap_get_game()) r = 192000;      /* gaming: smallest AUs — latency over fidelity
-                                            (overrides the menu, setting untouched) */
-    else switch (settings()->eld_rate) {
-        case 1:  r = 192000; break;
-        case 3:  r = 320000; break;
-        default: r = 256000; break;      /* 0 (unset/zero-fill) and 2 */
-    }
-    /* 44.1 pipeline: hold ELD at gaming's exact stream (192k CBR, sbr/vbr
-       already forced off by the vbr_now guard). 256k CBR here transmitted
-       fine but rendered SILENT on the buds (HW 2026-08-09: 44 pkt/s, AUs
-       staged, AAP live, no audio), and 256k VBR+SBR wedges the FDK rate
-       loop. 192k CBR is the one 44.1 config with weeks of field proof —
-       gaming has shipped it since day one. Full 256k VBR+SBR engages on
-       the 48 k host path, where it is Apple parity and proven. */
-    if (!aap_get_game() && (settings()->usbset & USBSET_RATE44) && r > 192000)
-        r = 192000;
-    /* dual-stream coex: while a relay phone streams (AAC-LC in + ELD out
-       share the radio), cap ELD at 164 kbps — applied via the suspend->
-       rebuild->restart dance in the ladder, never a live SetParam. */
-    if (bt_sink_relay_streaming() && r > 164000) r = 164000;
-    return r;
+static uint8_t src_eld_vbr_mode=5;
+static uint8_t src_eld_sbr=1;
+static eld_profile src_active_eld;
+static uint32_t src_eld_failures,src_eld_rebuilds;
+static eld_profile src_eld_profile(void) {
+ return eld_profile_select(settings()->eld_rate,aap_get_game(),settings()->game_level,
+   usb_pipeline_rate()==44100,bt_sink_relay_streaming(),src_eld_vbr_mode,src_eld_sbr);
+}
+static uint32_t src_eld_bitrate(void) { return src_eld_profile().bitrate; }
+void a2dp_source_eld_status(eld_runtime_status *out) {
+ out->desired=src_eld_profile();out->active=src_active_eld;
+ out->ready=cur_codec==CODEC_ID_AACELD && handleAAC!=NULL;
+ out->pending=src_eld_reset_pending;out->failures=src_eld_failures;out->rebuilds=src_eld_rebuilds;
 }
 
 /* Live on-air bitrate of the CURRENT codec, kbps (0 = unknown/not streaming).
@@ -1261,51 +1253,8 @@ uint32_t a2dp_source_live_kbps(void) {
         default: return 0;
     }
 }
-/* macOS parity: BTAudioHALPlugin runs AAC-ELD in VBR (BitRateControlMode=3,
-   ~227 kbps measured / 256 kbps ceiling), dropping to CBR only under link
-   adaptation. FDK VBR_5 = 96 k/ch (~192 k stereo), nearest preset to Apple's
-   average; the 256 k peak cap makes maxBitsPerFrame 320 B — exactly the max
-   AU size seen on Apple's wire. 0 = legacy CBR at src_eld_bitrate(). */
-static uint8_t src_eld_vbr_mode = 5;
-/* Step 2 of encoder parity: LD-SBR, DOWNSAMPLED (Apple runs ratio=1 —
-   AACEnhancedLowDelaySBREncoder, granule stays 480/10 ms; the old "SBR
-   unstable" attempt predates transport parity and likely ran FDK's dual-
-   rate default, the opposite shape). 0 = SBR off. */
-static uint8_t src_eld_sbr = 1;
 #define SRC_ELD_PEAK_BITRATE 256000u
-/* Apple's own link-adapt pattern: CBR whenever a SPECIFIC rate must bind.
-   Under VBR, FDK ignores AACENC_BITRATE entirely — which silently
-   neutralised the relay 164k coex cap, the gaming 192k override and the
-   192/320 menu choices (review-4ae498d-findings.md). VBR_5 only for the
-   default 256k steady-state case, exactly like macOS. */
-static uint8_t src_eld_vbr_now(void) {
-    extern bool aap_get_game(void);
-    if (src_eld_vbr_mode == 0) return 0;
-    /* 44.1 pipeline: plain CBR, no VBR and (via sbr_now's coupling) no SBR.
-       VBR5+SBR over the 441->480 resampler wedges FDK's rate loop — caught
-       at FDKaacEnc_dynBitCount over SWD on a build with STOCK FDK, and the
-       non-game bootloop reproduced within minutes every time this guard was
-       absent. The buds decode SBR-less ELD fine — gaming (192k CBR sbr=0)
-       has shipped that way for weeks. (This guard was here once before and
-       got reverted on a mistaken noise attribution: the noise came from
-       since-removed FDK iteration caps that shipped in the same build, not
-       from sbr=0. Full story: private/docs + the 2026-08-09 commits.) */
-    if (settings()->usbset & USBSET_RATE44) return 0;
-    if (bt_sink_relay_streaming()) return 0;   /* coex cap must bind */
-    if (aap_get_game()) return 0;              /* deterministic airtime */
-    if (settings()->eld_rate == 1 || settings()->eld_rate == 3) return 0;
-    return src_eld_vbr_mode;
-}
-/* SBR only rides the VBR path. FDK's own ELD/SBR auto-config table
-   (eldSbrAutoConfigTab) drops SBR for 2ch/48k at >=128 kbps, so forcing it
-   on at a CBR rate leaves the quantizer a budget it cannot meet: the rate
-   loop in FDKaacEnc_QCMain (qc_main.cpp, while(!quantizationDone) /
-   do..while(!constraintsFulfilled)) then never converges and never returns.
-   HW 2026-08-06: hung there in game mode (CBR 192k + SBR) with real music,
-   caught over SWD — BT-IRQ stuck inside aacEncEncode, run loop starved,
-   watchdog reset, bootloop. VBR has the slack to absorb SBR's overhead,
-   which is why the 256k Apple-parity path has been stable for days. */
-static uint8_t src_eld_sbr_now(void){ return src_eld_vbr_now() ? src_eld_sbr : 0; }
+static uint8_t src_eld_vbr_now(void) { return src_eld_profile().vbr; }
 static int src_eld_au_space(void) {
     /* budget the LARGEST possible AU: under VBR that is the peak cap, not
        the average — a peak AU past the packet budget would oversize L2CAP */
@@ -1313,14 +1262,7 @@ static int src_eld_au_space(void) {
     if (src_eld_vbr_now() && r < SRC_ELD_PEAK_BITRATE) r = SRC_ELD_PEAK_BITRATE;
     return (int)(r / 800) + 4 + 64;  /* AU + hdr + wiggle */
 }
-static uint8_t src_eld_slot_count(void) {
-    extern bool aap_get_game(void);
-    if (aap_get_game())   /* gaming wins over 320k; queue depth per level */
-        return (settings()->game_level == 2) ? AUDIO_SLOT_COUNT_ELD_GAME
-                                             : AUDIO_SLOT_COUNT_ELD;
-    if (settings()->eld_rate == 3) return AUDIO_SLOT_COUNT_ELD_320;
-    return AUDIO_SLOT_COUNT_ELD;
-}
+static uint8_t src_eld_slot_count(void) { return src_eld_profile().slots; }
 
 int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     int          total_samples_read               = 0;
@@ -1793,41 +1735,28 @@ void a2dp_source_main_work(void) {
         }
     }
     if (!src_eld_reset_pending) return;
-    uint32_t irq = save_and_disable_interrupts();
-    if (handleAAC != NULL) {
-        aacEncClose(&handleAAC);
-        handleAAC = NULL;
+    /* Serialize BT encoder ownership without masking USB IRQs: microphone IN
+       continues draining its PCM queue while the encoder heap is rebuilt. */
+    async_context_acquire_lock_blocking(cyw43_arch_async_context());
+    if(cur_codec!=CODEC_ID_AACELD || !a2dp_is_connected_flag) {
+        src_eld_reset_pending=false;
+        async_context_release_lock(cyw43_arch_async_context());return;
     }
-    /* 0x03 = AAC core + SBR module. FDK's AACENC_SBR_MODE SetParam is
-       SILENTLY ignored when the SBR module was not allocated at open
-       (hEnvEnc NULL guard) — 0x01 made every past SBR attempt a no-op. */
-    if (aacEncOpen(&handleAAC, 0x03, 2) == AACENC_OK) {
-        aacEncoder_SetParam(handleAAC, AACENC_AOT, 39);
-        src_full_bitrate = src_eld_bitrate();   /* ladder restore tracks the setting */
-        aacEncoder_SetParam(handleAAC, AACENC_BITRATE, src_eld_bitrate());
-        aacEncoder_SetParam(handleAAC, AACENC_SAMPLERATE, 48000);
-        aacEncoder_SetParam(handleAAC, AACENC_CHANNELMODE, 2);
-        aacEncoder_SetParam(handleAAC, AACENC_GRANULE_LENGTH, 480);
-        aacEncoder_SetParam(handleAAC, AACENC_SBR_MODE, src_eld_sbr_now());
-        if (src_eld_sbr_now())
-            aacEncoder_SetParam(handleAAC, AACENC_SBR_RATIO, 1);
-        aacEncoder_SetParam(handleAAC, AACENC_BITRATEMODE, src_eld_vbr_now());
-        if (src_eld_vbr_now())
-            aacEncoder_SetParam(handleAAC, AACENC_PEAK_BITRATE, SRC_ELD_PEAK_BITRATE);
-        aacEncoder_SetParam(handleAAC, AACENC_AFTERBURNER, 0);
-        aacEncoder_SetParam(handleAAC, AACENC_TRANSMUX, TT_MP4_RAW);
-        aacEncEncode(handleAAC, NULL, NULL, NULL, NULL);
-        aacEncInfo(handleAAC, &aacinf);
+    eld_profile profile=src_eld_profile();
+    AACENC_ERROR error=eld_encoder_open(&handleAAC,&aacinf,&profile);
+    if(error==AACENC_OK) {
+        src_active_eld=profile;src_full_bitrate=profile.bitrate;src_eld_rebuilds++;
+        if(active_slot_count!=profile.slots)
+            audio_slot_queue_configure_with_count(acc_num_simples,profile.slots);
+    } else {
+        src_eld_failures++;
     }
-    __dmb();
-    src_eld_reset_pending = false;   /* cleared AFTER the new handle is live */
-    restore_interrupts(irq);
-    /* Queue depth tracks bitrate/gaming mode (9/4/6 slots) — resize only on
-       an actual change so TX-stall recoveries don't drop buffered audio. */
-    if (active_slot_count != src_eld_slot_count())
-        audio_slot_queue_configure_with_count(acc_num_simples, src_eld_slot_count());
-    printf("AAC-ELD: encoder reset (main loop)\n");
+    __dmb();src_eld_reset_pending=false;
+    async_context_release_lock(cyw43_arch_async_context());
+    printf("[eld] rebuild status=%u rate=%lu vbr=%u sbr=%u slots=%u failures=%lu\n",
+        error,(unsigned long)profile.bitrate,profile.vbr,profile.sbr,profile.slots,(unsigned long)src_eld_failures);
 }
+
 #define SRC_RELAY_BITRATE 128000
 
 static void src_bitrate_ladder_tick(void) {
@@ -3098,76 +3027,15 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                 }
                 printf("\n");
 
-                // Init FDK-AAC encoder for AAC-ELD (AOT 39)
-                AACENC_ERROR err;
-                // Close previous encoder if reconnecting
-                if (handleAAC != NULL) {
-                    aacEncClose(&handleAAC);
-                    handleAAC = NULL;
-                }
-                if ((err = aacEncOpen(&handleAAC, 0x03, 2)) != AACENC_OK) {
-                    printf("Couldn't open AAC-ELD encoder: %d\n", err);
+                eld_profile profile=src_eld_profile();
+                AACENC_ERROR err=eld_encoder_open(&handleAAC,&aacinf,&profile);
+                if(err!=AACENC_OK) {
+                    src_eld_failures++;
+                    printf("[eld] initial encoder FAILED status=%u\n",err);
                     break;
                 }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_AOT, 39)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD AOT: %d\n", err);
-                    break;
-                }
-                src_full_bitrate = src_eld_bitrate();  /* ladder restore point */
-                src_vbr_mode = 0;                /* ELD runs CBR */
-                src_relay_rate_low = false;
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_BITRATE, src_eld_bitrate())) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD bitrate: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_SAMPLERATE, 48000)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD sample rate: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_CHANNELMODE, 2)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD channel mode: %d\n", err);
-                    break;
-                }
-                // 480 samples = 10ms at 48kHz (AAC-ELD-Stereo48K-10ms mode 130)
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_GRANULE_LENGTH, 480)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD frame size: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_SBR_MODE, src_eld_sbr_now())) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD SBR mode: %d\n", err);
-                    break;
-                }
-                if (src_eld_sbr_now() &&
-                    (err = aacEncoder_SetParam(handleAAC, AACENC_SBR_RATIO, 1)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD SBR ratio: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_BITRATEMODE, src_eld_vbr_now())) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD VBR mode: %d\n", err);
-                    break;
-                }
-                if (src_eld_vbr_now() &&
-                    (err = aacEncoder_SetParam(handleAAC, AACENC_PEAK_BITRATE, SRC_ELD_PEAK_BITRATE)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD peak bitrate: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_AFTERBURNER, 0)) != AACENC_OK) {
-                    printf("Couldn't disable AAC-ELD afterburner: %d\n", err);
-                    break;
-                }
-                // Raw access units with Apple 4-byte per-frame header
-                if ((err = aacEncoder_SetParam(handleAAC, AACENC_TRANSMUX, TT_MP4_RAW)) != AACENC_OK) {
-                    printf("Couldn't set AAC-ELD transport: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncEncode(handleAAC, NULL, NULL, NULL, NULL)) != AACENC_OK) {
-                    printf("Couldn't initialize AAC-ELD encoder: %d\n", err);
-                    break;
-                }
-                if ((err = aacEncInfo(handleAAC, &aacinf)) != AACENC_OK) {
-                    printf("Couldn't get AAC-ELD encoder info: %d\n", err);
-                    break;
-                }
+                src_active_eld=profile;src_eld_rebuilds++;src_eld_reset_pending=false;
+                src_full_bitrate=profile.bitrate;src_vbr_mode=0;src_relay_rate_low=false;
 
                 PLOG("AAC-ELD setup complete! frameLength=%d, inputChannels=%d, bitrate=%lu (encoder reports %lu, sbr=%lu ratio=%lu vbr=%lu)\n",
                        aacinf.frameLength, aacinf.inputChannels,
@@ -3177,7 +3045,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                        (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_SBR_RATIO),
                        (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_BITRATEMODE));
 
-                eld_resample = (settings()->usbset & USBSET_RATE44) != 0;
+                eld_resample = usb_pipeline_rate()==44100;
                 if (eld_resample) {
                     /* 44.1 pipeline: pop 441-frame slots (10 ms @ 44.1 =
                        3 x 147 polyphase periods -> EXACTLY one 480-sample

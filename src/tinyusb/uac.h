@@ -17,3 +17,5 @@ extern volatile uint32_t usb_rx_max_gap_ms;
 uint16_t webhid_get_report(uint8_t report_id, uint8_t *buf, uint16_t reqlen);
 void     webhid_set_report(uint8_t report_id, const uint8_t *buf, uint16_t len);
 void     webhid_task(void);
+
+uint32_t usb_pipeline_rate(void); /* descriptor/host rate latched at boot */
