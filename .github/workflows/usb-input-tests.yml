@@ -1,0 +1,32 @@
+name: USB capture and HID host tests
+on:
+  push:
+    paths:
+      - 'src/tinyusb/**'
+      - 'tests/test_usb_host_input.c'
+      - 'tests/test_usb_input_wiring.py'
+      - 'CMakeLists.txt'
+      - '.github/workflows/usb-input-tests.yml'
+  pull_request:
+    paths:
+      - 'src/tinyusb/**'
+      - 'tests/test_usb_host_input.c'
+      - 'tests/test_usb_input_wiring.py'
+      - 'CMakeLists.txt'
+      - '.github/workflows/usb-input-tests.yml'
+  workflow_dispatch:
+jobs:
+  host-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile production helpers with strict diagnostics
+        run: |
+          cc -std=c11 -O2 -Wall -Wextra -Werror -pedantic -Isrc/tinyusb \
+            tests/test_usb_host_input.c \
+            src/tinyusb/usb_capture_lifecycle.c \
+            src/tinyusb/usb_hid_media.c -o /tmp/usb-host-input
+      - name: Run USB capture and HID regressions
+        run: /tmp/usb-host-input
+      - name: Confirm production callback wiring
+        run: python3 tests/test_usb_input_wiring.py
