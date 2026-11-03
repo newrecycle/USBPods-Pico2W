@@ -1,5 +1,7 @@
 """Production endpoint adoption, deferred allocator owner and peer constraints."""
 import os
+import argparse
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -19,9 +21,7 @@ fixture=r'''
 #define CODEC_ID_LHDC 5
 #define AVDTP_SOURCE 0
 #define ERROR_CODE_MEMORY_CAPACITY_EXCEEDED 7
-#define HCI_LINK_TYPE_ACL_CONNECTION 1
 typedef uint8_t bd_addr_t[6];
-typedef unsigned hci_link_type_t;
 typedef struct {uint16_t avdtp_cid;} connection_t;
 typedef struct {struct {unsigned type;}sep;connection_t *connection;} avdtp_stream_endpoint_t;
 static connection_t connection={0x42};
@@ -97,9 +97,9 @@ int main(void) {
  assert(disconnects==1 && starts==old && src_fault_hold && src_user_dc_hold && !is_streaming);
  // Fatal setup hold blocks automatic headset ACLs but still permits phones.
  bd_addr_t headset={1},phone={2};
- assert(!classic_accept(headset,HCI_LINK_TYPE_ACL_CONNECTION));
- assert(classic_accept(phone,HCI_LINK_TYPE_ACL_CONNECTION));
- src_fault_hold=false;assert(classic_accept(headset,HCI_LINK_TYPE_ACL_CONNECTION));
+ assert(!classic_accept(headset,HCI_LINK_TYPE_ACL));
+ assert(classic_accept(phone,HCI_LINK_TYPE_ACL));
+ src_fault_hold=false;assert(classic_accept(headset,HCI_LINK_TYPE_ACL));
  // Execute the production profile selector against the negotiated ceiling.
  eld_profile profile=src_eld_profile();assert(profile.bitrate==320000);
  ceiling=256000;profile=src_eld_profile();assert(profile.bitrate==256000 && !profile.vbr && !profile.sbr);
@@ -109,6 +109,13 @@ int main(void) {
 }
 '''
 names=['src_event_matches_headset','src_adopt_configuration','src_schedule_codec_setup','src_codec_setup_main','src_eld_profile']
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--sdk-source',type=Path)
+args=parser.parse_args()
+header=(args.sdk_source/'sdk-bluetooth.h') if args.sdk_source else Path(os.environ['PICO_SDK_PATH'])/'lib/btstack/src/bluetooth.h'
+link_enum=re.search(r'typedef enum\s*\{[^{}]*HCI_LINK_TYPE_ACL[^{}]*\} hci_link_type_t;',header.read_text(),re.S)
+assert link_enum,'Pinned SDK link type enum missing'
+fixture=fixture.replace('typedef uint8_t bd_addr_t[6];',link_enum.group(0)+'\ntypedef uint8_t bd_addr_t[6];')
 with tempfile.TemporaryDirectory() as temp:
     path=Path(temp)
     code=fixture+'\n'.join(function('src/btstack/btstack_avdtp_source.c',n) for n in names)

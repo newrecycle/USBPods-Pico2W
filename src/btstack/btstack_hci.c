@@ -635,7 +635,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 static btstack_packet_callback_registration_t hci_state_callback_registration;
 
 static int classic_accept(bd_addr_t addr,hci_link_type_t type) {
-    if(type==HCI_LINK_TYPE_ACL_CONNECTION && a2dp_source_fault_hold() &&
+    if(type==HCI_LINK_TYPE_ACL && a2dp_source_fault_hold() &&
        !bt_sink_relay_is_phone_addr(addr)) {
         printf("[src] rejecting automatic ACL reconnect after fault\n");return 0;
     }
