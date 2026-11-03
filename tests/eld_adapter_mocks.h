@@ -92,3 +92,9 @@ static void src_stream_start_accepted(void);
 void a2dp_source_apply_eld_rate(void);
 
 static void a2dp_source_transport_report(void) {}
+
+static unsigned src_codec_setup_pending;
+static bool src_codec_early_start;
+static void src_codec_setup_main(void){}
+
+static bool src_fault_hold;

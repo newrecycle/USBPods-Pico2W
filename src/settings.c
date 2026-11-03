@@ -260,19 +260,23 @@ void settings_init(void) {
 user_settings_t *settings(void) { return &s_cur; }
 
 void settings_mark_dirty(void) {
-    s_dirty = true;
+    uint32_t saved=save_and_disable_interrupts();
     s_dirty_ms = to_ms_since_boot(get_absolute_time());
+    s_dirty = true;
+    restore_interrupts(saved);
 }
 
 static bool s_retrying;               /* commit failed: back off to 1 s */
 
 void settings_tick(void) {
     if (!s_dirty) return;
+    uint32_t saved=save_and_disable_interrupts();
     uint32_t now=to_ms_since_boot(get_absolute_time());
     /* The microphone loop runs every 2 ms, relay every 10 ms, idle every
        50 ms. Counting calls as 50 ms caused flash writes after only 8 ms. */
-    if (now-s_dirty_ms < (s_retrying ? 1000u : 200u)) return;
+    if (!s_dirty || now-s_dirty_ms < (s_retrying ? 1000u : 200u)) {restore_interrupts(saved);return;}
     s_dirty = false;
+    restore_interrupts(saved);
     if (commit_snapshot()) {
         s_retrying = false;
     } else {
@@ -294,8 +298,10 @@ void settings_debug_dump(void) {
 }
 
 bool settings_flush(void) {
-    if (!s_dirty) return true;
+    uint32_t saved=save_and_disable_interrupts();
+    if (!s_dirty){restore_interrupts(saved);return true;}
     s_dirty = false;
+    restore_interrupts(saved);
     if(commit_snapshot()){s_retrying=false;return true;}
     s_dirty=true;s_retrying=true;
     s_dirty_ms=to_ms_since_boot(get_absolute_time());

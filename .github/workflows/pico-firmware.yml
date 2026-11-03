@@ -128,7 +128,7 @@ jobs:
           /tmp/test-console
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/transport_mocks -I src/btstack tests/test_aacp_transport.c src/btstack/aacp_mic.c src/btstack/aacp_control.c src/btstack/aacp_mic_protocol.c -o /tmp/test-transport
           /tmp/test-transport
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_audio.c src/btstack/aacp_mic_audio.c -o /tmp/test-mic-audio
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_audio.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-audio
           /tmp/test-mic-audio
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_relay_rtp.c src/btstack/relay_rtp.c -o /tmp/test-relay
           /tmp/test-relay
@@ -140,7 +140,7 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_transition.c src/btstack/eld_transition.c -o /tmp/test-eld-transition
           /tmp/test-eld-transition
           python3 tests/test_eld_adapter.py
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_mic_telemetry.c src/btstack/aacp_mic_audio.c -o /tmp/test-mic-telemetry
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_mic_telemetry.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-telemetry
           /tmp/test-mic-telemetry
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/tinyusb tests/test_usb_host_input.c src/tinyusb/usb_capture_lifecycle.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-input
           /tmp/test-usb-input
@@ -150,6 +150,13 @@ jobs:
           python3 tests/test_control_records.py
           python3 tests/test_settings_timing.py
           python3 tests/test_sdk_transport_contract.py
+          python3 tests/test_relay_sdk_routing.py
+          python3 tests/test_codec_setup.py
+          python3 tests/test_eld_negotiation.py
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_codec_config.c src/btstack/eld_codec_config.c -o /tmp/test-eld-codec-config
+          /tmp/test-eld-codec-config
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_mic_clock.c src/btstack/mic_clock.c -o /tmp/test-mic-clock
+          /tmp/test-mic-clock
           cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread -I src/tinyusb tests/test_usb_hid_threads.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-hid-threads
           timeout 20 /tmp/test-usb-hid-threads
           python3 tests/test_verify_uf2.py
@@ -160,7 +167,7 @@ jobs:
           cmake --build host-fdk --parallel 2
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_mic_fdk.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-mic-fdk
           /tmp/test-mic-fdk
-          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address -DUSBPODS_MIC_DECODE=1 -I tests/time_mocks -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_duplex_fdk.c src/btstack/eld_profile.c src/btstack/eld_encoder.c src/btstack/aacp_mic_audio.c src/resamp44.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-eld-duplex
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address -DUSBPODS_MIC_DECODE=1 -I tests/time_mocks -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_duplex_fdk.c src/btstack/eld_profile.c src/btstack/eld_encoder.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c src/resamp44.c host-fdk/libfdk-aac.a -lstdc++ -lm -o /tmp/test-eld-duplex
           ASAN_OPTIONS=detect_leaks=0 timeout 90 /tmp/test-eld-duplex
       - name: Audit 32-bit duplex codec allocations
         if: matrix.decode == 'ON'
@@ -169,7 +176,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends g++-multilib
           cmake -S 3rd-party/fdk-aac -B host-fdk32 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_EXE_LINKER_FLAGS=-m32
           cmake --build host-fdk32 --parallel 2
-          cc -m32 -std=c11 -Wall -Wextra -Werror -DUSBPODS_MIC_DECODE=1 -DUSBPODS_ALLOC_AUDIT=1 -I tests/time_mocks -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_duplex_fdk.c tests/fdk_alloc_tracker.c src/btstack/eld_profile.c src/btstack/eld_encoder.c src/btstack/aacp_mic_audio.c src/resamp44.c host-fdk32/libfdk-aac.a -Wl,--wrap=calloc,--wrap=malloc,--wrap=free -lstdc++ -lm -o /tmp/test-eld-duplex32
+          cc -m32 -std=c11 -Wall -Wextra -Werror -DUSBPODS_MIC_DECODE=1 -DUSBPODS_ALLOC_AUDIT=1 -I tests/time_mocks -I src/btstack -isystem 3rd-party/fdk-aac/libAACdec/include -isystem 3rd-party/fdk-aac/libAACenc/include -isystem 3rd-party/fdk-aac/libSYS/include tests/test_eld_duplex_fdk.c tests/fdk_alloc_tracker.c src/btstack/eld_profile.c src/btstack/eld_encoder.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c src/resamp44.c host-fdk32/libfdk-aac.a -Wl,--wrap=calloc,--wrap=malloc,--wrap=free -lstdc++ -lm -o /tmp/test-eld-duplex32
           mkdir -p evidence
           USBPODS_FDK_HEAP_REPORT=evidence/codec-heap32.json timeout 90 /tmp/test-eld-duplex32
       - name: Select and validate unchanged controller firmware

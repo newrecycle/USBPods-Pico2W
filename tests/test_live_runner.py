@@ -11,6 +11,7 @@ import subprocess
 import time
 import wave
 import zipfile
+from unittest import mock
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 import live_audio
 
@@ -30,6 +31,23 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_connection_preflight_rejects_stalled_and_dropped_streams(self):
+        class Link:
+            def __init__(self,progress=True,connected=True):self.tx=0;self.progress=progress;self.connected=connected
+            def request(self,cmd):
+                if cmd=='eldstatus':return {'transition':'ready'}
+                if self.progress:self.tx+=1
+                return dict(connected=int(self.connected),confirmed=1,streaming=1,codec=4,tx_packets=self.tx,send_failures=0)
+        class Clock:
+            def __init__(self):self.now=0
+            def monotonic(self):return self.now
+            def sleep(self,n):self.now+=n
+        for progress,connected,passes in ((True,True,True),(False,True,False),(True,False,False)):
+            clock=Clock()
+            with mock.patch.object(live,'time',clock):
+                if passes:live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
+                else:
+                    with self.assertRaises(RuntimeError):live.connection_preflight(Link(progress,connected),FakeRecorder(),seconds=1)
     def test_recorded_pair_ack_with_console_indent(self):
         # Exact framing of the ACK in the failed 20261103T192956Z capture.
         line=' [control] {"kind":"ack","queued":1,"id":132,"value":0,"reboot_required":0}'
@@ -130,10 +148,10 @@ class Contracts(unittest.TestCase):
         for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(built_revision=1)):
             self.assertFalse(live_audio.profile_matches({**s,**change},p))
     def test_counter_wrap_and_failures(self):
-        a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0),
+        a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0,clock_windows=2,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
            'usbcapture':dict(running=1,pcm_samples=10),
            'status':dict(streaming=1,codec=4,tx_packets=1),'eldstatus':dict(transition='ready')}
-        b={**a,'status':dict(streaming=1,codec=4,tx_packets=2),'micstats':dict(generation=2,capture=1,decoded=10),
+        b={**a,'status':dict(streaming=1,codec=4,tx_packets=2),'micstats':dict(generation=2,capture=1,decoded=10,clock_windows=3,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
            'usbcapture':dict(running=1,pcm_samples=650)}
         self.assertEqual(live_audio.health(a,b),[])
         self.assertIn('No playback media packets progressed',live_audio.health(a,{**b,'status':a['status']}))

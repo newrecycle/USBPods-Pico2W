@@ -90,6 +90,20 @@ int main(void) {
  // Decode and PCM high-water never increase past fixed queue capacities.
  aacp_mic_audio_get_stats(&s);
  assert(s.au_high_water<=32 && s.pcm_high_water<=16);
+ // Packet priming must discard a FULL stale PCM ring, otherwise no fresh
+ // frame can enter and startup buffering would wait forever.
+ drain();
+ for(unsigned i=0;i<16;i++)enqueue(50);
+ aacp_mic_audio_work();aacp_mic_audio_work();
+ aacp_mic_discontinuity();assert(!aacp_mic_audio_packet_samples());
+ for(unsigned i=0;i<6;i++)enqueue(51);
+ aacp_mic_audio_work();assert(aacp_mic_audio_packet_samples()==64);
+ assert(aacp_mic_audio_read(p,64)==64 && p[0]==51);
+ // Four-AU batches have a 64 kHz PCM timeline despite the 48 kHz ASC.
+ aacp_mic_discontinuity();
+ for(unsigned group=0;group<36;group++)for(unsigned unit=0;unit<4;unit++)
+  aacp_mic_audio_note_au(group*4+unit,group*30000);
+ aacp_mic_audio_get_stats(&s);assert(s.clock_windows && s.measured_sample_rate==64000);
  puts("microphone cadence, timestamp, burst, overflow and reconnect tests passed");
 }
 

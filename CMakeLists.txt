@@ -188,6 +188,8 @@ add_executable(${PROJECT_NAME}
     src/btstack/aacp_mic.c
     src/btstack/aacp_control.c
     src/btstack/eld_profile.c
+    src/btstack/eld_codec_config.c
+    src/btstack/mic_clock.c
     src/btstack/eld_encoder.c
     src/btstack/eld_transition.c
     src/btstack/aacp_mic_protocol.c

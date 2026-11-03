@@ -8,6 +8,7 @@
 typedef struct {
  bool mounted, suspended, alt_active, capture_running;
  uint32_t usb_packets, pcm_samples, underrun_packets, missing_samples, short_writes;
+ uint32_t expected_samples,packets_63,packets_65;
 } usb_capture_snapshot_t;
 void usb_capture_mount(void);
 void usb_capture_unmount(void);
@@ -16,6 +17,6 @@ void usb_capture_resume(void);
 void usb_capture_set_alt(bool open);
 void usb_capture_close(void);
 bool usb_capture_running(void);
-void usb_capture_note_tx(uint32_t pcm_samples, uint32_t written_bytes);
+void usb_capture_note_tx(uint32_t expected_samples,uint32_t pcm_samples, uint32_t written_bytes);
 usb_capture_snapshot_t usb_capture_snapshot(void);
 #endif

@@ -58,6 +58,7 @@ void avdtp_disconnect_and_scan(void);
 void gap_start_scanning(void);
 
 bool get_a2dp_connected_flag();
+bool a2dp_source_fault_hold(void);
 
 uint8_t get_cur_codec(void);     /* 0 none, 1 SBC, 2 AAC, 3 LDAC, 4 AAC-ELD */
 int8_t  get_avrcp_battery(void); /* AVRCP enum 0-4, -1 = not reported */

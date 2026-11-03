@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'src/btstack/aacp_mic*'
+      - 'src/btstack/mic_clock.*'
       - 'tests/test_aacp_mic.c'
       - 'tests/test_aacp_transport.c'
       - 'tests/test_mic_audio.c'
@@ -37,7 +38,7 @@ jobs:
           /tmp/test-transport
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
             -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack \
-            tests/test_mic_audio.c src/btstack/aacp_mic_audio.c \
+            tests/test_mic_audio.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c \
             -o /tmp/test-mic-audio
           /tmp/test-mic-audio
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \

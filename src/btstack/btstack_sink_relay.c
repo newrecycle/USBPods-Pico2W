@@ -25,6 +25,8 @@
 
 #include "btstack.h"
 #include "classic/a2dp_sink.h"
+#include "classic/a2dp.h"
+#include "classic/avdtp_sink.h"
 #include "classic/btstack_sbc.h"
 #include "btstack/btstack_sink_relay.h"
 #include "btstack/btstack_avdtp_source.h"
@@ -433,10 +435,33 @@ static int create_aac_endpoint(void)
     return 0;
 }
 
+/* AVDTP broadcasts connection/discovery events to both roles. Filter BEFORE
+ * the SDK A2DP sink configuration process, not just its emitted app events:
+ * a raw-AVDTP source does not set a2dp_source_config_process.outgoing_active,
+ * so the sink wrapper otherwise schedules a second Discover on the headset
+ * while START/configuration is in flight. Both share one signaling channel. */
+static void relay_avdtp_handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size)
+{
+    (void)channel;
+    if(type!=HCI_EVENT_PACKET || size<5 || packet[0]!=HCI_EVENT_AVDTP_META)return;
+    uint16_t event_cid=little_endian_read_16(packet,3);
+    if(packet[2]==AVDTP_SUBEVENT_SIGNALING_CONNECTION_ESTABLISHED) {
+        if(size<14)return;
+        bd_addr_t addr;
+        avdtp_subevent_signaling_connection_established_get_bd_addr(packet,addr);
+        if(!bt_sink_relay_is_phone_addr(addr))return;
+        if(s_avdtp_cid && event_cid!=s_avdtp_cid)return;
+    } else if(!s_avdtp_cid || event_cid!=s_avdtp_cid) {
+        return;
+    }
+    a2dp_config_process_avdtp_event_handler(AVDTP_ROLE_SINK,packet,size);
+}
+
 void bt_sink_relay_init(void)
 {
     a2dp_sink_init();
     a2dp_sink_register_packet_handler(packet_handler);
+    avdtp_sink_register_packet_handler(relay_avdtp_handler);
     a2dp_sink_register_media_handler(media_handler);
     btstack_sbc_decoder_init(&s_sbc_dec, SBC_MODE_STANDARD, sbc_pcm_cb, NULL);
 
@@ -454,6 +479,8 @@ void bt_sink_relay_init(void)
 bool bt_sink_relay_is_phone_addr(const uint8_t *addr)
 {
     if (!addr) return false;
+    if((get_a2dp_connected_flag() || a2dp_source_fault_hold()) &&
+       !memcmp(addr,a2dp_source_peer_addr(),6))return false;
     for (int s = 0; s < 2; s++)
         if (!mac_empty(settings()->slot[s].mac) &&
             memcmp(addr, settings()->slot[s].mac, 6) == 0) return false;

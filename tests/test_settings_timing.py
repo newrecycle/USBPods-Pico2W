@@ -14,6 +14,8 @@ static bool s_dirty,s_retrying,fail,change_during_commit;
 static uint32_t s_dirty_ms,now,writes;
 static uint32_t get_absolute_time(void){return now;}
 static uint32_t to_ms_since_boot(uint32_t t){return t;}
+static uint32_t save_and_disable_interrupts(void){return 0;}
+static void restore_interrupts(uint32_t n){(void)n;}
 static void settings_mark_dirty(void);
 static bool commit_snapshot(void){
  writes++;

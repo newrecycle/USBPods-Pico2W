@@ -39,7 +39,7 @@ static void connected(void) {
  memset(&src_eld_change_timer,0,sizeof(src_eld_change_timer));memset(&src_jitter_timer,0,sizeof(src_jitter_timer));
  src_eld_timer_armed=false;src_eld_reset_pending=src_codec_release_pending=false;
  is_streaming=false;a2dp_is_connected_flag=finish_scan_avdtp_codec=true;
- src_user_dc_hold=src_auto_kick_pending=false;src_con_handle=0x123;cur_codec=4;
+ src_fault_hold=src_user_dc_hold=src_auto_kick_pending=false;src_con_handle=0x123;cur_codec=4;
  src_eld_failures=src_eld_rebuilds=src_eld_last_error=src_eld_max_rebuild_us=0;src_eld_error_stage=0;
  src_suspend_ms=0;src_pending_jitter=150;src_session_streamed=false;core1_encoder_active=false;
  suspends=starts=pumps=disconnects=rebuild_calls=jitters=leds=0;

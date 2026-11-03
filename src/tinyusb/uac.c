@@ -927,10 +927,12 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, u
     /* TinyUSB 0.18 passes the AUDIO FUNCTION INDEX here, not bInterfaceNumber.
        CFG_TUD_AUDIO is 1: function 0 has the single microphone IN endpoint. */
     if (itf != 0 || alt != 1 || !usb_capture_running()) return true;
-    int16_t packet[64] = {0};
-    uint32_t got = aacp_mic_audio_read(packet, 64);
-    uint16_t written = tud_audio_write(packet, sizeof(packet));
-    usb_capture_note_tx(got, written);
+    int16_t packet[65] = {0};
+    uint32_t want=aacp_mic_audio_packet_samples();
+    uint32_t got=want?aacp_mic_audio_read(packet,want):0;
+    if(!want)want=64; /* Count startup/rebuffering silence explicitly. */
+    uint16_t written = tud_audio_write(packet,(uint16_t)(want*sizeof packet[0]));
+    usb_capture_note_tx(want,got,written);
    return true;
  }
  

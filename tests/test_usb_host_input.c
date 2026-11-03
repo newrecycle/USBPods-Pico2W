@@ -48,9 +48,9 @@ static void test_capture(void) {
  }
  usb_capture_set_alt(true); expect_capture(true);
  usb_capture_mount(); expect_capture(false); // repeated configuration resets alt
- usb_capture_note_tx(0,128);
- usb_capture_note_tx(32,64);
- usb_capture_note_tx(64,128);
+ usb_capture_note_tx(64,0,128);
+ usb_capture_note_tx(64,32,64);
+ usb_capture_note_tx(64,64,128);
  usb_capture_snapshot_t s=usb_capture_snapshot();
  assert(s.usb_packets==3 && s.pcm_samples==96);
  assert(s.underrun_packets==2 && s.missing_samples==96 && s.short_writes==1);

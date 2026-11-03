@@ -69,6 +69,7 @@
 #include "codec/codec.h"
 #include "../resamp44.h"
 #include "btstack_sink_relay.h"
+#include "eld_codec_config.h"
 
 /* HAVE_AAC_FDK is a TARGET-WIDE define (CMakeLists.txt): it used to live
    here, and when the codecs were split into src/btstack/codec/*.c the AAC
@@ -156,9 +157,11 @@ static bool is_streaming = false;
 static uint8_t src_nostream_run;     /* consecutive sessions that never streamed */
 static bool    src_session_streamed; /* this session reached AVDTP STREAMING     */
 static bool    src_wedge_hold;       /* wedged peer: stop dialing until asked    */
+static bool    src_fault_hold;
 
 bool a2dp_source_wedge_hold(void){ return src_wedge_hold; }
-void a2dp_source_wedge_clear(void){ src_wedge_hold = false; src_nostream_run = 0; }
+void a2dp_source_wedge_clear(void){ src_wedge_hold=false;src_fault_hold=false;src_nostream_run=0; }
+bool a2dp_source_fault_hold(void){return src_fault_hold;}
 uint8_t cur_codec = 0;
 static int8_t  s_avrcp_batt = -1;   /* AVRCP battery enum, -1 = not reported */
 
@@ -1187,6 +1190,10 @@ bool get_allow_switch_slot(){
 
 static eld_transition src_eld_change;
 static volatile bool src_eld_setup_pending;
+static uint8_t src_codec_setup_pending;
+static uint16_t src_codec_setup_cid;
+static bool src_codec_early_start;
+static uint8_t src_codec_setup_packet[100];
 static bool src_eld_early_start;
 static uint16_t src_eld_setup_cid;
 static void src_stream_start_accepted(void);
@@ -1234,8 +1241,12 @@ static uint8_t src_eld_sbr=1;
 static eld_profile src_active_eld;
 static uint32_t src_eld_failures,src_eld_rebuilds;
 static eld_profile src_eld_profile(void) {
- return eld_profile_select(settings()->eld_rate,aap_get_game(),settings()->game_level,
+ eld_profile p=eld_profile_select(settings()->eld_rate,aap_get_game(),settings()->game_level,
    usb_pipeline_rate()==44100,bt_sink_relay_streaming(),src_eld_vbr_mode,src_eld_sbr);
+ uint32_t max=codec_aaceld_max_bitrate();
+ if(max && p.bitrate>max){p.bitrate=max;p.vbr=p.sbr=0;}
+ if(!codec_aaceld_vbr_allowed())p.vbr=p.sbr=0;
+ return p;
 }
 static uint32_t src_eld_bitrate(void) { return src_eld_profile().bitrate; }
 void a2dp_source_eld_status(eld_runtime_status *out) {
@@ -1246,6 +1257,7 @@ void a2dp_source_eld_status(eld_runtime_status *out) {
  out->requested_revision=src_eld_change.requested;out->built_revision=src_eld_change.built;
  out->max_rebuild_us=src_eld_max_rebuild_us;
  out->failures=src_eld_failures;out->rebuilds=src_eld_rebuilds;
+ out->negotiated_bitrate=codec_aaceld_max_bitrate();out->negotiated_vbr=codec_aaceld_vbr_allowed();
 }
 
 /* Live on-air bitrate of the CURRENT codec, kbps (0 = unknown/not streaming).
@@ -1517,6 +1529,7 @@ static void src_eld_link_reset(void) {
     src_pending_jitter=0;
 }
 static void src_eld_schedule_setup(void) {
+    src_codec_setup_pending=0;src_codec_early_start=false;
     a2dp_demo_timer_stop(&media_tracker);is_streaming=false;
     src_eld_link_reset();src_eld_setup_cid=media_tracker.avdtp_cid;
     src_eld_setup_pending=true;src_eld_reset_pending=true;cur_codec=CODEC_ID_AACELD;
@@ -1552,12 +1565,14 @@ static void src_eld_abort(uint8_t stage,uint32_t rc) {
     a2dp_demo_timer_stop(&media_tracker);is_streaming=false;
     src_auto_kick_pending=false;src_suspend_ms=0;
     /* OOM/rejected transitions require an explicit reconnect, not a dial loop. */
-    src_user_dc_hold=true;src_dial_window_ms=0;
+    src_user_dc_hold=true;src_fault_hold=true;src_dial_window_ms=0;
     printf("[eld] transition FAILED stage=%u rc=%lu revision=%lu; dropping headset ACL\n",
         stage,(unsigned long)rc,(unsigned long)src_eld_change.requested);
     if(src_con_handle)gap_disconnect(src_con_handle);
 }
 static uint8_t src_start_stream(uint16_t cid,uint8_t seid) {
+    if(src_fault_hold || src_user_dc_hold)return ERROR_CODE_COMMAND_DISALLOWED;
+    if(src_codec_setup_pending)return ERROR_CODE_SUCCESS;
     bool eld=cur_codec==CODEC_ID_AACELD;
     if(eld && src_eld_setup_pending)return ERROR_CODE_SUCCESS;
     if(eld && !eld_transition_begin_start(&src_eld_change))return ERROR_CODE_SUCCESS;
@@ -1584,6 +1599,7 @@ static void src_eld_execute(unsigned actions) {
     if(actions)src_eld_arm_timer();
 }
 static bool src_eld_signaling_rejected(uint8_t signal) {
+    if(src_fault_hold)return true;
     if(cur_codec==CODEC_ID_AACELD && signal==AVDTP_SI_OPEN && !src_stream_established) {
         src_eld_abort(6,0x100u|signal);return true;
     }
@@ -1861,7 +1877,59 @@ static void src_eld_initialize(void) {
     }
 }
 
+static bool src_adopt_configuration(const uint8_t *packet,uint16_t size) {
+    if(size<8)return false;
+    uint16_t cid=little_endian_read_16(packet,3);
+    uint8_t seid=packet[5];
+    avdtp_stream_endpoint_t *ep=avdtp_get_stream_endpoint_for_seid(seid);
+    if(!src_event_matches_headset(cid) || !ep || ep->sep.type!=AVDTP_SOURCE ||
+       !ep->connection || ep->connection->avdtp_cid!=cid)return false;
+    media_tracker.local_seid=seid;media_tracker.remote_seid=packet[6];
+    sc.local_stream_endpoint=ep;src_codec_configured=true;
+    return true;
+}
+static void src_schedule_codec_setup(uint8_t codec,const uint8_t *packet,uint16_t size) {
+    if(size>sizeof src_codec_setup_packet || !src_adopt_configuration(packet,size))return;
+    a2dp_demo_timer_stop(&media_tracker);is_streaming=false;
+    src_eld_link_reset();src_codec_early_start=false;
+    memcpy(src_codec_setup_packet,packet,size);
+    src_codec_setup_cid=media_tracker.avdtp_cid;src_codec_setup_pending=codec;
+    cur_codec=CODEC_ID_NONE; /* No old encoder may be dispatched while pending. */
+}
+static void src_codec_setup_main(void) {
+    if(!src_codec_setup_pending)return;
+    async_context_acquire_lock_blocking(cyw43_arch_async_context());
+    uint8_t codec=src_codec_setup_pending;
+    bool early_start=src_codec_early_start;
+    src_codec_setup_pending=0;src_codec_early_start=false;
+    if(!a2dp_is_connected_flag || src_codec_setup_cid!=media_tracker.avdtp_cid) {
+        async_context_release_lock(cyw43_arch_async_context());return;
+    }
+    for(int i=0;codec_registry[i];i++)if(codec_registry[i]->release)codec_registry[i]->release();
+    src_codec_release_pending=false;cur_codec=CODEC_ID_NONE;
+    switch(codec) {
+    case CODEC_ID_SBC:codec_sbc_on_configuration(src_codec_setup_packet);break;
+    case CODEC_ID_AAC:codec_aac_on_configuration(src_codec_setup_packet);break;
+    case CODEC_ID_LDAC:codec_ldac_on_configuration(src_codec_setup_packet);break;
+    case CODEC_ID_LHDC:codec_lhdc_on_configuration(src_codec_setup_packet);break;
+    default:break;
+    }
+    uint8_t rc=0;
+    if(src_stream_established){codec_aac_on_media_open();codec_ldac_on_media_open();}
+    if(cur_codec!=codec)rc=ERROR_CODE_MEMORY_CAPACITY_EXCEEDED;
+    else if(early_start)src_stream_start_accepted();
+    else if(src_stream_established)rc=src_start_stream(media_tracker.avdtp_cid,media_tracker.local_seid);
+    else rc=avdtp_source_open_stream(media_tracker.avdtp_cid,media_tracker.local_seid,media_tracker.remote_seid);
+    if(rc) {
+        printf("[codec] deferred setup/open failed codec=%u status=%u\n",codec,rc);
+        a2dp_demo_timer_stop(&media_tracker);is_streaming=false;src_user_dc_hold=true;src_fault_hold=true;
+        if(src_con_handle)gap_disconnect(src_con_handle);
+    }
+    async_context_release_lock(cyw43_arch_async_context());
+}
+
 void a2dp_source_main_work(void) {
+    if(src_codec_setup_pending){src_codec_setup_main();return;}
     if (src_codec_release_pending) {
         src_codec_release_pending = false;
         /* Walk THE registry rather than naming codecs. The old list was
@@ -2753,6 +2821,8 @@ static void a2dp_demo_timer_pause(a2dp_media_sending_context_t * context){
 
 
 static void src_stream_start_accepted(void) {
+    if(src_fault_hold || src_user_dc_hold || !a2dp_is_connected_flag)return;
+    if(src_codec_setup_pending){src_codec_early_start=true;return;}
     if(cur_codec==CODEC_ID_AACELD && src_eld_setup_pending){src_eld_early_start=true;return;}
     if(cur_codec==CODEC_ID_AACELD) {
         unsigned actions=eld_transition_started(&src_eld_change);
@@ -2782,6 +2852,7 @@ static void src_stream_start_accepted(void) {
 
 }
 static void src_stream_suspend_accepted(void) {
+    if(src_codec_setup_pending)src_codec_early_start=false;
     if(cur_codec==CODEC_ID_AACELD && src_eld_setup_pending)src_eld_early_start=false;
     printf("Stream paused.\n");
     // Cancel recovery timer — suspend response arrived
@@ -2938,6 +3009,11 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                 /* no retry pending -> this dial is DONE failing: LED solid */
                 if (src_dial_tries == 0) led_idle_unless_pairing();
                 break;
+            }
+            if(src_fault_hold && !bt_sink_relay_is_phone_addr(address)) {
+                uint16_t h=avdtp_subevent_signaling_connection_established_get_con_handle(packet);
+                printf("[src] fault hold: rejecting headset signaling until explicit connect\n");
+                if(h)gap_disconnect(h);break;
             }
             /* macOS parity: packet types + role. The old one-shot behind
                can_send_now silently SKIPPED when the queue was busy — the
@@ -3237,10 +3313,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_SBC_CONFIGURATION:
-            if (avdtp_subevent_signaling_media_codec_sbc_configuration_get_avdtp_cid(packet)
-                    == media_tracker.avdtp_cid)
-                src_codec_configured = true;
-            codec_sbc_on_configuration(packet);
+            src_schedule_codec_setup(CODEC_ID_SBC,packet,size);
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_MPEG_AAC_CONFIGURATION:
@@ -3253,7 +3326,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                    early-returned and the encoder was never initialised. */
                 finish_setup_aac = true;
             }
-            codec_aac_on_configuration(packet);
+            src_schedule_codec_setup(CODEC_ID_AAC,packet,size);
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_MPEG_AUDIO_CONFIGURATION:
@@ -3276,16 +3349,21 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             // LDAC
             if (codec_ldac_matches(vendor_id, codec_id)) {
                 if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<8)break;
-                codec_ldac_on_configuration(packet);
+                src_schedule_codec_setup(CODEC_ID_LDAC,packet,size);
             }
             // LHDC V5
             else if (codec_lhdc_matches(vendor_id, codec_id)) {
                 if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<11)break;
-                codec_lhdc_on_configuration(packet);
+                src_schedule_codec_setup(CODEC_ID_LHDC,packet,size);
             }
             // Apple AAC-ELD
             else if (codec_aaceld_matches(vendor_id, codec_id)) {
                 if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<14)break;
+                if(!codec_aaceld_on_configuration(packet)) {
+                    printf("[eld] unsupported codec configuration; disconnecting\n");
+                    src_user_dc_hold=true;src_fault_hold=true;if(src_con_handle)gap_disconnect(src_con_handle);break;
+                }
+                if(!src_adopt_configuration(packet,size))break;
                 PLOG("A2DP Source: Received Apple AAC-ELD configuration!\n");
                 PLOG("  raw config bytes: ");
                 uint16_t config_info_len = a2dp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet);
@@ -3334,6 +3412,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                     break;
                 case AVDTP_SI_ABORT:
                 case AVDTP_SI_CLOSE:
+                    src_codec_setup_pending=0;src_codec_early_start=false;
                     printf("Stream released.\n");
                     src_eld_early_start=false;
                     a2dp_demo_timer_stop(&media_tracker);
@@ -3356,6 +3435,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                BTstack punts on this too ("TODO: implement retry"). Park the
                offending codec for this session and run the ladder again. */
             if (signal_identifier == AVDTP_SI_SET_CONFIGURATION) {
+                if(src_attempt_codec==CODEC_ID_AACELD && codec_aaceld_retry_configuration())break;
                 if (src_attempt_codec != CODEC_ID_NONE) {
                     src_codec_reject_mask |= (uint8_t)(1u << src_attempt_codec);
                     const codec_ops_t *rej = codec_by_id(src_attempt_codec);
@@ -3399,6 +3479,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             }
             break;
         case AVDTP_SUBEVENT_STREAMING_CONNECTION_RELEASED:
+            src_codec_setup_pending=0;src_codec_early_start=false;
             src_eld_early_start=false;
             l2cap_set_flushable_local_cid(0);   /* stale cid must never mark a
                                                    later channel flushable */
@@ -3422,6 +3503,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                cleared its cid for this same (broadcast) event. Only the
                HEADSET's release may tear the source state down. */
             if (little_endian_read_16(packet, 3) != media_tracker.avdtp_cid) break;
+            src_codec_setup_pending=0;src_codec_early_start=false;
             src_eld_link_reset();
             a2dp_demo_timer_stop(&media_tracker);
             finish_scan_avdtp_codec = false;
@@ -4048,6 +4130,7 @@ void bt_prepare_reboot(void){
 }
 
 void a2dp_source_reconnect(){
+    if(src_fault_hold)return;
     /* every dial entry point (button, web Connect, boot auto-connect) */
     src_user_dc_hold = false;            /* explicit dial: drop the 'd' hold */
     const uint8_t *a = (const uint8_t *) get_device_addr();
@@ -4094,7 +4177,10 @@ int set_next_codec(uint8_t num){
                 }
                 if (ops->available()) {
                     src_attempt_codec = ops->id;
-                    return ops->configure();
+                    uint8_t rc=ops->configure();
+                    if(!rc)return 0;
+                    src_codec_reject_mask|=(uint8_t)(1u<<ops->id);
+                    printf("codec select: %s could not configure (%u); trying next\n",ops->name,rc);
                 }
             }
             printf("codec select: falling back to SBC\n");
@@ -4129,8 +4215,6 @@ void set_next_capablity_and_start_stream(){
         finish_scan_avdtp_codec = true;
         return;
     }
-
-    avdtp_source_stop_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
 
     int result = set_next_codec(cur_capability);
 

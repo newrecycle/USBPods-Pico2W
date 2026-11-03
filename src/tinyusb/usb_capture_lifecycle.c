@@ -5,6 +5,7 @@
 extern void aacp_mic_set_capture(bool enabled);
 enum { MOUNT = 1u, SUSPEND = 2u, ALT = 4u };
 static _Atomic uint32_t state, packets, samples, underruns, missing, short_writes;
+static _Atomic uint32_t expected,small_packets,large_packets;
 static bool wanted(uint32_t s) { return (s & (MOUNT|SUSPEND|ALT)) == (MOUNT|ALT); }
 static void publish(void) { aacp_mic_set_capture(wanted(atomic_load(&state))); }
 void usb_capture_mount(void) {
@@ -24,11 +25,15 @@ void usb_capture_close(void) {
  usb_capture_set_alt(false);
 }
 bool usb_capture_running(void) { return wanted(atomic_load(&state)); }
-void usb_capture_note_tx(uint32_t got, uint32_t written) {
- if(got>64) got=64;
+void usb_capture_note_tx(uint32_t want,uint32_t got, uint32_t written) {
+ if(want<63 || want>65){atomic_fetch_add(&short_writes,1);return;}
+ if(got>want) got=want;
+ atomic_fetch_add(&expected,want);
+ if(want==63)atomic_fetch_add(&small_packets,1);
+ if(want==65)atomic_fetch_add(&large_packets,1);
  atomic_fetch_add(&packets,1); atomic_fetch_add(&samples,got);
- if(got<64) { atomic_fetch_add(&underruns,1); atomic_fetch_add(&missing,64-got); }
- if(written!=128) atomic_fetch_add(&short_writes,1);
+ if(got<want) { atomic_fetch_add(&underruns,1); atomic_fetch_add(&missing,want-got); }
+ if(written!=want*2) atomic_fetch_add(&short_writes,1);
 }
 usb_capture_snapshot_t usb_capture_snapshot(void) {
  uint32_t s=atomic_load(&state);
@@ -37,6 +42,7 @@ usb_capture_snapshot_t usb_capture_snapshot(void) {
   .alt_active=(s&ALT)!=0, .capture_running=wanted(s),
   .usb_packets=atomic_load(&packets),.pcm_samples=atomic_load(&samples),
   .underrun_packets=atomic_load(&underruns),
-  .missing_samples=atomic_load(&missing),.short_writes=atomic_load(&short_writes)
+  .missing_samples=atomic_load(&missing),.short_writes=atomic_load(&short_writes),
+  .expected_samples=atomic_load(&expected),.packets_63=atomic_load(&small_packets),.packets_65=atomic_load(&large_packets)
  };
 }

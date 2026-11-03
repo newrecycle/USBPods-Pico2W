@@ -2,6 +2,7 @@
 // AACP AAC-ELD microphone. Single producer/consumer AU and PCM queues;
 // USB IRQ never decodes, allocates, logs, or waits for the Bluetooth lock.
 #include "aacp_mic.h"
+#include "mic_clock.h"
 #include <stdatomic.h>
 #include <string.h>
 #include <stdio.h>
@@ -30,6 +31,8 @@ static struct {
     _Atomic uint32_t other, gaps, arrival_last, arrival_min, arrival_max;
     _Atomic uint32_t ts_last, ts_step_ref, ts_step_last, ts_step_min, ts_step_max;
     _Atomic uint32_t ts_dups, ts_backwards, ts_changes, ts_gaps;
+    _Atomic uint32_t measured_rate,clock_windows;
+    uint32_t clock_start,clock_units;
     uint32_t history_epoch, previous_us, previous_ts, reference_step;
     bool history_valid;
 } arrival={ .arrival_min=UINT32_MAX, .ts_step_min=UINT32_MAX };
@@ -52,11 +55,22 @@ void aacp_mic_audio_note_au(uint32_t timestamp,uint32_t arrival_us) {
         arrival.previous_us=arrival_us;
         arrival.previous_ts=timestamp;
         arrival.reference_step=0;
+        arrival.clock_start=arrival_us;arrival.clock_units=1;
+        atomic_store(&arrival.measured_rate,0);atomic_store(&arrival.clock_windows,0);
         atomic_store_explicit(&arrival.ts_step_ref,0,memory_order_relaxed);
         return; /* never compare timestamps/arrival time across generations */
     }
 
     uint32_t dt=arrival_us-arrival.previous_us; /* time_us_32 wrap-safe */
+    /* Measure complete SDU groups rather than treating every AU in a burst
+       as a new clock edge. No units are inferred from the peer timestamp. */
+    uint32_t span=arrival_us-arrival.clock_start;
+    if(dt>=1000u && span>=1000000u) {
+        uint32_t rate=(uint32_t)((uint64_t)arrival.clock_units*MIC_AU_SAMPLES*1000000u/span);
+        atomic_store(&arrival.measured_rate,rate);atomic_fetch_add(&arrival.clock_windows,1);
+        arrival.clock_start=arrival_us;arrival.clock_units=0;
+    }
+    arrival.clock_units++;
     arrival.previous_us=arrival_us;
     atomic_fetch_add_explicit(&arrival.intervals,1,memory_order_relaxed);
     atomic_store_explicit(&arrival.arrival_last,dt,memory_order_relaxed);
@@ -114,6 +128,8 @@ static _Atomic uint32_t decoded, errors, max_us, last_us, ema_us;
 static _Atomic uint32_t last_rate, last_channels, last_frame;
 static _Atomic bool ready;
 static uint32_t pcm_offset; /* USB consumer only */
+static mic_clock packet_clock; /* USB consumer only */
+static _Atomic bool pcm_primed;
 static HANDLE_AACDECODER decoder; /* initialized before BT starts; main owns */
 static INT_PCM scratch[960];
 static uint32_t last_epoch=UINT32_MAX; /* decoder/main only */
@@ -244,6 +260,24 @@ uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
     }
     return done;
 }
+uint32_t aacp_mic_audio_packet_samples(void) {
+    if(!aacp_mic_capture()){atomic_store(&pcm_primed,false);return 0;}
+    uint32_t epoch=aacp_mic_generation();
+    uint32_t r=atomic_load_explicit(&pr,memory_order_relaxed);
+    uint32_t w=atomic_load_explicit(&pw,memory_order_acquire),available=0;
+    /* A full stale ring must not block priming forever after a reconnect. */
+    for(unsigned i=0;i<PCM_SLOTS && r!=w && pcm[r%PCM_SLOTS].epoch!=epoch;i++) {
+        pcm_offset=0;atomic_fetch_add_explicit(&pcm_stale,1,memory_order_relaxed);
+        atomic_store_explicit(&pr,++r,memory_order_release);
+    }
+    for(uint32_t i=0;i<PCM_SLOTS && r+i!=w;i++) {
+        if(pcm[(r+i)%PCM_SLOTS].epoch==epoch)
+            available+=FRAME-(!i?pcm_offset:0);
+    }
+    uint32_t n=mic_clock_packet(&packet_clock,epoch,available);
+    atomic_store_explicit(&pcm_primed,packet_clock.primed,memory_order_relaxed);
+    return n;
+}
 #else
 /* Diagnostic-only transport keeps AU timing counters without FDK or queues. */
 void aacp_mic_audio_init(void) {
@@ -255,6 +289,7 @@ void aacp_mic_audio_work(void) {}
 uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
     (void)dst; (void)count; return 0;
 }
+uint32_t aacp_mic_audio_packet_samples(void){return 0;}
 #endif
 
 /* Unlocked, eventually consistent snapshot. All shared counters are atomic;
@@ -287,6 +322,8 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
     out->timestamp_backwards=READ_A(ts_backwards);
     out->timestamp_step_changes=READ_A(ts_changes);
     out->timestamp_gap_candidates=READ_A(ts_gaps);
+    out->measured_sample_rate=READ_A(measured_rate);
+    out->clock_windows=READ_A(clock_windows);
 #undef READ_A
 #ifdef USBPODS_MIC_DECODE
 #define READ_D(field) atomic_load_explicit(&field,memory_order_relaxed)
@@ -309,6 +346,7 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
     out->decoded_rate=READ_D(last_rate);
     out->decoded_channels=READ_D(last_channels);
     out->decoded_frame_samples=READ_D(last_frame);
+    out->pcm_primed=READ_D(pcm_primed);
 #undef READ_D
 #endif
 }

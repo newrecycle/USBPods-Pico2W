@@ -248,7 +248,7 @@ void codec_ldac_on_configuration(const uint8_t *packet){
 
     cur_codec = CODEC_ID_LDAC;
 
-    avdtp_source_open_stream(media_tracker.avdtp_cid, media_tracker.local_seid, media_tracker.remote_seid);
+    /* Main-loop setup owner opens/starts media after successful allocation. */
 }
 
 /* ---- lifecycle ---------------------------------------------------------- */

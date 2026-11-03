@@ -20,14 +20,27 @@
 #include "../a2dp_engine.h"
 #include "../btstack_avdtp_source.h"
 #include "../../settings.h"
+#include "../eld_codec_config.h"
 
 #define A2DP_CODEC_VENDOR_ID_APPLE 0x004C
 #define A2DP_APPLE_CODEC_AAC_ELD   0x8001
 
 static avdtp_stream_endpoint_t *stream_endpoint_aaceld;
 static bool have_aaceld;
+static eld_codec_limits negotiated;
+static uint32_t offer_ceiling=ELD_LOCAL_MAX_BITRATE,last_offer;
 
-void codec_aaceld_note_capability(bool present){ have_aaceld = present; }
+void codec_aaceld_note_capability(bool present){
+ have_aaceld=present;
+ if(!present){memset(&negotiated,0,sizeof negotiated);offer_ceiling=ELD_LOCAL_MAX_BITRATE;last_offer=0;}
+}
+uint32_t codec_aaceld_max_bitrate(void){return negotiated.max_bitrate;}
+bool codec_aaceld_vbr_allowed(void){return negotiated.vbr;}
+bool codec_aaceld_on_configuration(const uint8_t *p){
+ uint16_t n=avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(p);
+ const uint8_t *info=avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information(p);
+ return eld_codec_configuration(info,n,&negotiated);
+}
 static bool aaceld_available(void){ return have_aaceld; }
 
 bool codec_aaceld_matches(uint32_t vendor_id, uint16_t codec_id){
@@ -43,7 +56,7 @@ static uint8_t media_aaceld_codec_capabilities[] = {
         0x00, 0x80,                // object_type = 0x0080 (AAC-ELD)
         0x00, 0x8C,                // freq bitmap 0x008 (48kHz) + channels 0xC (mono+stereo)
         0x00,                      // reserved
-        0x83, 0xE8, 0x00           // VBR=1, bitrate=256000
+        0x84, 0xE2, 0x00           // VBR capable; local maximum 320000
 };
 
 /* ---- local config buffer ---- */
@@ -77,6 +90,21 @@ static uint8_t aaceld_configure(void){
         printf("AAC-ELD codec type mismatch!!!\n");
         return -1;
     }
+    const uint8_t *event=remote_seps[aaceld_num].media_codec_event;
+    uint16_t caps_len=avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(event);
+    const uint8_t *caps=avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information(event);
+    eld_codec_limits offered;
+    if(!eld_codec_offer(caps,caps_len,media_codec_config_data,&offered)) {
+        printf("AAC-ELD: unsupported peer capability layout/range\n");
+        return ERROR_CODE_UNSUPPORTED_FEATURE_OR_PARAMETER_VALUE;
+    }
+    if(offered.max_bitrate>offer_ceiling) {
+        offered.max_bitrate=offer_ceiling;
+        media_codec_config_data[11]=(uint8_t)((media_codec_config_data[11]&0x80)|(offer_ceiling>>16));
+        media_codec_config_data[12]=(uint8_t)(offer_ceiling>>8);
+        media_codec_config_data[13]=(uint8_t)offer_ceiling;
+    }
+    last_offer=offered.max_bitrate;
 
     // Create AAC-ELD stream endpoint (only once)
     if (stream_endpoint_aaceld == NULL) {
@@ -100,21 +128,9 @@ static uint8_t aaceld_configure(void){
     sc.local_stream_endpoint->remote_configuration.media_codec.media_type = AVDTP_AUDIO;
     sc.local_stream_endpoint->remote_configuration.media_codec.media_codec_type = codec_type;
 
-    // Build config: vendor_id(4 LE) + codec_id(2 LE) + params(8)
-    media_codec_config_data[0]  = 0x4C;  // vendor_id LE
-    media_codec_config_data[1]  = 0x00;
-    media_codec_config_data[2]  = 0x00;
-    media_codec_config_data[3]  = 0x00;
-    media_codec_config_data[4]  = 0x01;  // codec_id LE
-    media_codec_config_data[5]  = 0x80;
-    media_codec_config_data[6]  = 0x00;  // object_type: AAC-ELD
-    media_codec_config_data[7]  = 0x80;
-    media_codec_config_data[8]  = 0x00;  // sampling_freq 48kHz (0x008) + channels stereo (0x4)
-    media_codec_config_data[9]  = 0x84;
-    media_codec_config_data[10] = 0x00;  // reserved
-    media_codec_config_data[11] = 0x83;  // VBR=1, bitrate=256000
-    media_codec_config_data[12] = 0xE8;
-    media_codec_config_data[13] = 0x00;
+    /* Negotiate the session ceiling once, bounded by both peers. Every live
+       CBR/game/VBR profile is then constrained to that accepted ceiling. */
+    printf("AAC-ELD offer: max=%lu vbr=%u\n",(unsigned long)offered.max_bitrate,offered.vbr);
     media_codec_config_len = 14;
 
     avdtp_capabilities_t new_configuration;
@@ -127,6 +143,17 @@ static uint8_t aaceld_configure(void){
     if (status) printf("Set Apple AAC-ELD Connection FAILED: %d\n", status);
     else        PLOG("Set Apple AAC-ELD Connection Result is 0\n");
     return status;
+}
+
+bool codec_aaceld_retry_configuration(void) {
+    /* A rejected higher ceiling must not abandon ELD outright. At most two
+       lower offers; never rebuild an encoder until a configuration is accepted. */
+    while(last_offer>192000) {
+        offer_ceiling=last_offer>256000?256000:192000;
+        if(aaceld_configure()==ERROR_CODE_SUCCESS)return true;
+        last_offer=offer_ceiling;
+    }
+    return false;
 }
 
 /* ---- ops ---------------------------------------------------------------- */

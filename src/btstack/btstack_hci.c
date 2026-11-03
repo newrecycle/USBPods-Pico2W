@@ -10,6 +10,7 @@
 
 #include "btstack_hci.h"
 #include "btstack_avdtp_source.h"
+#include "btstack_sink_relay.h"
 #include "../pico_w_led.h"
 #include "../settings.h"
 
@@ -180,6 +181,11 @@ bool bt_phone_pair_window_open(void) { return s_pairwin_open; }
    are favorites; row-Connect is a one-off). Auto-reconnect/boot still dial
    the current slot. */
 bool bt_connect_saved(const uint8_t *mac){
+    if(!mac)return false;
+    bool ff=true,zero=true;
+    for(unsigned i=0;i<6;i++){ff&=mac[i]==0xff;zero&=mac[i]==0;}
+    if(ff || zero)return false;
+    a2dp_source_wedge_clear();
     memcpy(device_addr, mac, 6);
     printf("Connect saved: %s\n", bd_addr_to_str(device_addr));
     avdtp_source_establish_stream();
@@ -628,7 +634,15 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
 static btstack_packet_callback_registration_t hci_state_callback_registration;
 
+static int classic_accept(bd_addr_t addr,hci_link_type_t type) {
+    if(type==HCI_LINK_TYPE_ACL_CONNECTION && a2dp_source_fault_hold() &&
+       !bt_sink_relay_is_phone_addr(addr)) {
+        printf("[src] rejecting automatic ACL reconnect after fault\n");return 0;
+    }
+    return 1;
+}
 void bt_hci_init(void){
+    gap_register_classic_connection_filter(classic_accept);
 
     /* SEPARATE registration node: this struct was reused for BOTH handlers
        below — the second hci_add_event_handler re-linked the SAME node with

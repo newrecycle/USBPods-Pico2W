@@ -18,6 +18,7 @@ PROFILES = [
 
 def profile_matches(state, profile):
     _,_,_,_,bitrate,vbr,sbr,slots=profile
+    if state.get('negotiated_vbr')==0:vbr=sbr=0
     return (state.get('ready')==1 and not state.get('pending') and
             state.get('transition')=='ready' and state.get('input_rate')==48000 and
             state.get('requested_revision')==state.get('built_revision') and
@@ -59,6 +60,11 @@ def health(before, after):
     if delta(before.get('status',{}),after.get('status',{}),'send_failures'):
         errors.append('Playback media submission failed')
     if not a or not b or not u or not v:return ['Missing firmware diagnostic snapshots']
+    for item in (a,b):
+        if not item.get('clock_windows') or abs(item.get('measured_rate',0)-64000)>3200:
+            errors.append('Microphone cadence does not establish the expected 64 kHz PCM timeline')
+        if item.get('coding_rate')!=48000 or item.get('pcm_rate')!=64000:
+            errors.append('Unexpected microphone coding/PCM clock contract')
     if a.get('generation')!=b.get('generation'):errors.append('Microphone generation changed during steady playback')
     if not b.get('capture') or not v.get('running'):errors.append('USB capture stopped')
     if not delta(a,b,'decoded'):errors.append('No microphone frames decoded')
@@ -161,8 +167,16 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
     with AudioSession(root,recorder,sd,np,output,inp) as audio:
         link.wait(lambda s:s.get('capture') and s.get('confirmed'),15)
         dwell(3,'capture_warmup')
-        for profile in PROFILES:
+        limits=link.request('eldstatus')
+        ceiling=limits.get('negotiated_bitrate',0)
+        if ceiling<192000:raise RuntimeError('No valid AAC-ELD session ceiling: '+str(limits))
+        baseline=PROFILES[-1] if ceiling>=256000 else ('restore192',1,False,1,192000,0,0,6)
+        profiles=PROFILES[:-1]+[baseline]
+        for profile in profiles:
             name,rate,gaming,level,*_=profile
+            if profile[4]>ceiling:
+                result(name,'SKIP',{'reason':'Peer/accepted configuration ceiling is lower than this profile','negotiated_bitrate':ceiling,'requested_bitrate':profile[4]})
+                continue
             audio.set_phase('transition_'+name)
             settings=link.request('settings')
             for command,value,key in [('eldrate',rate,'eldrate'),('gamelevel',level,'gamelevel')]:
@@ -180,7 +194,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)
             link.request('connect')
             link.wait(lambda s:s.get('confirmed') and s.get('peer','').upper()==target_mac.upper(),45)
-            await_profile(link,PROFILES[-1]);dwell(3,name+'_settle')
+            await_profile(link,baseline);dwell(3,name+'_settle')
             before=snapshot(link,recorder,name+'_begin');dwell(5,name)
             after=snapshot(link,recorder,name+'_end');errors=health(before,after)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})

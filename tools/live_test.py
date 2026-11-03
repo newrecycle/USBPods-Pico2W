@@ -53,6 +53,24 @@ def restoration_commands(original, current):
         if value(original)!=value(current):commands.append((name,value(original)))
     return commands
 
+def connection_preflight(link,recorder,seconds=5):
+    """Require sustained source traffic before feature mutations or recording."""
+    start=link.request('status');deadline=time.monotonic()+seconds
+    while time.monotonic()<deadline:
+        state=link.request('status');encoder=link.request('eldstatus')
+        recorder.log('connection-preflight.jsonl',{'status':state,'encoder':encoder})
+        if not all(state.get(k) for k in ('connected','confirmed','streaming')) or state.get('codec')!=4:
+            raise RuntimeError('Headset/AACP/playback did not remain connected: '+str(state))
+        if encoder.get('transition')=='failed' or state.get('fault_hold'):
+            raise RuntimeError('Firmware setup/recovery failed: '+str(encoder))
+        time.sleep(.25)
+    end=link.request('status')
+    if not ((end.get('tx_packets',0)-start.get('tx_packets',0))&0xffffffff):
+        raise RuntimeError('Playback state reported streaming but no media packets progressed')
+    if ((end.get('send_failures',0)-start.get('send_failures',0))&0xffffffff):
+        raise RuntimeError('Playback media submissions failed during connection preflight')
+    return {'start':start,'end':end,'seconds':seconds}
+
 def verify_manifest(root, manifest):
     if manifest.get('validation_blockers'):
         raise ValueError('Hardware validation is on hold: '+'; '.join(manifest['validation_blockers']))
@@ -272,6 +290,7 @@ def main():
         result('targeted_connection','PASS',state)
         state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
         result('aacp_handshake','PASS',state)
+        result('connection_preflight','PASS',connection_preflight(link,recorder))
         link.request('earpause 0');link.request('stem 0')
         if state.get('relay_connected'):
             link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)

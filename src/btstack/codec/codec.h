@@ -75,6 +75,10 @@ void codec_sbc_on_configuration(const uint8_t *packet);
 void codec_aac_on_capability(const uint8_t *packet);
 void codec_aac_on_configuration(const uint8_t *packet);
 void codec_aac_on_media_open(void);   /* real MTU known — re-apply bitrate */
+bool codec_aaceld_on_configuration(const uint8_t *packet);
+uint32_t codec_aaceld_max_bitrate(void);
+bool codec_aaceld_vbr_allowed(void);
+bool codec_aaceld_retry_configuration(void);
 void codec_ldac_on_configuration(const uint8_t *packet);
 void codec_aaceld_on_configuration(const uint8_t *packet);
 

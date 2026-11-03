@@ -12,6 +12,7 @@ void aacp_mic_audio_init(void);       /* plain main context, before BT starts */
 void aacp_mic_audio_work(void);       /* bounded main-context decode */
 void aacp_mic_audio_enqueue(const uint8_t *au, uint8_t len);
 uint32_t aacp_mic_audio_read(int16_t *dst, uint32_t samples); /* USB IRQ */
+uint32_t aacp_mic_audio_packet_samples(void); /* USB IRQ, once per 1 ms IN packet */
 bool aacp_mic_audio_ready(void);
 void aacp_mic_audio_report(void);
 
@@ -32,6 +33,7 @@ typedef struct {
     uint32_t pcm_depth, pcm_high_water, pcm_overflows, pcm_stale;
     uint32_t decoded, decode_errors, decode_last_us, decode_max_us, decode_ema_us;
     uint32_t decoded_rate, decoded_channels, decoded_frame_samples;
+    uint32_t measured_sample_rate,clock_windows,pcm_primed;
 } aacp_mic_audio_stats;
 
 /* Called once for each validated AACP audio AU, including diagnostic-only
