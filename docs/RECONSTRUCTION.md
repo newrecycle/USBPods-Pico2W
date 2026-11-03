@@ -125,7 +125,17 @@ The hardware runner consolidates six rate/game stages, open-capture reconnects
 and a sustained duplex soak into one session, with optional simultaneous phone
 relay. It pins the exact verified UF2/source revision and bundles CDC, UART,
 HID, diagnostic snapshots and short WAV clips. See [LIVE-TEST.md](LIVE-TEST.md).
-This is the first physical acceptance candidate, not hardware success evidence.
-Mic cadence/pitch (48 kHz ASC versus 64 kHz
-USB clock), RF coexistence, lifecycle timing and phone marker conventions remain
+The first physical candidate is withdrawn. See [the revalidation report](REVALIDATION-2026-11-03.md) for its replacement and remaining physical acceptance items.
+The 48 kHz coding / 64 kHz PCM mapping is explicit upstream; physical cadence/pitch, RF coexistence, lifecycle timing and phone marker conventions remain
 questions for that later hardware pass.
+
+### Negotiated limits and callback ownership
+
+The profile table above describes local preferences. Accepted peer configuration
+limits take precedence: offers retry 320 → 256 → 192 kbps before codec fallback,
+and live profiles never exceed the accepted ceiling. VBR/SBR are disabled when
+not allowed by the accepted configuration. All SBC/AAC/LDAC/LHDC and ELD initial
+codec allocation occurs through main-loop work under the CYW43 context lock.
+The raw sink role filter prevents the SDK phone-sink negotiator from issuing
+competing discovery on headset source connections. Fatal setup/TX failures hold
+reconnects until an explicit user connection request.

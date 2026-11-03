@@ -177,7 +177,8 @@ extern "C" {
 #define CFG_TUD_AUDIO_FUNC_1_FORMAT_2_N_BYTES_PER_SAMPLE_TX 2
 #define CFG_TUD_AUDIO_FUNC_1_FORMAT_2_RESOLUTION_TX 16
 #define CFG_TUD_AUDIO_ENABLE_EP_IN 1
-/* Fixed 64-sample packets; do not derive TX size from speaker clock GETs. */
+/* Nominal 64-sample async packets; 63/65 sample drift correction fits the
+ * 130-byte endpoint. Never derive capture timing from the speaker clock. */
 #define CFG_TUD_AUDIO_EP_IN_FLOW_CONTROL 0
 #define CFG_TUD_AUDIO_FUNC_1_FORMAT_1_EP_SZ_IN TUD_AUDIO_EP_SIZE(64000,2,1)
 #define CFG_TUD_AUDIO_FUNC_1_FORMAT_2_EP_SZ_IN TUD_AUDIO_EP_SIZE(64000,2,1)
@@ -204,3 +205,4 @@ extern "C" {
 #endif
 
 #endif /* _TUSB_CONFIG_H_ */
+

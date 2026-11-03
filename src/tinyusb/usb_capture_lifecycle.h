@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 /* Cumulative since boot; uint32_t counters wrap. Actual PCM samples exclude
- * zero padding used to fill a 64-sample USB microphone packet. */
+ * zero padding used during startup/rebuffering; expected_samples counts the
+ * actual 63/64/65-sample USB packet requests. */
 typedef struct {
  bool mounted, suspended, alt_active, capture_running;
  uint32_t usb_packets, pcm_samples, underrun_packets, missing_samples, short_writes;

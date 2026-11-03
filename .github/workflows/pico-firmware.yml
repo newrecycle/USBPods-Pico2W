@@ -152,6 +152,7 @@ jobs:
           python3 tests/test_sdk_transport_contract.py
           python3 tests/test_relay_sdk_routing.py
           python3 tests/test_codec_setup.py
+          python3 tests/test_button_context.py
           python3 tests/test_eld_negotiation.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_codec_config.c src/btstack/eld_codec_config.c -o /tmp/test-eld-codec-config
           /tmp/test-eld-codec-config
@@ -195,7 +196,7 @@ jobs:
             cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
           fi
       - name: Build
-        run: cmake --build build --parallel 2
+        run: cmake --build build --parallel 2 -- -k 0
       - name: Verify linked radio image and UF2
         run: |
           stem="$(cat build/usbpods-output-name.txt)"

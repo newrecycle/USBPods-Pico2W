@@ -273,6 +273,8 @@ def main():
             link.request('uart 1');result('uart_connection','PASS',uart)
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
         except Exception as e:result('hid_connection','SKIP',str(e))
+        link.request('disconnect')
+        link.wait(lambda s:not s.get('connected'),15)
         prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
         link.request('scan');time.sleep(16);link.request('scanstop')
         items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
@@ -318,12 +320,19 @@ def main():
                 try:link.request(f'{command} {original[field]}')
                 except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
         prompt('Wear the AirPods. A quiet tone will play; speak/count into the microphone during capture. Press Enter to start:')
+        capture_ca=link.request('status').get('ca',-1)
         try:
+            if capture_ca>0:
+                link.request('ca 0');link.wait(lambda s:s.get('ca')==0,5)
             if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
             from live_audio import run_matrix
             run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
         except Exception as e:
             result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
+        finally:
+            if capture_ca>0:
+                try:link.request('ca '+str(capture_ca))
+                except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
         link.request('telemetry')
         link.wait(lambda s:not s.get('capture'),10)
         heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')

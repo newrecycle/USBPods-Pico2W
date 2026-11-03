@@ -11,6 +11,7 @@
 #include "btstack/btstack_sink_relay.h"
 
 #include <stdio.h>
+#include <stdatomic.h>
 #include "pico/stdlib.h"
 
 #include "pico/multicore.h"
@@ -248,10 +249,19 @@ bool usb_timer_callback(repeating_timer_t *rt){
     return true;
 }
 
+static atomic_bool bootsel_poll_pending;
 bool bootsel_timer_callback(repeating_timer_t *rt) {
     (void)rt;
-    check_bootsel_state();
+    atomic_store_explicit(&bootsel_poll_pending,true,memory_order_release);
     return true;    // keep repeating
+}
+static void bootsel_main_work(bool no_radio) {
+    if(!atomic_exchange_explicit(&bootsel_poll_pending,false,memory_order_acq_rel) || no_radio)return;
+    /* GPIO sampling and button actions can touch settings/BTstack. They must
+       never preempt the allocator or Bluetooth worker from the timer IRQ. */
+    async_context_acquire_lock_blocking(cyw43_arch_async_context());
+    check_bootsel_state();
+    async_context_release_lock(cyw43_arch_async_context());
 }
 
 // Crash forensics (hardened port from the main tree): a hard fault stores
@@ -611,7 +621,7 @@ int main() {
     // Enable watchdog — auto-resets if main loop stops feeding it (2 seconds)
     watchdog_enable(2000, true);
 
-    uint16_t boot_ticks = 0;
+    uint32_t boot_started_ms=to_ms_since_boot(get_absolute_time());
     bool boot_dialed = false;
     while (1) {
         /* scratch[6] = which step the loop died in if the watchdog fires
@@ -621,6 +631,7 @@ int main() {
         watchdog_hw->scratch[3] = 0;   /* usb-IRQ liveness window resets */
         watchdog_hw->scratch[6] = 1;
         tinyusb_control_task();
+        bootsel_main_work(radio_absent);
         watchdog_hw->scratch[6] = 2;
         settings_tick();    // debounced flash commits (main loop ONLY)
         { extern void license_task(void); license_task(); }  // deferred re-verify
@@ -660,12 +671,14 @@ int main() {
         watchdog_hw->scratch[6] = 5;
         /* Auto reconnect when powered on (USB settings bit): one dial attempt
            a few seconds after boot, once BTstack has settled. */
-        if (!boot_dialed && ++boot_ticks == 60) {   /* ~3 s */
+        if (!boot_dialed && to_ms_since_boot(get_absolute_time())-boot_started_ms>=3000u) {
             boot_dialed = true;
             if (!radio_absent &&
                 (read_settings_byte() & USBSET_BOOTCONN) && !get_a2dp_connected_flag()) {
                 printf("auto-connect at power-on\n");
+                async_context_acquire_lock_blocking(cyw43_arch_async_context());
                 a2dp_source_reconnect();
+                async_context_release_lock(cyw43_arch_async_context());
             }
         }
         watchdog_hw->scratch[6] = 6;   /* 6 = inside the loop wait */
@@ -677,7 +690,8 @@ int main() {
            the Pico — "aac-lc no longer stable"). Sleep 10 under relay:
            6/(108+10) ~= 51 pkt/s with margin. The earlier revert to a flat
            50 ms used ceiling math that ignored decode time — wrong. */
-        sleep_ms(aacp_mic_capture() ? 2 : (bt_sink_relay_streaming() ? 10 : 50));
+        sleep_ms(aacp_mic_capture() ? 2 : 10); /* keep the 20 ms button poll serviced */
     }
 
 }
+

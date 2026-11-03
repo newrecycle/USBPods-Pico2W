@@ -21,7 +21,7 @@ The Full edition still requires vendor private sources. These builds do not recr
 * AACP sends handshake, feature flags, notifications, then START when capture is open and a control response has been seen. Closing capture sends STOP. USB suspend parks capture; resume restores it only when the microphone alternate setting is still open. Unmount clears that intent. Intent is recomputed at send time so an early close cancels a pending START. Connection attempts, initialization wait, and failed sends are bounded.
 * Audio subtype `0x58/0x0001` has a 22-byte header followed by `[u32 little-endian timestamp, u8 length, AU bytes]` records. The entire SDU is validated before any AU is delivered. No decoded content is logged.
 * Optional decoding runs in the main loop, never in the USB or radio IRQ. Decoder allocation/configuration occurs before BT starts. Bounded SPSC queues use C11 release/acquire publication. Generation tags discard stale PCM after USB close/reopen and Bluetooth disconnect/reconnect while preserving the USB recording intent. Decoder failures and queue overflow are counted; no allocation occurs per packet.
-* The inherited ASC `F8 E6 30 00` explicitly reports **48 kHz** to FDK. The reference fork exposes the resulting 480-sample frames at a **64 kHz USB clock** (7.5 ms per AU). These are intentionally distinct; this implementation preserves that reference behavior and checks the actual ASC-reported 48 kHz mono/480-sample format. Physical timestamp/cadence and pitch validation remain required. The fixed USB packet cadence is 64 samples per millisecond. Clock drift, buffering, underruns and concurrent playback resource use need physical testing. No resampler or adaptive drift controller is claimed.
+* The inherited ASC `F8 E6 30 00` explicitly reports **48 kHz** to FDK. The reference fork exposes the resulting 480-sample frames at a **64 kHz USB clock** (7.5 ms per AU). These are intentionally distinct; this implementation preserves that reference behavior and checks the actual ASC-reported 48 kHz mono/480-sample format. Physical timestamp/cadence and pitch validation remain required. The nominal USB cadence is 64 samples/ms. The consumer primes at 2880 samples and uses bounded 63/64/65-sample asynchronous packets to track queue drift without resampling. Complete AU groups measure actual PCM cadence over wall time. Physical drift, underruns and concurrent playback resource use still need testing.
 
 Protocol commands, framing and ASC are adapted from [han-um's GPL-3.0 fork](https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/tree/d18d083bc52de3143d8d922c4abaae865cc0dc28), whose implementation derives these from [librepods](https://github.com/librepods-org/librepods). New modules retain GPL-3.0-only notices. FDK-AAC retains its own notices/license.
 
@@ -159,22 +159,19 @@ and AAC-ELD builds.
   mono, 480 samples; failures emit silence as before. A transport-only build
   has zero decode/queue counters, but still reports AU timing.
 
-### 48 kHz vs 64 kHz hardware evidence
+### Coding frequency and PCM timeline
 
-One 480-sample decoded frame represents **10 ms at 48 kHz** or **7.5 ms
-at 64 kHz**. The *existing* AAC ASC configures FDK for 48 kHz and the
-*existing* USB microphone clock is 64 kHz; neither is changed by telemetry.
-To determine whether this mismatch is intentional, capture 30–60 seconds
-of steady speech or constant recording, include the `[mic-cad]` and
-`[mic-dec]` logs from startup through reconnect, and preserve any raw
-timestamp traces available from a diagnostic UART. Correlate the AU/frame
-counts over wall-clock duration, arrival buckets and timestamp steps,
-decoder format, queue growth/drop rates and audible pitch/duration.
-Consistently receiving ~100 480-sample AUs/s supports a 48 kHz source
-cadence, whereas ~133.3 AUs/s supports 64 kHz-equivalent consumption; radio
-bursts and missing packets can obscure both. The timestamp units must be
-established independently before any conversion is inferred. These are
-tests to run, **not measurements already obtained**.
+Upstream explicitly distinguishes `ELD_CODING_RATE=48000` from
+`ELD_SAMPLE_RATE=64000` and emits 480 decoded samples per 7.5 ms AU.
+The inherited ASC remains `F8 E6 30 00`. See the pinned source and tests in
+[the revalidation report](REVALIDATION-2026-11-03.md).
+
+`micstats` now reports `coding_rate`, `pcm_rate`, `measured_rate`, `clock_windows`
+and `primed`. Complete received AU groups are compared with wall time without
+assuming timestamp units. The runner requires measured PCM cadence within 5%
+of 64 kHz. Pitch, RF bursts and long-term host drift remain physical acceptance
+items; 63/64/65 packet counters and saved WAVs provide evidence over the same
+USB CDC connection. No external UART adapter is required.
 
 Host mocks now exercise bursts, raw timestamp discontinuities, generation
 restarts, overflow/high-water, stale AU/PCM discard and simulated decode

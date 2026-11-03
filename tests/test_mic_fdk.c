@@ -62,10 +62,13 @@ int main(void) {
  assert(aacEncInfo(encoder,&encoded_info)==AACENC_OK);
  assert(encoded_info.confSize==config_size && !memcmp(encoded_info.confBuf,asc,config_size));
  assert(aacDecoder_ConfigRaw(decoder,config,&config_size)==AAC_DEC_OK);
- unsigned count=0; int peak=0;
+ unsigned count=0,crossings=0,pcm_samples=0; int peak=0,previous=0;
  for(unsigned frame=0;frame<32;frame++) {
    INT_PCM input[480],decoded[960]; UCHAR bytes[1024];
-   for(unsigned i=0;i<480;i++) input[i]=(INT_PCM)(12000*sin(2*3.141592653589793*1000*(frame*480+i)/48000));
+   /* Keep the peer's 48 kHz coding ASC, but generate a 1 kHz tone on its
+      explicit 64 kHz PCM timeline. Merely relabeling it as 48 kHz yields
+      750 Hz; the host must preserve the 64 kHz sample clock. */
+   for(unsigned i=0;i<480;i++) input[i]=(INT_PCM)(12000*sin(2*3.141592653589793*1000*(frame*480+i)/64000));
    void *ib[]={input},*ob[]={bytes}; INT iid=IN_AUDIO_DATA,oid=OUT_BITSTREAM_DATA;
    INT isize=sizeof(input),osize=sizeof(bytes),iel=sizeof(INT_PCM),oel=1;
    AACENC_BufDesc in={1,ib,&iid,&isize,&iel},out={1,ob,&oid,&osize,&oel};
@@ -79,9 +82,15 @@ int main(void) {
    CStreamInfo *info=aacDecoder_GetStreamInfo(decoder);
    assert(info && info->sampleRate==48000 && info->numChannels==1 && info->frameSize==480);
    count++;
-   for(unsigned i=0;i<480;i++) { int a=abs(decoded[i]); if(a>peak) peak=a; }
+   for(unsigned i=0;i<480;i++) {
+     int a=abs(decoded[i]);if(a>peak)peak=a;
+     if(frame>=8){if(previous<=0 && decoded[i]>0)crossings++;pcm_samples++;previous=decoded[i];}
+   }
  }
  assert(count>=28 && peak>1000);
+ double hz=(double)crossings*64000/pcm_samples;
+ assert(hz>980 && hz<1020);
+ printf("AAC-ELD coding/PCM clock mapping: 48000 Hz ASC, 64000 Hz PCM, measured synthetic tone %.1f Hz\n",hz);
  printf("Real FDK AAC-ELD round trip: %u frames, 48000 Hz ASC mono, 480 samples, peak %d\n",count,peak);
  aacDecoder_Close(decoder); aacEncClose(&encoder);
  lc_roundtrip(48000);lc_roundtrip(44100);

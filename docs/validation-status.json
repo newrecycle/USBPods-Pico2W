@@ -1,9 +1,12 @@
 {
   "schema": 1,
-  "live_test_authorized": false,
-  "blockers": [
-    "Startup media TX stall followed by SDK SUSPEND error 12 remains unexplained in the first hardware capture",
-    "320 kbps source profile exceeds the current fixed 256 kbps codec configuration; peer capability/negotiation must be reconciled",
-    "Microphone 48 kHz decoder versus 64 kHz USB timing has no validated clock mapping"
+  "live_test_authorized": true,
+  "status": "offline_verified_pending_hardware",
+  "blockers": [],
+  "physical_validation_required": [
+    "AirPods Pro 3 connection and sustained AVDTP TX",
+    "Peer-supported AAC-ELD rates and both game modes",
+    "Microphone cadence, pitch, USB drift and duplex soak",
+    "Reconnect, notified controls and physical HID behavior"
   ]
 }

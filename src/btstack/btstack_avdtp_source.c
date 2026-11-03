@@ -1190,7 +1190,7 @@ bool get_allow_switch_slot(){
 
 static eld_transition src_eld_change;
 static volatile bool src_eld_setup_pending;
-static uint8_t src_codec_setup_pending;
+static _Atomic uint8_t src_codec_setup_pending;
 static uint16_t src_codec_setup_cid;
 static bool src_codec_early_start;
 static uint8_t src_codec_setup_packet[100];
@@ -2900,6 +2900,7 @@ static bool source_add_sep(avdtp_sep_t sep) {
         printf("[avdtp] remote SEP limit reached; ignoring seid %u\n",sep.seid);
         return false;
     }
+    memset(&remote_seps[num_remote_seps],0,sizeof remote_seps[0]);
     remote_seps[num_remote_seps++].sep=sep;
     return true;
 }
@@ -3423,6 +3424,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_REJECT:
+            if(!avdtp_subevent_signaling_reject_get_is_initiator(packet))break;
             signal_identifier = avdtp_subevent_signaling_reject_get_signal_identifier(packet);
             if(src_eld_signaling_rejected(signal_identifier))break;
             printf("Rejected %s\n", avdtp_si2str(signal_identifier));
@@ -3466,6 +3468,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             }
             break;
         case AVDTP_SUBEVENT_SIGNALING_GENERAL_REJECT:
+            if(!avdtp_subevent_signaling_general_reject_get_is_initiator(packet))break;
             signal_identifier = avdtp_subevent_signaling_general_reject_get_signal_identifier(packet);
             if(src_eld_signaling_rejected(signal_identifier))break;
             printf("Rejected %s\n", avdtp_si2str(signal_identifier));
@@ -4027,6 +4030,7 @@ void avdtp_disconnect_and_scan(){
    user mash Connect. Armed per dial, disarmed on success/teardown. */
 static void src_dial_retry_handler(btstack_timer_source_t *ts) {
     (void)ts;
+    if(src_fault_hold || src_user_dc_hold){src_dial_tries=0;return;}
     if (a2dp_is_connected_flag) { src_dial_tries = 0; return; }
     if (src_dial_tries == 0 || src_dial_total >= SRC_DIAL_MAX) {
         led_set_mode(LED_IDLE);   /* headset not found — give up, LED solid */

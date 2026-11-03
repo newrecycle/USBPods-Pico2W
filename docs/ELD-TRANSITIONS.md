@@ -72,6 +72,6 @@ real-FDK duplex, allocation, protocol and relay checks remain in CI. The existin
 workflow also runs on this branch so review does not require pushing to main.
 
 These are offline checks. RF behavior, timing on Cortex-M33, initial codec
-allocation duration, live microphone continuity and the 48/64 kHz cadence
+allocation duration, live microphone continuity and the explicit 48 kHz coding / 64 kHz PCM cadence
 question remain hardware or further integration acceptance items. No live-runner
 package is finalized by this change.

@@ -1,12 +1,9 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
-**LIVE VALIDATION ON HOLD — 2026-11-03. Do not rerun the 238ed609 package.**
-The first physical run exposed both a runner framing failure and a separate
-startup media TX stall/disconnect. The runner fixes do not establish a working
-audio transport. See [the verification findings](VERIFICATION-2026-11-03.md).
-New packages carry a blocking validation status and refuse hardware access
-until the documented blockers are resolved. The procedure below is retained
-for development review, not an instruction to perform another test now.
+**The old 238ed609 package is withdrawn. Flash the UF2 in this new package before running.**
+The engineering blockers from the first capture have targeted fixes and offline
+regressions. See [the revalidation report](REVALIDATION-2026-11-03.md). Physical
+pairing, audio and microphone behavior still require the controlled run below.
 
 This package is an **offline-verified test candidate**, not a claim of working
 hardware. It reconstructs controls/settings, AACP notifications, wear/stem
@@ -61,7 +58,8 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    reused; this does not prove a new bond was created. Both occupied favorites
    may cause a favorite reassignment; saved history remains available.
 
-5. Follow the prompts. The audio matrix plays quiet stereo 440/660 Hz tones
+5. Follow the prompts. Conversation Awareness is temporarily disabled during
+   audio capture when its notified state is known, then restored. The audio matrix plays quiet stereo 440/660 Hz tones
    with broadband sections. Speak/count as prompted. WAV clips contain up to
    12 seconds per phase; counters cover the full run. If Windows audio endpoint
    names are ambiguous, rerun
@@ -77,15 +75,17 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    acoustics. Pairing, notified control readbacks, host audio, manual listening,
    and unverified coverage have separate entries.
 
-The automatic sequence keeps microphone capture open through 256/192/320 kbps,
+The automatic sequence keeps microphone capture open through the peer-supported
+192/256/320 kbps profiles,
 standard and low-buffer game modes, return to default, three Bluetooth reconnects,
 and a ten-minute duplex soak. Applied encoder state must match each requested
 profile before its steady interval begins. Snapshots include microphone cadence,
 queue/drop/decode counters, USB actual/missing samples, HID delivery statistics,
 allocator use and encoder setup/rebuild duration. Steady-interval missing samples,
 decode errors and unexpected microphone generations are failures, rather than
-being hidden by padded silence. The first run may expose the unresolved clock
-question; return failed results too. Configuration readback does not measure
+being hidden by padded silence. A five-second connection preflight checks streaming and TX progression before
+feature changes. Unsupported negotiated bitrates are explicitly skipped.
+Microphone cadence must match the 64 kHz PCM timeline; return failed results too. Configuration readback does not measure
 end-to-end acoustic latency or actual average VBR throughput.
 
 An optional external 3.3 V UART adapter can be selected explicitly with
@@ -126,8 +126,9 @@ licenses, delete all pairings, or flash a different image automatically.
 - AAC-LC relay receives RTP/LATM directly, with bounded fragment assembly and
   sequence/timestamp checks. Unsupported malformed/oversized/fractured streams
   are rejected. Marker behavior on real phones remains part of live acceptance.
-- The inherited mic ASC reports 48 kHz while the reference USB mic clock is
-  64 kHz. Cadence, pitch and drift are still hardware questions. Saved speech,
+- The upstream microphone separates the 48 kHz coding frequency from its
+  64 kHz PCM timeline. Capture buffers bursts and uses adaptive 63/64/65-sample
+  USB packets. Cadence, pitch and host clock drift still require hardware checks. Saved speech,
   timestamps and decoder counters are needed to resolve this.
 
 ## Additional guided matrix

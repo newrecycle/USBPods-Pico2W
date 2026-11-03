@@ -1,3 +1,5 @@
+> Historical hold report. Engineering fixes and replacement-candidate criteria are documented in [REVALIDATION-2026-11-03.md](REVALIDATION-2026-11-03.md). The old 238ed609 package remains withdrawn.
+
 # Verification after the first failed physical run
 
 **Disposition: HOLD. No next hardware run requested.** Passing compilation or

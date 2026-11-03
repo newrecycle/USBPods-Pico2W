@@ -80,7 +80,6 @@ uint32_t codec_aaceld_max_bitrate(void);
 bool codec_aaceld_vbr_allowed(void);
 bool codec_aaceld_retry_configuration(void);
 void codec_ldac_on_configuration(const uint8_t *packet);
-void codec_aaceld_on_configuration(const uint8_t *packet);
 
 bool codec_ldac_matches(uint32_t vendor_id, uint16_t codec_id);
 int  codec_ldac_quality_kbps(void);   /* persisted quality: 330 / 660 / 990 */
