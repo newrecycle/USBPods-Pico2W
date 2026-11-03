@@ -32,11 +32,11 @@ static struct {
     _Atomic uint32_t ts_dups, ts_backwards, ts_changes, ts_gaps;
     uint32_t history_epoch, previous_us, previous_ts, reference_step;
     bool history_valid;
-} arrival;
+} arrival={ .arrival_min=UINT32_MAX, .ts_step_min=UINT32_MAX };
 
 static void sample_min(_Atomic uint32_t *p,uint32_t value) {
     uint32_t old=atomic_load_explicit(p,memory_order_relaxed);
-    if (!old || value<old) atomic_store_explicit(p,value,memory_order_relaxed);
+    if (value<old) atomic_store_explicit(p,value,memory_order_relaxed);
 }
 static void sample_max(_Atomic uint32_t *p,uint32_t value) {
     uint32_t old=atomic_load_explicit(p,memory_order_relaxed);
@@ -275,11 +275,13 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
     out->arrival_gaps=READ_A(gaps);
     out->arrival_last_us=READ_A(arrival_last);
     out->arrival_min_us=READ_A(arrival_min);
+    if (!out->arrival_intervals) out->arrival_min_us=0;
     out->arrival_max_us=READ_A(arrival_max);
     out->timestamp_last=READ_A(ts_last);
     out->timestamp_step_reference=READ_A(ts_step_ref);
     out->timestamp_step_last=READ_A(ts_step_last);
     out->timestamp_step_min=READ_A(ts_step_min);
+    if (out->timestamp_step_min==UINT32_MAX) out->timestamp_step_min=0;
     out->timestamp_step_max=READ_A(ts_step_max);
     out->timestamp_duplicates=READ_A(ts_dups);
     out->timestamp_backwards=READ_A(ts_backwards);
