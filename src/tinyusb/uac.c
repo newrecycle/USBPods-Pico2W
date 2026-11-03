@@ -33,6 +33,8 @@
 
  #include "usb_descriptors.h"
  #include "uac.h"
+#include "usb_capture_lifecycle.h"
+#include "usb_hid_media.h"
 
  #include "../btstack/btstack_avdtp_source.h"
 #include "../btstack/btstack_sink_relay.h"   /* relay forces swvol */
@@ -99,8 +101,7 @@
  int16_t volume0_last = 0;
  int8_t mute0_last = 0; 
 
- /* USB owns the alternate setting; suspend temporarily parks capture. */
- static bool mic_usb_alt_active;
+ /* USB capture state is owned by usb_capture_lifecycle.c. */
 
  // Buffer for speaker data
  int32_t spk_buf[CFG_TUD_AUDIO_FUNC_1_EP_OUT_SW_BUF_SZ / 4];
@@ -147,20 +148,16 @@
    }
  }
 
- /* Media-key sender: press is latched from any context (the BT handlers run
-    outside the USB task), the state machine below sends press then release on
-    consecutive hid_media_task() ticks (50 ms main loop) — the release is
-    guaranteed so keys can never stick. */
- static volatile uint16_t hid_key_pending;   /* 0 = none */
- static uint16_t hid_key_cur;
- static uint8_t  hid_key_phase;              /* 0 idle, 1 pressed */
+ /* Queue all media keys, including repeated presses, without invoking TinyUSB
+    from the BT producer context. USB task owns press/release sequencing. */
+static bool usb_hid_send_report(uint16_t usage) {
+ return tud_hid_report(1, &usage, sizeof(usage));
+}
+void usb_hid_consumer(uint16_t usage) {
+ (void)usb_hid_media_enqueue(usage);
+}
 
- void usb_hid_consumer(uint16_t usage)
- {
-   hid_key_pending = usage;
- }
-
- /* ---- BT -> host volume sync, UAC1 mode -----------------------------------
+/* ---- BT -> host volume sync, UAC1 mode -----------------------------------
     UAC2 notifies the host through the AC interrupt endpoint; UAC1's status
     interrupt is ignored by the legacy hosts UAC1 targets. Substitute: nudge
     the host with HID Volume Up/Down until its slider reaches the BT volume —
@@ -198,37 +195,23 @@
 
  static void hid_media_task(void)
  {
-   if (!tud_hid_ready()) {
-     return;
-   }
-   if (hid_key_phase == 0 && hid_key_pending) {
-     hid_key_cur = hid_key_pending;
-     hid_key_pending = 0;
-     if (tud_hid_report(1, &hid_key_cur, 2)) {
-       printf("[hid] sent usage=0x%04x phase=press\n",hid_key_cur);
-       hid_key_phase = 1;
-     } else hid_key_pending=hid_key_cur;
-   } else if (hid_key_phase == 1) {
-     uint16_t release = 0;
-     if (tud_hid_report(1, &release, 2)) {
-       printf("[hid] sent usage=0x0000 phase=release\n");
-       hid_key_phase = 0;
-     }
-   } else if (s_vol_target_pct >= 0 && usb_uac1_active()) {
+   bool ready = tud_hid_ready();
+   usb_hid_media_poll(ready, usb_hid_send_report);
+   if (!ready || !usb_hid_media_idle()) return;
+   if (s_vol_target_pct >= 0 && usb_uac1_active()) {
      int d = s_vol_target_pct - host_vol_pct();
      if ((d > -4 && d < 4) || s_vol_budget == 0) {
-       s_vol_target_pct = -1;           /* converged (or gave up) */
-     } else {
+       s_vol_target_pct = -1;
+     } else if (usb_hid_media_enqueue(d > 0 ? 0x00E9 : 0x00EA)) {
        s_vol_budget--;
-       s_nudge_cooldown = 20;           /* ~1 s echo window past the last key */
-       hid_key_pending = (d > 0) ? 0x00E9 : 0x00EA;   /* Vol+ / Vol- */
+       s_nudge_cooldown = 20;
      }
    } else if (s_nudge_cooldown > 0) {
      s_nudge_cooldown--;
    }
  }
- 
- /* ---- USB Connect Mode (settings connmode) --------------------------------
+
+/* ---- USB Connect Mode (settings connmode) --------------------------------
     1 Manual (default): nothing automatic here.
     2 Manual, USB audio follows headset: the audio function is only served
       while a headset is connected; flips re-enumerate with a soft replug.
@@ -273,8 +256,8 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
      usb_desc_set_audio_exposed(want);
      printf("[connmode] audio %s -> USB replug\n", want ? "restored" : "hidden");
      usb_replug_hold = true;         /* park the IRQ-side tud_task (race!) */
-     mic_usb_alt_active=false;
-     aacp_mic_set_capture(false);
+     usb_capture_unmount();
+     usb_hid_media_new_session(false);
      tud_disconnect();               /* same soft replug the WebHID op uses */
      sleep_ms(150);
      tud_connect();
@@ -320,6 +303,7 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
      .role = TUSB_ROLE_DEVICE,
      .speed = TUSB_SPEED_AUTO
    };
+   usb_hid_media_init();
    tusb_init(BOARD_TUD_RHPORT, &dev_init);
 
 
@@ -354,8 +338,8 @@ void tinyusb_control_task(void){
 
  void tud_mount_cb(void)
  {
-   mic_usb_alt_active=false;
-   aacp_mic_set_capture(false);
+   usb_capture_mount();
+   usb_hid_media_new_session(true);
    printf("USB configured (%s first)\n", usb_desc_uac1_first() ? "UAC1" : "UAC2");
    //blink_interval_ms = BLINK_MOUNTED;
  }
@@ -363,8 +347,8 @@ void tinyusb_control_task(void){
  // Invoked when device is unmounted
  void tud_umount_cb(void)
  {
-   mic_usb_alt_active=false;
-   aacp_mic_set_capture(false);
+   usb_capture_unmount();
+   usb_hid_media_new_session(false);
    //blink_interval_ms = BLINK_NOT_MOUNTED;
  }
  
@@ -373,7 +357,8 @@ void tinyusb_control_task(void){
  // Within 7ms, device must draw an average of current less than 2.5 mA from bus
  void tud_suspend_cb(bool remote_wakeup_en)
  {
-   aacp_mic_set_capture(false);
+   usb_capture_suspend();
+   usb_hid_media_set_active(false);
    (void)remote_wakeup_en;
    printf("tud_suspend_cb\n");
  }
@@ -381,7 +366,8 @@ void tinyusb_control_task(void){
  // Invoked when usb bus is resumed
  void tud_resume_cb(void)
  {
-  aacp_mic_set_capture(mic_usb_alt_active);
+   usb_capture_resume();
+   usb_hid_media_set_active(true);
   printf("tud_resume_cb\n");
  }
  
@@ -582,7 +568,7 @@ void tinyusb_control_task(void){
    uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
-     aacp_mic_set_capture(false);
+     usb_capture_close();
      return true;
    }
 
@@ -621,8 +607,7 @@ void tinyusb_control_task(void){
    uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
-     mic_usb_alt_active=(alt == 1);
-     aacp_mic_set_capture(mic_usb_alt_active);
+     usb_capture_set_alt(alt == 1);
      return true;
    }
 
@@ -935,12 +920,14 @@ volatile uint8_t usb_splice_sim;
  }
  
 bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t alt)
- {
-   (void)rhport; (void)itf; (void)ep_in;
-   if (alt != 1) return true;
-   int16_t packet[64] = {0};
-   aacp_mic_audio_read(packet,64);
-   tud_audio_write(packet,sizeof(packet));
+ { 
+    (void)rhport; (void)ep_in;
+    if (itf != ITF_NUM_AUDIO_STREAMING_MIC || alt != 1 ||
+        !usb_capture_running()) return true;
+    int16_t packet[64] = {0};
+    uint32_t got = aacp_mic_audio_read(packet, 64);
+    uint16_t written = tud_audio_write(packet, sizeof(packet));
+    usb_capture_note_tx(got, written);
    return true;
  }
  
