@@ -1,0 +1,54 @@
+name: Pico firmware build
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Pico 2 W - ${{ matrix.firmware }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        firmware: [stock0031, rpi0065]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Arm build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib libusb-1.0-0-dev pkg-config
+          rustup toolchain install 1.85.1 --profile minimal --target thumbv8m.main-none-eabi
+          rustup default 1.85.1
+      - name: Fetch pinned Pico SDK and apply USBPods patches
+        run: |
+          git clone --no-checkout https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
+          git -C "$RUNNER_TEMP/pico-sdk" checkout bddd20f928ce76142793bef434d4f75f4af6e433
+          git -C "$RUNNER_TEMP/pico-sdk" submodule update --init --depth 1
+          echo "PICO_SDK_PATH=$RUNNER_TEMP/pico-sdk" >> "$GITHUB_ENV"
+          git -C "$RUNNER_TEMP/pico-sdk/lib/btstack" apply "$GITHUB_WORKSPACE/sdk-patches/btstack-usbpods.patch"
+          git -C "$RUNNER_TEMP/pico-sdk/lib/tinyusb" apply "$GITHUB_WORKSPACE/sdk-patches/tinyusb-usbpods.patch"
+      - name: Select and validate unchanged controller firmware
+        env:
+          BTFW_SELECTION: ${{ matrix.firmware }}
+        run: python3 tools/btfw.py --sdk "$PICO_SDK_PATH" --image "$BTFW_SELECTION" --output evidence
+      - name: Configure Pico 2 W firmware
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=ON
+      - name: Build
+        run: cmake --build build --parallel 2
+      - name: Verify linked radio image and UF2
+        run: python3 tools/verify_build.py --build build --evidence evidence
+      - name: Upload firmware and verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pico2w-${{ matrix.firmware }}
+          if-no-files-found: error
+          path: |
+            build/USBPods_Pico2W_Lite.uf2
+            build/USBPods_Pico2W_Lite.elf
+            build/USBPods_Pico2W_Lite.bin
+            evidence/*.json
+            build/CMakeCache.txt
+            build/compile_commands.json
