@@ -22,6 +22,13 @@ jobs:
     timeout-minutes: 35
     env:
       USBPODS_EDITION: ${{ inputs.edition || 'lite' }}
+      PICO_SDK_REVISION: bddd20f928ce76142793bef434d4f75f4af6e433
+      PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
+      RUSTUP_TOOLCHAIN: 1.85.1
+      CCACHE_DIR: ${{ runner.temp }}/ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPILERCHECK: content
+      CCACHE_MAXSIZE: 350M
     strategy:
       fail-fast: false
       matrix:
@@ -38,20 +45,74 @@ jobs:
             echo "::error::Full edition is required. This public fork lacks private/full.cmake and the vendor Full modules. Supply authorized Full sources through a private build context; Lite fallback is disabled."
             exit 1
           fi
-      - name: Install Arm build dependencies
+      - name: Identify runner image for native dependency caches
+        id: runner-image
+        run: echo "version=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+      # Restore installed package files, rather than only downloaded .deb files.
+      # The action includes the package list in its key; refresh on image changes.
+      - name: Restore or install Arm build dependencies
+        uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
+        with:
+          packages: cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib libusb-1.0-0-dev pkg-config ccache
+          version: pico-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner-image.outputs.version }}
+      - name: Refresh restored shared-library links
+        run: sudo ldconfig
+      - name: Cache pinned Rust toolchain
+        id: rust-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/.rustup/toolchains/1.85.1-x86_64-unknown-linux-gnu
+          key: rust-toolchain-v1-${{ runner.os }}-${{ runner.arch }}-1.85.1-thumbv8m.main-none-eabi
+      - name: Install pinned Rust toolchain
+        if: steps.rust-toolchain.outputs.cache-hit != 'true'
+        run: rustup toolchain install 1.85.1 --profile minimal --target thumbv8m.main-none-eabi
+      - name: Cache LHDC Rust dependencies and build outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            3rd-party/lhdcv5/target
+          key: cargo-v1-${{ runner.os }}-${{ runner.arch }}-1.85.1-thumbv8m-${{ hashFiles('3rd-party/lhdcv5/Cargo.*', '3rd-party/lhdcv5/src/**', '3rd-party/lhdcv5/.cargo/**') }}
+      # Cache only the pristine checkout. Save before applying patches or selecting
+      # a controller image, both of which mutate SDK files during each job.
+      - name: Restore pinned Pico SDK
+        id: pico-sdk
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/pico-sdk
+          key: pico-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.PICO_SDK_REVISION }}
+      - name: Fetch pinned Pico SDK
+        if: steps.pico-sdk.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib libusb-1.0-0-dev pkg-config
-          rustup toolchain install 1.85.1 --profile minimal --target thumbv8m.main-none-eabi
-          rustup default 1.85.1
-      - name: Fetch pinned Pico SDK and apply USBPods patches
+          git init "$PICO_SDK_PATH"
+          git -C "$PICO_SDK_PATH" remote add origin https://github.com/raspberrypi/pico-sdk.git
+          git -C "$PICO_SDK_PATH" fetch --depth 1 origin "$PICO_SDK_REVISION"
+          git -C "$PICO_SDK_PATH" checkout --detach FETCH_HEAD
+          git -C "$PICO_SDK_PATH" submodule update --init --depth 1
+      - name: Save pristine Pico SDK
+        if: steps.pico-sdk.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/pico-sdk
+          key: ${{ steps.pico-sdk.outputs.cache-primary-key }}
+      - name: Apply USBPods SDK patches
         run: |
-          git clone --no-checkout https://github.com/raspberrypi/pico-sdk.git "$RUNNER_TEMP/pico-sdk"
-          git -C "$RUNNER_TEMP/pico-sdk" checkout bddd20f928ce76142793bef434d4f75f4af6e433
-          git -C "$RUNNER_TEMP/pico-sdk" submodule update --init --depth 1
-          echo "PICO_SDK_PATH=$RUNNER_TEMP/pico-sdk" >> "$GITHUB_ENV"
-          git -C "$RUNNER_TEMP/pico-sdk/lib/btstack" apply "$GITHUB_WORKSPACE/sdk-patches/btstack-usbpods.patch"
-          git -C "$RUNNER_TEMP/pico-sdk/lib/tinyusb" apply "$GITHUB_WORKSPACE/sdk-patches/tinyusb-usbpods.patch"
+          test "$(git -C "$PICO_SDK_PATH" rev-parse HEAD)" = "$PICO_SDK_REVISION"
+          git -C "$PICO_SDK_PATH/lib/btstack" apply "$GITHUB_WORKSPACE/sdk-patches/btstack-usbpods.patch"
+          git -C "$PICO_SDK_PATH/lib/tinyusb" apply "$GITHUB_WORKSPACE/sdk-patches/tinyusb-usbpods.patch"
+      - name: Restore compiled C and C++ objects
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner-image.outputs.version }}-${{ env.PICO_SDK_REVISION }}-${{ env.USBPODS_EDITION }}-${{ matrix.firmware }}-${{ matrix.mic }}-${{ hashFiles('sdk-patches/*.patch', '**/CMakeLists.txt', '**/*.cmake') }}-${{ github.sha }}
+          restore-keys: |
+            ccache-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner-image.outputs.version }}-${{ env.PICO_SDK_REVISION }}-${{ env.USBPODS_EDITION }}-${{ matrix.firmware }}-${{ matrix.mic }}-${{ hashFiles('sdk-patches/*.patch', '**/CMakeLists.txt', '**/*.cmake') }}-
+      - name: Configure compiler cache
+        run: |
+          ccache --zero-stats
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
       - name: Test microphone protocol, lifecycle, and UF2 validation
         run: |
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_aacp_mic.c src/btstack/aacp_mic_protocol.c -o /tmp/test-aacp
@@ -111,6 +172,9 @@ jobs:
             cp evidence/firmware.json evidence/btfw.bin "evidence/$board/"
             python3 tools/verify_build.py --build "probe-$board" --evidence "evidence/$board" --stem usbpods_sco_probe
           done
+      - name: Show compiler cache statistics
+        if: always()
+        run: ccache --show-stats
       - name: Upload firmware and verification evidence
         if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4
