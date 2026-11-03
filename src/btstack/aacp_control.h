@@ -16,3 +16,5 @@ bool aacp_control_set(aacp_control *s,uint8_t id,uint8_t value);
 /* Peek is non-destructive. Successful sends alone commit the command. */
 int aacp_control_peek(const aacp_control *s,uint8_t packet[11]);
 void aacp_control_sent(aacp_control *s,int slot,uint8_t value);
+/* Live channel API: false means invalid value or no open channel. */
+bool aacp_control_submit(uint8_t id,uint8_t value);

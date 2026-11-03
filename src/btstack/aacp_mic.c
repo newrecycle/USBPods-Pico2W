@@ -19,6 +19,7 @@ static unsigned attempts, send_errors;
 static uint32_t due, deadline, last_report;
 static aacp_mic_session session;
 static aacp_control controls;
+static bool initialized;
 static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
@@ -39,6 +40,7 @@ void aap_connect(bd_addr_t addr) {
 bool aap_channel_open(void) { return opened; }
 bool aap_protocol_seen(void) { return opened && session.confirmed; }
 void aacp_mic_init(void) {
+ initialized=true;
  /* Distinct from HFP's 0x10005. AirPods must rediscover SDP: re-pair. */
  device_id_create_sdp_record(device_id,0x10006,DEVICE_ID_VENDOR_ID_SOURCE_BLUETOOTH,0x004c,0,0);
  sdp_register_service(device_id);
@@ -126,26 +128,31 @@ void aacp_mic_poll(void) {
 /* Control intents and notifications share the microphone channel. Setters only
  * enqueue intent; observed state changes on a validated peer notification.
  * Locking also serializes main-loop callers against playback-recovery IRQs. */
-static void control_lock(void) { async_context_acquire_lock_blocking(cyw43_arch_async_context()); }
-static void control_unlock(void) { async_context_release_lock(cyw43_arch_async_context()); }
-static void control_set(uint8_t id,uint8_t value) {
- control_lock();
- if (opened) (void)aacp_control_set(&controls,id,value);
- control_unlock();
+static bool control_lock(void) {
+ if (!initialized) return false;
+ async_context_acquire_lock_blocking(cyw43_arch_async_context()); return true;
 }
-void aap_set_jitter_raw(uint8_t v) { control_set(0x0b,v); }
-void aap_set_noise_mode(uint8_t v) { control_set(0x0d,v); }
-void aap_set_pvol(bool on) { control_set(0x26,on?1:2); }
-void aap_set_ca(bool on) { control_set(0x28,on?1:2); }
-void aap_set_aa(uint8_t v) { control_set(0x2e,v); }
+static void control_unlock(void) { async_context_release_lock(cyw43_arch_async_context()); }
+bool aacp_control_submit(uint8_t id,uint8_t value) {
+ if (!control_lock()) return false;
+ bool queued=opened && aacp_control_set(&controls,id,value);
+ control_unlock();
+ return queued;
+}
+void aap_set_jitter_raw(uint8_t v) { (void)aacp_control_submit(0x0b,v); }
+void aap_set_noise_mode(uint8_t v) { (void)aacp_control_submit(0x0d,v); }
+void aap_set_pvol(bool on) { (void)aacp_control_submit(0x26,on?1:2); }
+void aap_set_ca(bool on) { (void)aacp_control_submit(0x28,on?1:2); }
+void aap_set_aa(uint8_t v) { (void)aacp_control_submit(0x2e,v); }
 void aap_get_battery(uint8_t out[3]) {
- control_lock();
+ if (!control_lock()) { memset(out,0xff,3); return; }
  if (opened) memcpy(out,controls.battery,3); else memset(out,0xff,3);
  control_unlock();
 }
 uint8_t aap_get_noise_mode(void) {
- control_lock(); uint8_t v=opened?controls.noise:0; control_unlock(); return v;
+ if (!control_lock()) return 0;
+ uint8_t v=opened?controls.noise:0; control_unlock(); return v;
 }
-int aap_get_pvol(void) { control_lock(); int v=opened?controls.pvol:-1; control_unlock(); return v; }
-int aap_get_ca(void) { control_lock(); int v=opened?controls.ca:-1; control_unlock(); return v; }
-int aap_get_aa(void) { control_lock(); int v=opened?controls.aa:-1; control_unlock(); return v; }
+int aap_get_pvol(void) { if (!control_lock()) return -1; int v=opened?controls.pvol:-1; control_unlock(); return v; }
+int aap_get_ca(void) { if (!control_lock()) return -1; int v=opened?controls.ca:-1; control_unlock(); return v; }
+int aap_get_aa(void) { if (!control_lock()) return -1; int v=opened?controls.aa:-1; control_unlock(); return v; }

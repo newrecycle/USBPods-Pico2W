@@ -23,6 +23,8 @@
 #include "btstack.h"
 
 #include "console.h"
+#include "control_command.h"
+#include "btstack/aacp_control.h"
 #include "version.h"
 #include "settings.h"
 #include "pico_w_led.h"                 /* slot MAC/name + the settings byte  */
@@ -301,6 +303,24 @@ static void toggle_usbset(uint8_t bit, const char *label,
 }
 
 void console_key(char cmd){
+    static control_input input;
+    control_command command;
+    enum control_result result=control_input_feed(&input,cmd,&command);
+    if(result!=CONTROL_BYPASS) {
+        if(result==CONTROL_WAIT) return;
+        if(result==CONTROL_INVALID) { printf("[control] {\"error\":\"invalid-command\"}\n");return; }
+        if(radio_is_absent()) { printf("[control] {\"error\":\"no-radio\"}\n");return; }
+        if(command.status) {
+            uint8_t b[3];aap_get_battery(b);
+            printf("[control] {\"version\":1,\"channel\":%u,\"confirmed\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u]}\n",
+                   aap_channel_open(),aap_protocol_seen(),aap_get_noise_mode(),
+                   aap_get_pvol(),aap_get_ca(),aap_get_aa(),b[0],b[1],b[2]);
+        } else {
+            bool queued=aacp_control_submit(command.id,command.value);
+            printf("[control] {\"queued\":%u,\"id\":%u,\"value\":%u}\n",queued,command.id,command.value);
+        }
+        return;
+    }
     /* pending confirmation owns the next keystroke */
     if (confirm_wipe){
         confirm_wipe = false;

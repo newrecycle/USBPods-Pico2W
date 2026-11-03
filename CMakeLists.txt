@@ -163,6 +163,7 @@ endif()
 add_executable(${PROJECT_NAME}
     src/main.c
     src/console.c
+    src/control_command.c
     src/settings.c
     src/resamp44.c
     src/pico_w_led.c

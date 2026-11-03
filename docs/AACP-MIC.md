@@ -87,3 +87,32 @@ policy, deliberate provisioning/feature negotiation, and corrected optional
 phone relay with a microphone/relay memory policy. Full remains unavailable in
 this build; WebHID/relay stubs remain. No vendor activation module or speculative
 probe is imported. Hardware testing is deferred at the user's request.
+
+
+## CDC line controls
+
+The existing USB CDC serial console is the first independent control transport.
+Existing single-key commands continue to work. Send a colon-prefixed line with
+CR or LF termination; lines over 31 characters or with invalid syntax are
+rejected and discarded through the next newline. Responses start with
+`[control] ` followed by a single JSON object, interleaved with ordinary logs.
+
+| Command | Meaning |
+| --- | --- |
+| `:status` | Channel/confirmation state, observed controls and battery |
+| `:noise 1` .. `:noise 4` | Off / ANC / transparency / adaptive |
+| `:pvol 0` or `:pvol 1` | Personalized volume off/on |
+| `:ca 0` or `:ca 1` | Conversation awareness off/on |
+| `:aa 0` .. `:aa 100` | Adaptive strength reference value |
+| `:jitter 30`, `60`, `90`, `150` | Queue a reference jitter value |
+
+`queued:1` means accepted into the current session's bounded command queue; it
+is not acknowledgment by the earbuds. Query `:status` for observed values.
+Unknown noise is 0; unknown pvol/ca/aa is -1; absent battery is 255, otherwise
+low 7 bits are percent and high bit indicates charging. A disconnect clears
+pending commands and observed peer values. Invalid values or no open channel
+return `queued:0`; radio-absent boards return an error. Before radio startup,
+control getters return unknown values without touching the async context.
+This transport uses existing CDC descriptors; it adds no USB HID dependency.
+A future Web Serial or desktop UI can use this command layer. Physical CDC
+and AirPods interoperability testing remains deferred.

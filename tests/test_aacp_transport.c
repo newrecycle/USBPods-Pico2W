@@ -3,6 +3,7 @@
 #include "btstack.h"
 #include "btstack_aap.h"
 #include "aacp_mic.h"
+#include "aacp_control.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,6 +31,9 @@ void aacp_mic_audio_enqueue(const uint8_t*p,uint8_t n){(void)p;(void)n;}
 static void event(uint8_t code,uint16_t cid){uint8_t p[]={code,0,cid&255,cid>>8,0,1,2,3,4,5,6};callback(HCI_EVENT_PACKET,0,p,sizeof p);}
 static void send_now(void){aacp_mic_poll();event(L2CAP_EVENT_CAN_SEND_NOW,0x42);}
 int main(void){
+ assert(!aacp_control_submit(0x0d,2));assert(aap_get_noise_mode()==0);
+ uint8_t battery[3];aap_get_battery(battery);assert(battery[0]==255 && locks==0);
+ aacp_mic_init();
  bd_addr_t addr={1,2,3,4,5,6};aap_connect(addr);now=1500;aacp_mic_poll();
  event(L2CAP_EVENT_CHANNEL_OPENED,0x42);assert(aap_channel_open());
  send_rc=1;send_now();assert(last_len==16); // retry same init command
