@@ -272,6 +272,9 @@ void codec_aac_on_configuration(const uint8_t *packet){
         printf("Couldn't get encoder info: %d\n", err);
         return;
     }
+    /* The encoder handle/slot size is shared with ELD (441/480 samples).
+     * Rebuild the LC queue from its actual frame length after every switch. */
+    acc_num_simples = (uint16_t)aacinf.frameLength;
     set_current_sample_rate(aac_configuration.sampling_frequency);
     rtp_samples_per_frame = acc_num_simples;
     eld_resample = false;
@@ -442,3 +445,4 @@ const codec_ops_t codec_aac_ops = {
     .fill      = codec_fdk_fill,         /* shared AAC/ELD fill path */
     .send      = a2dp_demo_send_media_packet_aac,
 };
+

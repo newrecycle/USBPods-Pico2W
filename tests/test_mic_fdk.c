@@ -10,6 +10,34 @@
 static void param(HANDLE_AACENCODER h,AACENC_PARAM p,UINT v) {
  assert(aacEncoder_SetParam(h,p,v)==AACENC_OK);
 }
+static void lc_roundtrip(UINT rate) {
+ HANDLE_AACENCODER enc=NULL;
+ assert(aacEncOpen(&enc,0x03,2)==AACENC_OK);
+ param(enc,AACENC_AOT,2);param(enc,AACENC_SAMPLERATE,rate);
+ param(enc,AACENC_CHANNELMODE,MODE_2);param(enc,AACENC_BITRATE,128000);
+ param(enc,AACENC_TRANSMUX,TT_MP4_LATM_MCP1);param(enc,AACENC_HEADER_PERIOD,1);
+ assert(aacEncEncode(enc,NULL,NULL,NULL,NULL)==AACENC_OK);
+ AACENC_InfoStruct ei;assert(aacEncInfo(enc,&ei)==AACENC_OK && ei.frameLength==1024);
+ HANDLE_AACDECODER dec=aacDecoder_Open(TT_MP4_LATM_MCP1,1);assert(dec);
+ unsigned count=0;
+ for(unsigned f=0;f<12;f++) {
+   INT_PCM in[2048],pcm[4096];UCHAR bytes[2048];
+   for(unsigned i=0;i<1024;i++)in[2*i]=in[2*i+1]=(INT_PCM)(10000*sin(2*3.141592653589793*1000*(f*1024+i)/rate));
+   void *ib[]={in},*ob[]={bytes};INT iid=IN_AUDIO_DATA,oid=OUT_BITSTREAM_DATA;
+   INT is=sizeof(in),os=sizeof(bytes),iel=sizeof(INT_PCM),oel=1;
+   AACENC_BufDesc input={1,ib,&iid,&is,&iel},output={1,ob,&oid,&os,&oel};
+   AACENC_InArgs args={2048,0};AACENC_OutArgs out={0};
+   assert(aacEncEncode(enc,&input,&output,&args,&out)==AACENC_OK);
+   if(!out.numOutBytes)continue;
+   UCHAR *b[]={bytes};UINT size=out.numOutBytes,valid=size;
+   assert(aacDecoder_Fill(dec,b,&size,&valid)==AAC_DEC_OK && !valid);
+   assert(aacDecoder_DecodeFrame(dec,pcm,4096,0)==AAC_DEC_OK);
+   CStreamInfo *info=aacDecoder_GetStreamInfo(dec);
+   assert(info && info->sampleRate==(int)rate && info->frameSize==1024 && info->numChannels==2);count++;
+ }
+ assert(count>=8);aacDecoder_Close(dec);aacEncClose(&enc);
+ printf("FDK LATM AAC-LC after ELD: %u Hz, %u frames, 1024 samples\n",rate,count);
+}
 int main(void) {
  HANDLE_AACENCODER encoder=NULL;
  assert(aacEncOpen(&encoder,0x03,1)==AACENC_OK);
@@ -46,4 +74,6 @@ int main(void) {
  assert(count>=28 && peak>1000);
  printf("Real FDK AAC-ELD round trip: %u frames, 48000 Hz ASC mono, 480 samples, peak %d\n",count,peak);
  aacDecoder_Close(decoder); aacEncClose(&encoder);
+ lc_roundtrip(48000);lc_roundtrip(44100);
 }
+

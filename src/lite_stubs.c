@@ -1,12 +1,12 @@
 /*
  * lite_stubs.c — the open-source (Lite) build's stand-ins for the private
  * modules: the WebHID/WebUSB config channel (webhid_cmd.c), the AirPods
- * AACP client (btstack_aap.c) and the license system (license.c).
+ * remaining AirPods policy hooks and the license system (license.c).
  *
  * Compiled ONLY when USBPODS_LITE (CMake picks this file OR the real
  * modules — never both). Everything here is a no-op with the semantics
- * "feature absent", states the callers already handle: no AAP channel
- * (battery 0xFF = none, game mode off), no license (state 0 = none),
+ * "feature absent" for WebHID, relay, ear/game policy and licensing.
+ * The shared aacp_mic/control implementation owns the live AACP channel,
  * feature-report GETs stall so a probing host sees an empty channel.
  */
 #include <stdint.h>
@@ -64,26 +64,17 @@ void     license_device_id(uint8_t out[22]){ memset(out, 0, 22); }
 
 
 
-void aap_set_jitter_raw(uint8_t value){ (void)value; }
 void aap_cycle_jitter(void){}
 void aap_probe_4c(void){}
 void aap_send_09_03(uint8_t v){ (void)v; }
-void aap_get_battery(uint8_t out[3]){ memset(out, 0xFF, 3); }   /* 0xFF = none */
 
 
-uint8_t aap_get_noise_mode(void){ return 0; }      /* unknown */
 bool aap_get_ear_pause(void){ return false; }
 bool aap_get_game(void){ return false; }
-int  aap_get_pvol(void){ return -1; }              /* unsupported */
-int  aap_get_ca(void){ return -1; }
-int  aap_get_aa(void){ return -1; }
-void aap_set_noise_mode(uint8_t mode){ (void)mode; }
 void aap_set_ear_pause(bool on){ (void)on; }
 void aap_set_game(bool on){ (void)on; }
-void aap_set_pvol(bool on){ (void)on; }
-void aap_set_ca(bool on){ (void)on; }
-void aap_set_aa(uint8_t strength){ (void)strength; }
 uint8_t aap_game_jitter(void){ return 90; }        /* full: settings game_level */
 uint32_t aap_last_lock_ms(void){ return 0; }       /* never held the BT lock */
 volatile bool aap_rx_log = false;                  /* 'A' key raw-frame logging */
+
 

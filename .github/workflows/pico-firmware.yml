@@ -56,6 +56,10 @@ jobs:
         run: |
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_aacp_mic.c src/btstack/aacp_mic_protocol.c -o /tmp/test-aacp
           /tmp/test-aacp
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_aacp_control.c src/btstack/aacp_control.c -o /tmp/test-control
+          /tmp/test-control
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/transport_mocks -I src/btstack tests/test_aacp_transport.c src/btstack/aacp_mic.c src/btstack/aacp_control.c src/btstack/aacp_mic_protocol.c -o /tmp/test-transport
+          /tmp/test-transport
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_audio.c src/btstack/aacp_mic_audio.c -o /tmp/test-mic-audio
           /tmp/test-mic-audio
           python3 tests/test_verify_uf2.py
@@ -112,3 +116,5 @@ jobs:
             probe-*/usbpods_sco_probe.bin
             build/CMakeCache.txt
             build/compile_commands.json
+            build/*.map
+

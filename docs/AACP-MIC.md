@@ -43,3 +43,47 @@ cmake --build build
 ```
 
 CMake defaults to `rpi0065`; CI also builds a `stock0031` transport baseline. The radio header is hash pinned and cached when already correct. Switching images updates a shared SDK file, so use a separate SDK checkout per concurrent build.
+
+
+
+## Reference integration, 2026-11-03
+
+The transfer bundle is disassembly/reference material. Its reconstructed files
+are not a replacement for this fork. The current open-source builds now share
+one AACP channel between microphone lifecycle and bounded control intents.
+Noise, personalized volume, conversation awareness, adaptive strength and
+jitter use 11-byte commands; getters report validated peer notifications rather
+than pending intent. Battery notifications validate the complete counted list,
+handle the combined-buds component and clamp levels to 100. Channel teardown
+clears observed state and pending controls. Microphone start/stop has priority.
+Setters serialize with the CYW43 async context, including playback-recovery
+callers. Only the channel owner performs L2CAP writes.
+
+Command provenance: the vendor image with SHA-256
+503218b796c41a76134e310597d0d0bace15cf5e261ce9442d884b7146f31699 has
+jitter builder `FUN_10016698` and control parser `FUN_10015dbc`; librepods
+AACPManager at 89356c08cea3db0b6b54792d9329d09a87cc85fa corroborates IDs and
+Boolean encodings. This change retains the existing microphone provisioning;
+it does not add the seven-command Full replay. Jitter accepts the reference
+values 30/60/90/150; noise 1..4; Boolean controls 1/2; adaptive strength 0..100.
+These are bounded reference domains, not validated support for every model.
+Unknown/malformed notifications cannot confirm microphone startup. Ear packets
+have no host-media side effects in this stage.
+
+The AAC-LC source now restores the shared slot size from FDK's actual frame
+length after configuration, instead of retaining ELD's 441/480-sample size.
+The real FDK host fixture checks ELD followed by 48/44.1 kHz LATM AAC-LC
+round trips. It does not execute the application's whole codec-switch state
+machine or establish physical playback quality.
+
+New host regressions exercise the actual transport implementation with mocked
+SDK events: wrong-CID data/close, malformed confirmation, failed-send retry,
+mic priority, clearing pending controls on reconnect, and failed can-send
+requests. Pure control tests cover transactional battery updates, exact command
+bytes, value validation, coalescing and observed-versus-pending state.
+
+Remaining Full reconstruction work: WebHID command/report adapter, ear/stem
+policy, deliberate provisioning/feature negotiation, and corrected optional
+phone relay with a microphone/relay memory policy. Full remains unavailable in
+this build; WebHID/relay stubs remain. No vendor activation module or speculative
+probe is imported. Hardware testing is deferred at the user's request.

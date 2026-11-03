@@ -181,6 +181,7 @@ add_executable(${PROJECT_NAME}
     src/btstack/codec/codec_lhdc.c
     3rd-party/lhdcv5/src/lhdcv5BT_enc.c
     src/btstack/aacp_mic.c
+    src/btstack/aacp_control.c
     src/btstack/aacp_mic_protocol.c
     src/btstack/aacp_mic_audio.c
     ${USBPODS_VARIANT_SOURCES}
@@ -353,3 +354,4 @@ if(NOT USBPODS_CHANNEL_DIR STREQUAL "lite")
                         "be published (expected ${USBPODS_PUBLISHER})")
     endif()
 endif()
+
