@@ -88,6 +88,33 @@ reproduced and fixed with bounded parsing rather than copied wholesale.
   are recorded in the commit's GitHub Actions, rather than treated as protocol
   acceptance or physical success.
 
+## Continued audit: coupled recovery and USB controls
+
+The follow-up couples the production USB capture lifecycle, complete AACP
+channel and production ELD adapter/controller in one process. SDK events, peer
+responses and encoder allocation are simulated; the source state machine and
+wire command decisions are executed together. Cases cover delayed START,
+immediate STOP, superseded recovery, failed sends, profile changes crossing
+SUSPEND/START, initial deferred setup, rejected START and channel teardown.
+Allocation is forbidden in the simulated USB/L2CAP callback context. These
+cases passed without requiring another recovery-policy change.
+
+This audit also reproduced and corrected additional USB control defects:
+
+| Input | Reproduction | Correction |
+| --- | --- | --- |
+| UAC2 feature channel outside 0–2 | ASan reports a global buffer overwrite in the production feature-unit setter. | Validate channel bounds before reading or writing mute/volume arrays. |
+| UAC2 unsupported alternate setting | ASan reports a global buffer overread in the production format callback. | Validate complete interface/alternate values before changing state or indexing format metadata; values above 255 cannot wrap to a valid setting. |
+| UAC2 unadvertised speaker rate | Production setter accepts the rate and overwrites `current_sample_rate`. | Accept only the boot-advertised speaker rate, with little-endian decoding. The independent microphone clock is unchanged. |
+| UAC1 oversized SET_CUR | Production handler requests a 65,535-byte transfer into its 8-byte buffer; the fixture rejects that buffer contract. | Validate selector and exact one/two/three-byte payload lengths before scheduling a transfer. Validate control interface, endpoint and fixed rate; reject unsupported alternates. |
+
+The new fixtures exercise valid requests as well as rejected inputs, and execute
+the production mic/speaker interface callbacks to verify state independence.
+They do not show that Windows sent these invalid inputs in the user's run, or
+that these bounds defects caused the observed audible left/right issue.
+All 50 local host compile/test commands passed after this follow-up. The three
+new fixtures run in CI before target builds. Hardware packaging remains paused.
+
 ## Remaining limits
 
 The physical left/right result of microphone close/reopen and actual gesture

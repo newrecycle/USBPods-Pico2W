@@ -131,10 +131,11 @@ static void spk_arm_deferred(void *param)
 
 static bool set_interface(uint8_t rhport, tusb_control_request_t const *req)
 {
-    uint8_t const itf = (uint8_t)tu_le16toh(req->wIndex);
-    uint8_t const alt = (uint8_t)tu_le16toh(req->wValue);
+    uint16_t const itf = tu_le16toh(req->wIndex);
+    uint16_t const alt = tu_le16toh(req->wValue);
 
     if (itf == UAC1_ITF_SPK) {
+        TU_VERIFY(alt <= 1);
         if (alt == 1 && s_u1.alt_spk != 1) {
             TU_VERIFY(usbd_edpt_iso_activate(rhport, &s_ep_out_desc));
             s_u1.alt_spk = 1;
@@ -163,7 +164,7 @@ static bool set_interface(uint8_t rhport, tusb_control_request_t const *req)
         printf("UAC1 speaker alt %u\n", alt);
         /* SOF watchdog only while streaming. */
         usbd_sof_enable(rhport, SOF_CONSUMER_AUDIO, s_u1.alt_spk == 1);
-    } else if (itf != UAC1_ITF_AC) {
+    } else if (itf != UAC1_ITF_AC || alt != 0) {
         return false;
     }
     return tud_control_status(rhport, req);
@@ -176,12 +177,15 @@ static bool fu_request(uint8_t rhport, tusb_control_request_t const *req, uint8_
     uint8_t const sel    = TU_U16_HIGH(req->wValue);
     uint8_t const ch     = TU_U16_LOW(req->wValue);
 
-    if (!(entity == UAC1_ENT_SPK_FU && (ch <= 2 || ch == 0xFF))) {
+    if (!(TU_U16_LOW(req->wIndex) == UAC1_ITF_AC &&
+          entity == UAC1_ENT_SPK_FU && (ch <= 2 || ch == 0xFF))) {
         printf("FU REJECT entity=%u ch=%u\n", entity, ch);
         return false;
     }
 
     if (req->bRequest == UAC1_SET_CUR) {
+        TU_VERIFY((sel == UAC1_FU_MUTE && req->wLength == 1) ||
+                  (sel == UAC1_FU_VOLUME && req->wLength == 2));
         if (stage == CONTROL_STAGE_SETUP) {
             return tud_control_xfer(rhport, req, s_u1.ctrl_buf, req->wLength);
         }
@@ -235,16 +239,25 @@ static bool fu_request(uint8_t rhport, tusb_control_request_t const *req, uint8_
     return tud_control_xfer(rhport, req, s_u1.ctrl_buf, len);
 }
 
-/* Endpoint sampling-frequency control (3-byte value). 48 kHz only. */
+/* Endpoint sampling-frequency control (3-byte value). Fixed boot-selected rate. */
 static bool ep_request(uint8_t rhport, tusb_control_request_t const *req, uint8_t stage)
 {
     TU_VERIFY(TU_U16_HIGH(req->wValue) == UAC1_EP_SAMPLING_FREQ);
+    TU_VERIFY(tu_le16toh(req->wIndex) == s_ep_out_desc.bEndpointAddress);
 
     if (req->bRequest == UAC1_SET_CUR) {
+        TU_VERIFY(req->wLength == 3);
         if (stage == CONTROL_STAGE_SETUP) {
             return tud_control_xfer(rhport, req, s_u1.ctrl_buf, req->wLength);
         }
-        return true;   /* single advertised rate — accept and ignore */
+        if (stage == CONTROL_STAGE_DATA) {
+            extern uint32_t sample_rates[];
+            uint32_t rate = (uint32_t)s_u1.ctrl_buf[0] |
+                            (uint32_t)s_u1.ctrl_buf[1] << 8 |
+                            (uint32_t)s_u1.ctrl_buf[2] << 16;
+            TU_VERIFY(rate == sample_rates[0]);
+        }
+        return true;   /* fixed clock: acknowledge only the advertised rate */
     }
     if (req->bRequest == UAC1_GET_CUR) {
         if (stage != CONTROL_STAGE_SETUP) return true;

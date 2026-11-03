@@ -430,7 +430,11 @@ void tinyusb_control_task(void){
    {
      TU_VERIFY(request->wLength == sizeof(audio_control_cur_4_t));
  
-     current_sample_rate = (uint32_t) ((audio_control_cur_4_t const *)buf)->bCur;
+     uint32_t rate = tu_le32toh((uint32_t)((audio_control_cur_4_t const *)buf)->bCur);
+     bool supported = false;
+     for (uint8_t i = 0; i < N_SAMPLE_RATES; i++) supported |= rate == sample_rates[i];
+     TU_VERIFY(supported);
+     current_sample_rate = rate;
  
      TU_LOG1("Clock set current freq: %" PRIu32 "\r\n", current_sample_rate);
  
@@ -448,6 +452,7 @@ void tinyusb_control_task(void){
  static bool tud_audio_feature_unit_get_request(uint8_t rhport, audio_control_request_t const *request)
  {
    TU_ASSERT(request->bEntityID == UAC2_ENTITY_SPK_FEATURE_UNIT);
+   TU_VERIFY(request->bChannelNumber <= CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX);
  
    if (request->bControlSelector == AUDIO_FU_CTRL_MUTE && request->bRequest == AUDIO_CS_REQ_CUR)
    {
@@ -487,6 +492,7 @@ void tinyusb_control_task(void){
  
    TU_ASSERT(request->bEntityID == UAC2_ENTITY_SPK_FEATURE_UNIT);
    TU_VERIFY(request->bRequest == AUDIO_CS_REQ_CUR);
+   TU_VERIFY(request->bChannelNumber <= CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX);
  
    if (request->bControlSelector == AUDIO_FU_CTRL_MUTE)
    {
@@ -566,14 +572,14 @@ void tinyusb_control_task(void){
  {
    (void)rhport;
  
-   uint8_t const itf = tu_u16_low(tu_le16toh(p_request->wIndex));
-   uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
+   uint16_t const itf = tu_le16toh(p_request->wIndex);
+   uint16_t const alt = tu_le16toh(p_request->wValue);
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
      usb_capture_close();
      return true;
    }
-
+   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= CFG_TUD_AUDIO_FUNC_1_N_FORMATS);
  
   if (ITF_NUM_AUDIO_STREAMING_SPK == itf && alt == 0) {
       blink_interval_ms = BLINK_MOUNTED;
@@ -605,14 +611,14 @@ void tinyusb_control_task(void){
  bool tud_audio_set_itf_cb(uint8_t rhport, tusb_control_request_t const * p_request)
  {
    (void)rhport;
-   uint8_t const itf = tu_u16_low(tu_le16toh(p_request->wIndex));
-   uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
+   uint16_t const itf = tu_le16toh(p_request->wIndex);
+   uint16_t const alt = tu_le16toh(p_request->wValue);
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
      usb_capture_set_alt(alt == 1);
      return true;
    }
-
+   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= CFG_TUD_AUDIO_FUNC_1_N_FORMATS);
  
    TU_LOG2("Set interface %d alt %d\r\n", itf, alt);
    {   /* EP reopen: a pending live-close grace ends as a non-event */

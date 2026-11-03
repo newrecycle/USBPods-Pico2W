@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def function(file, name):
     source = (ROOT/file).read_text()
-    match = re.search(r'^(?:static )?(?:void|bool|int|uint8_t|uint32_t|eld_profile) '+name+r'\([^;]*?\)\s*\{',source,re.M)
+    match = re.search(r'^[ \t]*(?:static )?(?:void|bool|int|uint8_t|uint32_t|eld_profile) '+name+r'\([^;]*?\)\s*\{',source,re.M)
     assert match, name
     begin = source.index('{',match.start())
     depth,end = 1,begin+1

@@ -145,6 +145,9 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/tinyusb tests/test_usb_host_input.c src/tinyusb/usb_capture_lifecycle.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-input
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
+          python3 tests/test_usb_control_boundaries.py
+          python3 tests/test_uac1_controls.py
+          python3 tests/test_mic_recovery_integration.py
           python3 tests/test_live_runner.py
           python3 tests/test_live_matrix.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_media_input.c src/btstack/media_input.c -o /tmp/test-media-input
