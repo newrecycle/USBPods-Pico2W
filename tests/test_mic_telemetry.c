@@ -10,16 +10,19 @@ int main(void) {
     aacp_mic_set_capture(true);
     aacp_mic_audio_note_au(0xfffffff0u,0xfffffff0u);
     aacp_mic_audio_note_au(464,7484); /* both counters wrap by +480/+7500 */
+    aacp_mic_audio_note_au(944,7484); /* batched AU: zero elapsed us */
     aacp_mic_audio_get_stats(&s);
     assert(s.capture && !s.decoder_ready);
-    assert(s.au_observed==2 && s.arrival_7500us==1);
+    assert(s.au_observed==3 && s.arrival_7500us==1);
+    assert(s.arrival_bursts==1 && s.arrival_min_us==0);
     assert(s.timestamp_step_reference==480 && s.timestamp_backwards==0);
     assert(s.au_depth==0 && s.pcm_depth==0 && s.decode_max_us==0);
     aacp_mic_discontinuity();
     aacp_mic_audio_note_au(0,0);
     aacp_mic_audio_note_au(480,10000);
     aacp_mic_audio_get_stats(&s);
-    assert(s.au_observed==4 && s.arrival_10000us==1);
+    assert(s.au_observed==5 && s.arrival_10000us==1);
+    assert(s.arrival_min_us==0); /* do not overwrite a genuine zero minimum */
     assert(s.timestamp_backwards==0 && s.timestamp_step_reference==480);
     puts("transport-only cadence, wrap and generation tests passed");
 }
