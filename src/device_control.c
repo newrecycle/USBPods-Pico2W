@@ -43,6 +43,19 @@ extern bool bt_connect_saved(const uint8_t*);
 static control_input input;
 static atomic_bool reboot_requested;
 static uint32_t reboot_at;
+static void audio_telemetry(void) {
+ aacp_mic_audio_stats m;aacp_mic_audio_get_stats(&m);
+ usb_capture_snapshot_t u=usb_capture_snapshot();
+ usb_hid_media_snapshot_t h=usb_hid_media_snapshot();
+#define U(v) (unsigned long)(v)
+ printf("[control] {\"kind\":\"micstats\",\"generation\":%lu,\"capture\":%lu,\"decoder_ready\":%lu,\"au\":%lu,\"intervals\":%lu,\"bursts\":%lu,\"cadence7500\":%lu,\"cadence10000\":%lu,\"arrival_gaps\":%lu,\"timestamp\":%lu,\"timestamp_step\":%lu,\"timestamp_gap_candidates\":%lu,\"timestamp_duplicates\":%lu,\"timestamp_backwards\":%lu,\"au_depth\":%lu,\"au_high\":%lu,\"au_drop\":%lu,\"au_stale\":%lu,\"pcm_depth\":%lu,\"pcm_high\":%lu,\"pcm_drop\":%lu,\"pcm_stale\":%lu,\"decoded\":%lu,\"errors\":%lu,\"decode_max_us\":%lu,\"decoded_rate\":%lu,\"decoded_frame_samples\":%lu}\n",
+ U(m.generation),U(m.capture),U(m.decoder_ready),U(m.au_observed),U(m.arrival_intervals),U(m.arrival_bursts),U(m.arrival_7500us),U(m.arrival_10000us),U(m.arrival_gaps),U(m.timestamp_last),U(m.timestamp_step_reference),U(m.timestamp_gap_candidates),U(m.timestamp_duplicates),U(m.timestamp_backwards),U(m.au_depth),U(m.au_high_water),U(m.au_overflows),U(m.au_stale),U(m.pcm_depth),U(m.pcm_high_water),U(m.pcm_overflows),U(m.pcm_stale),U(m.decoded),U(m.decode_errors),U(m.decode_max_us),U(m.decoded_rate),U(m.decoded_frame_samples));
+ printf("[control] {\"kind\":\"usbcapture\",\"mounted\":%u,\"suspended\":%u,\"alt\":%u,\"running\":%u,\"packets\":%lu,\"pcm_samples\":%lu,\"underruns\":%lu,\"missing_samples\":%lu,\"short_writes\":%lu}\n",
+ (unsigned)u.mounted,(unsigned)u.suspended,(unsigned)u.alt_active,(unsigned)u.capture_running,U(u.usb_packets),U(u.pcm_samples),U(u.underrun_packets),U(u.missing_samples),U(u.short_writes));
+ printf("[control] {\"kind\":\"hidstats\",\"active\":%u,\"release_pending\":%u,\"depth\":%lu,\"high\":%lu,\"accepted\":%lu,\"full\":%lu,\"inactive\":%lu,\"stale\":%lu,\"presses\":%lu,\"releases\":%lu,\"busy\":%lu,\"failures\":%lu}\n",
+ (unsigned)h.active,(unsigned)h.release_pending,U(h.queue_depth),U(h.high_water),U(h.accepted),U(h.dropped_full),U(h.dropped_inactive),U(h.stale),U(h.presses_sent),U(h.releases_sent),U(h.busy_ticks),U(h.send_failures));
+#undef U
+}
 static void quoted(const char *s,size_t n) {
  putchar('"');for(size_t i=0;i<n&&s[i];i++) {
    unsigned char c=(unsigned char)s[i];
@@ -115,7 +128,7 @@ static bool dispatch(control_command c) {
    uint8_t bit=c.id==CONTROL_UART?USBSET_UART:c.id==CONTROL_UAC1?USBSET_UAC1:c.id==CONTROL_RATE44?USBSET_RATE44:c.id==CONTROL_BOOTCONN?USBSET_BOOTCONN:c.id==CONTROL_PAUSEDC?USBSET_PAUSEDC:USBSET_SWVOL;
    if(v)s->usbset|=bit;else s->usbset&=(uint8_t)~bit;break;
  }
- case CONTROL_TELEMETRY:aacp_mic_audio_report();bt_sink_relay_dump();usb_serial_diagnostics();return true;
+ case CONTROL_TELEMETRY:audio_telemetry();aacp_mic_audio_report();bt_sink_relay_dump();usb_serial_diagnostics();return true;
  case CONTROL_REBOOT:atomic_store(&reboot_requested,true);return true;
  default:return aacp_control_submit(c.id,v);
  }

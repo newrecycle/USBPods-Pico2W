@@ -4,6 +4,18 @@ The production TinyUSB callbacks in `src/tinyusb/uac.c` delegate to
 `usb_capture_lifecycle.c` and `usb_hid_media.c`. Both helpers have native
 host regression tests and require no Pico SDK to compile for those tests.
 
+Integration adds `:telemetry` JSON snapshots with kinds `micstats`, `usbcapture`
+and `hidstats`, alongside the detailed text diagnostics. Successful HID report
+submissions retain `[hid] sent usage=... phase=press/release` logs. These report
+TinyUSB acceptance, not confirmation that the host application acted on them.
+
+HID queue depth/high-water snapshots are bounded under concurrent producers;
+release state is atomic and high-water updates use bounded CAS attempts.
+`tests/test_usb_hid_threads.c` adds four real producer threads and verifies
+8,192 accepted presses, matching releases, busy/retry behavior and diagnostic
+bounds against the production queue. The main firmware workflow runs these
+checks together with source transitions and microphone regressions.
+
 ## Microphone intent and counters
 
 Capture is permitted only when **mounted, not suspended, and microphone

@@ -115,10 +115,15 @@ state produces no host key, either worn bud counts as worn, and reinsertion
 only resumes a pause owned by the ear policy. Raw HID observation may depend on
 host access; firmware records TinyUSB-accepted press/release events separately.
 
-Further work before finalizing the hardware runner: verify active rate/game
-transitions with the actual encoder/mic path, review resource headroom and
-state telemetry, then consolidate the hardware matrix into as few sessions as
-possible. The host-runner draft is not the acceptance milestone and is not yet
-published as a live-test package. Mic cadence/pitch (48 kHz ASC versus 64 kHz
+The source transition controller and production callback fixtures are described
+in [ELD-TRANSITIONS.md](ELD-TRANSITIONS.md). Microphone timing/queue snapshots and
+USB capture/HID helpers are integrated; `:telemetry` emits `micstats`,
+`usbcapture` and `hidstats` JSON as well as existing text diagnostics. HID
+submission logs remain available when the host blocks raw HID observation.
+
+Before finalizing the hardware runner, consolidate the instrumented hardware
+matrix into as few sessions as possible and select the exact combined CI
+revision. The runner draft is not yet published as a live-test package.
+Mic cadence/pitch (48 kHz ASC versus 64 kHz
 USB clock), RF coexistence, lifecycle timing and phone marker conventions remain
 questions for that later hardware pass.
