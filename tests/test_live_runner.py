@@ -30,6 +30,50 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_recorded_pair_ack_with_console_indent(self):
+        # Exact framing of the ACK in the failed 20261103T192956Z capture.
+        line=' [control] {"kind":"ack","queued":1,"id":132,"value":0,"reboot_required":0}'
+        class Port:
+            def __init__(self):self.data=queue.Queue()
+            def write(self,data):
+                self.data.put(b'Web pair: connecting\r\n'+line[:27].encode())
+                self.data.put((line[27:]+'\r\nStream started.\r\n').encode())
+            def read(self,count):
+                try:return self.data.get(timeout=.01)
+                except queue.Empty:return b''
+            def flush(self):pass
+        with tempfile.TemporaryDirectory() as temp:
+            rec=live.Recorder(Path(temp));port=Port();rec.serial_reader(port,'cdc.jsonl',True)
+            try:
+                ack=live.Link(port,rec).request('pair 0',timeout=1)
+                self.assertEqual(ack['id'],132)
+            finally:rec.close()
+            self.assertFalse(rec.errors)
+            logs=[json.loads(line)['line'] for line in (Path(temp)/'cdc.jsonl').read_text().splitlines()]
+            self.assertIn('Web pair: connecting',logs)
+            self.assertIn('Stream started.',logs)
+
+    def test_boolean_control_ack_uses_wire_enum(self):
+        for command in ('pvol','ca'):
+            for logical,wire in ((0,2),(1,1)):
+                rec=FakeRecorder();port=FakePort(rec,[{'kind':'ack','id':live.IDS[command],'queued':1,'value':wire}])
+                self.assertEqual(live.Link(port,rec).request(f'{command} {logical}')['value'],wire)
+
+    def test_telemetry_requires_all_current_replies(self):
+        ack={'kind':'ack','id':live.IDS['telemetry'],'queued':1,'value':0}
+        rec=FakeRecorder();port=FakePort(rec,[{'kind':k} for k in ('micstats','usbcapture','hidstats')]+[ack])
+        self.assertEqual(live.Link(port,rec).request('telemetry'),ack)
+        port.response=[ack,{'kind':'micstats'},{'kind':'hidstats'}]
+        with self.assertRaises(TimeoutError):live.Link(port,rec).request('telemetry',timeout=.01)
+        port.response=[ack]+[{'kind':k} for k in ('hidstats','usbcapture','micstats')]
+        self.assertEqual(live.Link(port,rec).request('telemetry'),ack)
+
+    def test_cleanup_only_restores_changed_settings(self):
+        original=dict(usbset=33,earpause=0,stem=0,debug=0,gamelevel=2,eldrate=3,usbvol=100,phvol=100,btnmode=2,ldacq=3,lhdcrate=4)
+        self.assertEqual(live.restoration_commands(original,original),[])
+        self.assertEqual(live.restoration_commands(original,{**original,'eldrate':1,'usbset':161}),[('game',0),('eldrate',3)])
+        self.assertEqual(live.restoration_commands(original,{}),[])
+
     def test_failure_still_bundles_results(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
@@ -60,11 +104,14 @@ class Contracts(unittest.TestCase):
         self.assertIsNone(live.parse_control('[mic] packet'))
         with self.assertRaises(ValueError):live.parse_control('[control] broken')
         self.assertEqual(live.parse_control('[control] {"kind":"status"}')['kind'],'status')
+        self.assertIsNone(live.parse_control('other [control] {"kind":"status"}'))
     def test_manifest_gate(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'test.uf2').write_bytes(b'fixture')
             d={'hardware_test_candidate':True,'sha':'a'*40,'firmware':'test.uf2','firmware_sha256':hashlib.sha256(b'fixture').hexdigest()}
             self.assertEqual(live.verify_manifest(root,d),root/'test.uf2')
+            with self.assertRaisesRegex(ValueError,'on hold'):
+                live.verify_manifest(root,{**d,'validation_blockers':['unresolved transport']})
             (root/'test.uf2').write_bytes(b'changed')
             with self.assertRaises(ValueError):live.verify_manifest(root,d)
             d['hardware_test_candidate']=False
@@ -85,10 +132,11 @@ class Contracts(unittest.TestCase):
     def test_counter_wrap_and_failures(self):
         a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0),
            'usbcapture':dict(running=1,pcm_samples=10),
-           'status':dict(streaming=1,codec=4),'eldstatus':dict(transition='ready')}
-        b={**a,'micstats':dict(generation=2,capture=1,decoded=10),
+           'status':dict(streaming=1,codec=4,tx_packets=1),'eldstatus':dict(transition='ready')}
+        b={**a,'status':dict(streaming=1,codec=4,tx_packets=2),'micstats':dict(generation=2,capture=1,decoded=10),
            'usbcapture':dict(running=1,pcm_samples=650)}
         self.assertEqual(live_audio.health(a,b),[])
+        self.assertIn('No playback media packets progressed',live_audio.health(a,{**b,'status':a['status']}))
         b['micstats']['generation']=3;b['usbcapture']['missing_samples']=64
         self.assertGreaterEqual(len(live_audio.health(a,b)),2)
         self.assertTrue(live_audio.health({},{}))

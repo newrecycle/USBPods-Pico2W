@@ -1,0 +1,81 @@
+"""Exercise the pinned SDK's real START/SUSPEND and media-grant preconditions.
+
+This isolates SDK API contracts, not radio interoperability. CI reads its pinned
+SDK checkout; --source-dir supports an offline copy for an investigation.
+"""
+import argparse
+import os
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--source-dir',type=Path)
+args=parser.parse_args()
+directory=args.source_dir or Path(os.environ['PICO_SDK_PATH'])/'lib/btstack/src/classic'
+
+def extract(file,name):
+    path=directory/file
+    if not path.exists():path=directory/('sdk-'+file)
+    source=path.read_text()
+    match=re.search(r'^(?:void|uint8_t) '+name+r'\([^;]*?\)\s*\{',source,re.M)
+    assert match,name
+    start=source.index('{',match.start());end=start+1;depth=1
+    while depth:
+        depth+=(source[end]=='{')-(source[end]=='}');end+=1
+    return source[match.start():end]
+
+fixture=r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#define ERROR_CODE_SUCCESS 0
+#define ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER 2
+#define ERROR_CODE_COMMAND_DISALLOWED 12
+#define AVDTP_STREAM_ENDPOINT_OPENED 1
+#define AVDTP_STREAM_ENDPOINT_STREAMING 2
+#define log_error(...) ((void)0)
+typedef struct {uint8_t initiator_local_seid,initiator_remote_seid;} avdtp_connection_t;
+typedef struct {
+ uint16_t l2cap_media_cid,sequence_number;
+ struct {uint8_t seid;} remote_sep;
+ uint8_t state,start_stream,suspend_stream;
+} avdtp_stream_endpoint_t;
+static avdtp_connection_t connection;
+static avdtp_stream_endpoint_t endpoint;
+static unsigned signals,grants;
+static avdtp_connection_t *avdtp_get_connection_for_avdtp_cid(uint16_t cid){return cid==0x42?&connection:NULL;}
+static avdtp_stream_endpoint_t *avdtp_get_stream_endpoint_for_seid(uint8_t seid){return seid==1?&endpoint:NULL;}
+static bool is_avdtp_remote_seid_registered(avdtp_stream_endpoint_t *ep){return ep->remote_sep.seid!=0;}
+static void avdtp_request_can_send_now_initiator(avdtp_connection_t *c){assert(c==&connection);signals++;}
+static void avdtp_streaming_emit_can_send_media_packet_now(avdtp_stream_endpoint_t *ep,uint16_t seq){assert(ep==&endpoint);(void)seq;grants++;}
+'''
+tests=r'''
+int main(void) {
+ endpoint.l2cap_media_cid=0x80;endpoint.remote_sep.seid=3;endpoint.state=AVDTP_STREAM_ENDPOINT_OPENED;
+ assert(avdtp_start_stream(0x42,1)==0 && signals==1);
+ assert(avdtp_start_stream(0x42,1)==12 && signals==1); // START already pending.
+ // A successful START request is not a media-grant proof.
+ avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint(&endpoint);assert(!grants);
+ assert(avdtp_suspend_stream(0x42,1)==12); // OPENED, not STREAMING.
+ endpoint.start_stream=0;endpoint.state=AVDTP_STREAM_ENDPOINT_STREAMING;
+ avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint(&endpoint);assert(grants==1);
+ assert(avdtp_suspend_stream(0x42,1)==0 && signals==2);
+ assert(avdtp_suspend_stream(0x42,1)==12 && signals==2); // SUSPEND already pending.
+ endpoint.suspend_stream=0;endpoint.remote_sep.seid=0;
+ assert(avdtp_suspend_stream(0x42,1)==12); // Missing remote association.
+ endpoint.l2cap_media_cid=0;assert(avdtp_suspend_stream(0x42,1)==2);
+ assert(avdtp_suspend_stream(0x99,1)==2);
+ assert(avdtp_suspend_stream(0x42,9)==2);
+ puts("Pinned SDK START/SUSPEND and media-grant state contracts passed");
+}
+'''
+with tempfile.TemporaryDirectory() as temp:
+    path=Path(temp)
+    code=fixture+extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
+    code+=extract('avdtp_initiator.c','avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint')+tests
+    (path/'test.c').write_text(code)
+    subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(path/'test.c'),'-o',str(path/'test')],check=True)
+    subprocess.run([str(path/'test')],check=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'})

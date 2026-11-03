@@ -146,6 +146,10 @@ jobs:
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
           python3 tests/test_live_runner.py
+          python3 tests/test_source_boundaries.py
+          python3 tests/test_control_records.py
+          python3 tests/test_settings_timing.py
+          python3 tests/test_sdk_transport_contract.py
           cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread -I src/tinyusb tests/test_usb_hid_threads.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-hid-threads
           timeout 20 /tmp/test-usb-hid-threads
           python3 tests/test_verify_uf2.py

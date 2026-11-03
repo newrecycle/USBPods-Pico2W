@@ -69,6 +69,9 @@ void a2dp_source_on_aap_wake(void);    /* AAP ear/wake: resume a suspended strea
 void a2dp_source_apply_eld_rate(void); /* live ELD bitrate change (web setting) */
 uint16_t a2dp_source_con_handle(void); /* headset ACL handle, 0 = none */
 void a2dp_source_note_send(uint8_t rc);      /* count/report a failed media send */
+void a2dp_source_transport_report(void);    /* CDC snapshot of actual SDK endpoint state */
+uint32_t a2dp_source_tx_packets(void);       /* submitted media packets; not acoustic proof */
+uint32_t a2dp_source_send_failures(void);
 const uint8_t *a2dp_source_peer_addr(void);  /* who is ACTUALLY connected (not the
                                                 dial target from the slot) */
 bool radio_is_absent(void);   /* no CYW43 on this board — no Bluetooth */

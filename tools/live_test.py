@@ -25,6 +25,9 @@ IDS.update(noise=13, pvol=38, ca=40, aa=46, jitter=11)
 QUERIES = {'eldstatus':'eldstatus', 'status':'status', 'info':'info', 'settings':'settings', 'scanlist':'scanlist', 'savedlist':'savedlist'}
 
 def parse_control(line):
+    # The legacy console can leave indentation after a status/prompt. Do not
+    # discard an otherwise complete response (the first hardware pair ACK did).
+    line = line.lstrip(' \t')
     if not line.startswith(PREFIX):
         return None
     obj = json.loads(line[len(PREFIX):])
@@ -39,7 +42,20 @@ def choose_target(items, mac=None, name=None):
         raise ValueError(f'Expected one exact AirPods match; found {len(matches)}. Specify --target-mac or an exact --target-name.')
     return matches[0]
 
+def restoration_commands(original, current):
+    """Avoid side effects from reapplying unchanged preferences after a failure."""
+    if not current:return []
+    commands=[]
+    for name in ('earpause','stem','game','debug','uart','gamelevel','eldrate','usbvol','phvol','btnmode','ldacq','lhdcrate'):
+        def value(settings):
+            if name in ('game','uart'):return int(bool(settings['usbset'] & (128 if name=='game' else 64)))
+            return settings[name]
+        if value(original)!=value(current):commands.append((name,value(original)))
+    return commands
+
 def verify_manifest(root, manifest):
+    if manifest.get('validation_blockers'):
+        raise ValueError('Hardware validation is on hold: '+'; '.join(manifest['validation_blockers']))
     if manifest.get('hardware_test_candidate') is not True or not re.fullmatch(r'[a-f0-9]{40}',manifest.get('sha','')):
         raise ValueError('Missing verified hardware-test candidate manifest')
     root=root.resolve()
@@ -119,15 +135,25 @@ class Link:
         self.port.write((':'+command+'\n').encode('ascii'));self.port.flush()
         deadline=time.monotonic()+timeout
         kind=QUERIES.get(name,'ack')
+        expected_value = int(command.split()[1]) if len(command.split())==2 else 0
+        if name in ('pvol','ca'):
+            expected_value = 1 if expected_value else 2  # Firmware ACK uses wire enum.
+        pending = {'micstats','usbcapture','hidstats'} if name=='telemetry' else set()
+        ack = None
         while time.monotonic()<deadline:
             try:obj=self.recorder.events.get(timeout=min(.25,max(.01,deadline-time.monotonic())))
             except queue.Empty:continue
             if obj.get('kind')=='error':raise RuntimeError(str(obj))
+            pending.discard(obj.get('kind'))
+            if ack is not None and not pending:return ack
             if obj.get('kind')!=kind:continue
             if kind=='ack' and obj.get('id')!=IDS[name]:continue
-            if kind=='ack' and len(command.split())==2 and obj.get('value')!=int(command.split()[1]):continue
+            if kind=='ack' and obj.get('value')!=expected_value:continue
             self.recorder.log('commands.jsonl',{'received':obj})
             if kind=='ack' and obj.get('queued')!=1:raise RuntimeError(f'Command rejected: {command}: {obj}')
+            if pending:
+                ack=obj
+                continue
             return obj
         raise TimeoutError('No matching response to '+command)
     def wait(self, predicate, timeout=45):
@@ -173,7 +199,7 @@ def collect_hid(recorder, cdc):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest',type=Path,default=Path(__file__).with_name('candidate.json'))
-    parser.add_argument('--cdc');parser.add_argument('--uart')
+    parser.add_argument('--cdc');parser.add_argument('--uart',help='Optional external UART adapter; all application diagnostics use USB CDC by default')
     target=parser.add_mutually_exclusive_group()
     target.add_argument('--target-name');target.add_argument('--target-mac')
     parser.add_argument('--input-device',type=int);parser.add_argument('--output-device',type=int)
@@ -221,12 +247,12 @@ def main():
             if reboot:link.request('reboot')
             raise RuntimeError('Saved UAC2/manual/48k mode. Replug the Pico and rerun; no AirPods pairing was attempted.')
         if info['mic_decode'] and not link.request('status').get('decoder_ready'):raise RuntimeError('Microphone decoder allocation failed; do not proceed with pairing')
-        uart=args.uart or prompt('Connect the 3.3 V UART adapter (Pico GP0 -> adapter RX, GND -> GND). Enter its COM port, or Enter to record UART as missing:')
+        result('diagnostic_transport','PASS',{'transport':'usb-cdc','port':cdc.device,'log':'cdc.jsonl','includes':'application, AACP, codec, USB and firmware HID submission logs'})
+        uart=args.uart
         if uart:
             if uart==cdc.device:raise ValueError('UART adapter and CDC must be different ports')
             u=serial.Serial(uart,115200,timeout=.1,write_timeout=1);recorder.handles.append(u);recorder.serial_reader(u,'uart.jsonl')
             link.request('uart 1');result('uart_connection','PASS',uart)
-        else:result('uart_connection','SKIP','No physical UART adapter selected')
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
         except Exception as e:result('hid_connection','SKIP',str(e))
         prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
@@ -242,8 +268,10 @@ def main():
             chosen=selected[0]
         summary['target']=chosen
         link.request('pair '+str(chosen['index']))
-        state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),60)
-        result('targeted_pairing','PASS',state)
+        state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
+        result('targeted_connection','PASS',state)
+        state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
+        result('aacp_handshake','PASS',state)
         link.request('earpause 0');link.request('stem 0')
         if state.get('relay_connected'):
             link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
@@ -294,10 +322,21 @@ def main():
             if recorder.bytes.get('uart.jsonl',0)==0:result('uart_connection','FAIL','Port opened, but no UART data was observed')
     except (Exception,KeyboardInterrupt) as e:
         result('run','FAIL',str(e));(root/'exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
+        # Preserve the failure state before cleanup can rebuild or reconnect.
+        if link:
+            diagnostics={}
+            for command in ('status','eldstatus','telemetry','savedlist'):
+                try:diagnostics[command]=link.request(command,timeout=2)
+                except Exception as error:diagnostics[command]={'error':str(error)}
+            diagnostics['observed']=recorder.control_snapshot()
+            (root/'failure-state.json').write_text(json.dumps(diagnostics,indent=2),encoding='utf-8')
     finally:
         if link and original:
             restore=[]
-            for command,value in [('earpause',original['earpause']),('stem',original['stem']),('game',bool(original['usbset']&128)),('debug',original['debug']),('uart',bool(original['usbset']&64)),('gamelevel',original['gamelevel']),('eldrate',original['eldrate']),('usbvol',original['usbvol']),('phvol',original['phvol']),('btnmode',original['btnmode']),('ldacq',original['ldacq']),('lhdcrate',original['lhdcrate'])]:
+            try:current=link.request('settings',timeout=2)
+            except Exception as e:
+                current={};restore.append({'command':'settings-before-restore','error':str(e)})
+            for command,value in restoration_commands(original,current):
                 try:link.request(f'{command} {int(value)}',timeout=2)
                 except Exception as e:restore.append({'command':command,'error':str(e)})
             summary['restore_errors']=restore

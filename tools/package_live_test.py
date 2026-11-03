@@ -23,6 +23,8 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     for name in ('live_test.py','live_audio.py','Run-Test.ps1','live-requirements.txt'):
         shutil.copy2(root/'tools'/name,out/name)
     shutil.copy2(root/'docs/LIVE-TEST.md',out/'LIVE-TEST.md')
+    validation=json.loads((root/'docs/validation-status.json').read_text())
+    shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)
     shutil.copy2(evidence/'verification.json',out/'verification.json')
     shutil.copy2(evidence/'firmware.json',out/'radio-firmware.json')
@@ -32,7 +34,7 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     shutil.copy2(root/'LICENSE-EXCEPTIONS.md',out/'LICENSE-EXCEPTIONS.md')
     shutil.copy2(root/'src/btstack/LICENSE.txt',out/'BTSTACK-LICENSE.txt')
     shutil.copy2(root/'3rd-party/ldacBT/LICENSE',out/'LDAC-LICENSE.txt')
-    data={'schema':1,'hardware_test_candidate':True,'hardware_tested':False,'sha':source_sha,'ci_run_id':int(run_id),
+    data={'schema':1,'hardware_test_candidate':validation['live_test_authorized'],'validation_blockers':validation['blockers'],'hardware_tested':False,'sha':source_sha,'ci_run_id':int(run_id),
           'source_url':'https://github.com/newrecycle/USBPods-Pico2W/tree/'+source_sha,
           'firmware':firmware.name,'firmware_sha256':actual,'mic_decode':'AACELD_Mic' in stem,'board':'pico2_w','protocol':2,
           'runner_files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file() and p.suffix!='.uf2'}}

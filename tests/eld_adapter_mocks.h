@@ -90,3 +90,5 @@ static void src_eld_execute(unsigned);
 static uint8_t src_start_stream(uint16_t,uint8_t);
 static void src_stream_start_accepted(void);
 void a2dp_source_apply_eld_rate(void);
+
+static void a2dp_source_transport_report(void) {}

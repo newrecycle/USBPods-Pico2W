@@ -101,17 +101,28 @@ bool bt_pair_to(uint8_t i){
     s_pairing = false;
     memcpy(device_addr, s_found[i].addr, 6);
     s_found_n = 0;   /* consumed: the web scan list clears on connect */
+    /* Reusing a known headset must keep its existing favorite, rather than
+       filling the other favorite with a duplicate of the same MAC. */
+    uint8_t currect_slot = read_uint8_last_flash();
+    bool reused=false;
+    uint8_t existing[6];
+    read_slot1_mac(existing);
+    if (!memcmp(existing,device_addr,6)) {currect_slot=1;reused=true;}
+    else {
+        read_slot2_mac(existing);
+        if (!memcmp(existing,device_addr,6)) {currect_slot=2;reused=true;}
+    }
     /* Prefer an EMPTY slot: pairing a second headset must not silently eat
        the first (HW-reported: Bose replaced the AirPods, "web page only has
        one"). Only when both slots are taken does pairing replace the
        current slot. */
-    uint8_t currect_slot = read_uint8_last_flash();
     uint8_t other_slot = (currect_slot == 0x1) ? 0x2 : 0x1;
-    if (slot_mac_valid(currect_slot) && !slot_mac_valid(other_slot)) {
+    if (!reused && slot_mac_valid(currect_slot) && !slot_mac_valid(other_slot)) {
         currect_slot = other_slot;
         write_uint8_last_flash(currect_slot);   /* new device becomes default */
         printf("Web pair: slot %u is free — pairing there\n", currect_slot);
     }
+    write_uint8_last_flash(currect_slot);
     printf("Web pair: connecting to %s (%s) into slot %u\n",
            bd_addr_to_str(device_addr), s_found[i].name, currect_slot);
     slot_replace_purge(currect_slot, device_addr);
@@ -529,8 +540,7 @@ void get_link_keys(void){
 
     if (gap_link_key_iterator_get_next(&it, addr, link_key, &type)){
         addr_str = bd_addr_to_str(addr);
-        printf("%s - type %u, key: ", addr_str, (int) type);
-        printf_hexdump(link_key, 16);
+        printf("%s - stored key type %u\n", addr_str, (int) type);
         strncpy(device_addr_string, addr_str, sizeof(device_addr_string) - 1);
         sscanf_bd_addr(device_addr_string, device_addr_list[0]);
     }
@@ -539,8 +549,7 @@ void get_link_keys(void){
 
     if (gap_link_key_iterator_get_next(&it, addr, link_key, &type)){
         addr_str = bd_addr_to_str(addr);
-        printf("%s - type %u, key: ", addr_str, (int) type);
-        printf_hexdump(link_key, 16);
+        printf("%s - stored key type %u\n", addr_str, (int) type);
         strncpy(device_addr_string, addr_str, sizeof(device_addr_string) - 1);
         sscanf_bd_addr(device_addr_string, device_addr_list[1]);
     }
@@ -548,8 +557,7 @@ void get_link_keys(void){
     /* ...and the REST (the old dump stopped at two — made the TLV look like
        it lost keys for anything beyond the first pair of devices). */
     while (gap_link_key_iterator_get_next(&it, addr, link_key, &type)){
-        printf("%s - type %u, key: ", bd_addr_to_str(addr), (int) type);
-        printf_hexdump(link_key, 16);
+        printf("%s - stored key type %u\n", bd_addr_to_str(addr), (int) type);
     }
 
     printf(".\n");
@@ -563,7 +571,7 @@ void get_link_keys(void){
         led_set_mode(LED_CONN_SLOT1);
         bd_addr_t  addr_flash_slot1;
         read_slot1_mac(addr_flash_slot1);
-        printf("cur slot1 flash addr is %s\n ", bd_addr_to_str(addr_flash_slot1));
+        printf("cur slot1 flash addr is %s\n", bd_addr_to_str(addr_flash_slot1));
         memcpy(device_addr, addr_flash_slot1, sizeof(bd_addr_t)); 
     }
 
@@ -572,7 +580,7 @@ void get_link_keys(void){
         led_set_mode(LED_CONN_SLOT2);
         bd_addr_t  addr_flash_slot2;
         read_slot2_mac(addr_flash_slot2);
-        printf("cur slot2 flash addr is %s\n ", bd_addr_to_str(addr_flash_slot2));
+        printf("cur slot2 flash addr is %s\n", bd_addr_to_str(addr_flash_slot2));
         memcpy(device_addr, addr_flash_slot2, sizeof(bd_addr_t)); 
     }
     

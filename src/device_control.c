@@ -48,55 +48,62 @@ static void audio_telemetry(void) {
  usb_capture_snapshot_t u=usb_capture_snapshot();
  usb_hid_media_snapshot_t h=usb_hid_media_snapshot();
 #define U(v) (unsigned long)(v)
- printf("[control] {\"kind\":\"micstats\",\"generation\":%lu,\"capture\":%lu,\"decoder_ready\":%lu,\"au\":%lu,\"intervals\":%lu,\"bursts\":%lu,\"cadence7500\":%lu,\"cadence10000\":%lu,\"arrival_gaps\":%lu,\"timestamp\":%lu,\"timestamp_step\":%lu,\"timestamp_gap_candidates\":%lu,\"timestamp_duplicates\":%lu,\"timestamp_backwards\":%lu,\"au_depth\":%lu,\"au_high\":%lu,\"au_drop\":%lu,\"au_stale\":%lu,\"pcm_depth\":%lu,\"pcm_high\":%lu,\"pcm_drop\":%lu,\"pcm_stale\":%lu,\"decoded\":%lu,\"errors\":%lu,\"decode_max_us\":%lu,\"decoded_rate\":%lu,\"decoded_frame_samples\":%lu}\n",
+ printf("\n[control] {\"kind\":\"micstats\",\"generation\":%lu,\"capture\":%lu,\"decoder_ready\":%lu,\"au\":%lu,\"intervals\":%lu,\"bursts\":%lu,\"cadence7500\":%lu,\"cadence10000\":%lu,\"arrival_gaps\":%lu,\"timestamp\":%lu,\"timestamp_step\":%lu,\"timestamp_gap_candidates\":%lu,\"timestamp_duplicates\":%lu,\"timestamp_backwards\":%lu,\"au_depth\":%lu,\"au_high\":%lu,\"au_drop\":%lu,\"au_stale\":%lu,\"pcm_depth\":%lu,\"pcm_high\":%lu,\"pcm_drop\":%lu,\"pcm_stale\":%lu,\"decoded\":%lu,\"errors\":%lu,\"decode_max_us\":%lu,\"decoded_rate\":%lu,\"decoded_frame_samples\":%lu}\n",
  U(m.generation),U(m.capture),U(m.decoder_ready),U(m.au_observed),U(m.arrival_intervals),U(m.arrival_bursts),U(m.arrival_7500us),U(m.arrival_10000us),U(m.arrival_gaps),U(m.timestamp_last),U(m.timestamp_step_reference),U(m.timestamp_gap_candidates),U(m.timestamp_duplicates),U(m.timestamp_backwards),U(m.au_depth),U(m.au_high_water),U(m.au_overflows),U(m.au_stale),U(m.pcm_depth),U(m.pcm_high_water),U(m.pcm_overflows),U(m.pcm_stale),U(m.decoded),U(m.decode_errors),U(m.decode_max_us),U(m.decoded_rate),U(m.decoded_frame_samples));
- printf("[control] {\"kind\":\"usbcapture\",\"mounted\":%u,\"suspended\":%u,\"alt\":%u,\"running\":%u,\"packets\":%lu,\"pcm_samples\":%lu,\"underruns\":%lu,\"missing_samples\":%lu,\"short_writes\":%lu}\n",
+ printf("\n[control] {\"kind\":\"usbcapture\",\"mounted\":%u,\"suspended\":%u,\"alt\":%u,\"running\":%u,\"packets\":%lu,\"pcm_samples\":%lu,\"underruns\":%lu,\"missing_samples\":%lu,\"short_writes\":%lu}\n",
  (unsigned)u.mounted,(unsigned)u.suspended,(unsigned)u.alt_active,(unsigned)u.capture_running,U(u.usb_packets),U(u.pcm_samples),U(u.underrun_packets),U(u.missing_samples),U(u.short_writes));
- printf("[control] {\"kind\":\"hidstats\",\"active\":%u,\"release_pending\":%u,\"depth\":%lu,\"high\":%lu,\"accepted\":%lu,\"full\":%lu,\"inactive\":%lu,\"stale\":%lu,\"presses\":%lu,\"releases\":%lu,\"busy\":%lu,\"failures\":%lu}\n",
+ printf("\n[control] {\"kind\":\"hidstats\",\"active\":%u,\"release_pending\":%u,\"depth\":%lu,\"high\":%lu,\"accepted\":%lu,\"full\":%lu,\"inactive\":%lu,\"stale\":%lu,\"presses\":%lu,\"releases\":%lu,\"busy\":%lu,\"failures\":%lu}\n",
  (unsigned)h.active,(unsigned)h.release_pending,U(h.queue_depth),U(h.high_water),U(h.accepted),U(h.dropped_full),U(h.dropped_inactive),U(h.stale),U(h.presses_sent),U(h.releases_sent),U(h.busy_ticks),U(h.send_failures));
 #undef U
 }
-static void quoted(const char *s,size_t n) {
- putchar('"');for(size_t i=0;i<n&&s[i];i++) {
+static void quoted(char out[51],const char *s) {
+ char *p=out;*p++='"';for(size_t i=0;i<24&&s[i];i++) {
    unsigned char c=(unsigned char)s[i];
-   if(c=='"'||c=='\\')putchar('\\');putchar(c<32?'_':c);
- }putchar('"');
+   if(c=='"'||c=='\\')*p++='\\';*p++=c<32?'_':c;
+ }*p++='"';*p=0;
 }
 static void status(void) {
  uint8_t b[3];aap_get_battery(b);const uint8_t *peer=a2dp_source_peer_addr();
- printf("[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"peer\":\"%s\"}\n",
- aap_channel_open(),aap_protocol_seen(),get_a2dp_connected_flag(),check_is_streaming(),get_cur_codec(),
+ printf("\n[control] {\"kind\":\"status\",\"version\":2,\"channel\":%u,\"confirmed\":%u,\"connected\":%u,\"streaming\":%u,\"tx_packets\":%lu,\"send_failures\":%lu,\"codec\":%u,\"noise\":%u,\"pvol\":%d,\"ca\":%d,\"aa\":%d,\"battery\":[%u,%u,%u],\"capture\":%u,\"decoder_ready\":%u,\"relay_connected\":%u,\"relay_streaming\":%u,\"peer\":\"%s\"}\n",
+ aap_channel_open(),aap_protocol_seen(),get_a2dp_connected_flag(),check_is_streaming(),(unsigned long)a2dp_source_tx_packets(),(unsigned long)a2dp_source_send_failures(),get_cur_codec(),
  aap_get_noise_mode(),aap_get_pvol(),aap_get_ca(),aap_get_aa(),b[0],b[1],b[2],
  aacp_mic_capture(),aacp_mic_audio_ready(),bt_sink_relay_connected(),bt_sink_relay_streaming(),
  peer?bd_addr_to_str((uint8_t*)peer):"");
 }
 static void list(bool scan) {
- printf("[control] {\"kind\":\"%s\",\"items\":[",scan?"scanlist":"savedlist");
+ /* Format one record before emitting it: background logs must not split
+    the many putchar/printf calls of the old JSON serializer. */
+ char line[3072];
+ int used=snprintf(line,sizeof line,"{\"kind\":\"%s\",\"items\":[",scan?"scanlist":"savedlist");
  unsigned count=scan?bt_scan_count():SETTINGS_SAVED_LIMIT;
  for(unsigned i=0;i<count;i++) {
    uint8_t mac[6];char name[24];int8_t rssi=0;
    if(scan){if(!bt_scan_get(i,mac,&rssi,name))break;}
    else{memcpy(mac,settings()->saved[i].mac,6);memcpy(name,settings()->saved[i].name,24);}
-   if(i)putchar(',');printf("{\"index\":%u,\"mac\":\"%s\",\"rssi\":%d,\"name\":",i,bd_addr_to_str(mac),rssi);
-   quoted(name,24);putchar('}');
+   char escaped[51];quoted(escaped,name);
+   int n=snprintf(line+used,sizeof line-(size_t)used,"%s{\"index\":%u,\"mac\":\"%s\",\"rssi\":%d,\"name\":%s}",i?",":"",i,bd_addr_to_str(mac),rssi,escaped);
+   if(n<0 || (size_t)n>=sizeof line-(size_t)used) {
+     printf("\n[control] {\"kind\":\"error\",\"error\":\"list-overflow\"}\n");return;
+   }
+   used+=n;
  }
- printf("]}\n");
+ printf("\n[control] %s]}\n",line);
 }
 static bool dispatch(control_command c) {
  user_settings_t*s=settings();uint8_t v=c.value;
  switch(c.id) {
  case CONTROL_INFO:
-   printf("[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1}\n",USBPODS_BUILD_SHA,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active());return true;
+   printf("\n[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1}\n",USBPODS_BUILD_SHA,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active());return true;
  case CONTROL_ELDSTATUS: {
    eld_runtime_status state;a2dp_source_eld_status(&state);
    struct mallinfo heap=mallinfo();
-   printf("[control] {\"kind\":\"eldstatus\",\"selected_rate\":%u,\"game\":%u,\"gamelevel\":%u,\"ready\":%u,\"pending\":%u,\"desired_bitrate\":%lu,\"active_bitrate\":%lu,\"active_vbr\":%u,\"active_sbr\":%u,\"active_slots\":%u,\"input_rate\":%u,\"failures\":%lu,\"rebuilds\":%lu,\"heap_region\":%lu,\"heap_inuse\":%lu,\"heap_free_arena\":%lu,\"transition\":\"%s\",\"requested_revision\":%lu,\"built_revision\":%lu,\"error_stage\":%u,\"last_error\":%lu,\"max_rebuild_us\":%lu}\n",
+   printf("\n[control] {\"kind\":\"eldstatus\",\"selected_rate\":%u,\"game\":%u,\"gamelevel\":%u,\"ready\":%u,\"pending\":%u,\"desired_bitrate\":%lu,\"active_bitrate\":%lu,\"active_vbr\":%u,\"active_sbr\":%u,\"active_slots\":%u,\"input_rate\":%u,\"failures\":%lu,\"rebuilds\":%lu,\"heap_region\":%lu,\"heap_inuse\":%lu,\"heap_free_arena\":%lu,\"transition\":\"%s\",\"requested_revision\":%lu,\"built_revision\":%lu,\"error_stage\":%u,\"last_error\":%lu,\"max_rebuild_us\":%lu}\n",
       s->eld_rate?s->eld_rate:2,aap_get_game(),s->game_level?s->game_level:1,state.ready,state.pending,
       (unsigned long)state.desired.bitrate,(unsigned long)state.active.bitrate,state.active.vbr,state.active.sbr,state.active.slots,state.active.input_rate,
       (unsigned long)state.failures,(unsigned long)state.rebuilds,(unsigned long)((uintptr_t)__HeapLimit-(uintptr_t)end),(unsigned long)heap.uordblks,(unsigned long)heap.fordblks,eld_transition_phase_name(state.phase),(unsigned long)state.requested_revision,(unsigned long)state.built_revision,state.error_stage,(unsigned long)state.last_error,(unsigned long)state.max_rebuild_us);return true;
  }
  case CONTROL_SETTINGS:
-   printf("[control] {\"kind\":\"settings\",\"usbset\":%u,\"slot\":%u,\"connmode\":%u,\"usbvol\":%u,\"phvol\":%u,\"gamelevel\":%u,\"eldrate\":%u,\"earpause\":%u,\"stem\":%u,\"debug\":%u,\"btnmode\":%u,\"ldacq\":%u,\"lhdcrate\":%u}\n",s->usbset,read_uint8_last_flash(),s->connmode,s->usb_vol_p1?s->usb_vol_p1-1:100,s->relay_vol_p1?s->relay_vol_p1-1:100,s->game_level?s->game_level:1,s->eld_rate?s->eld_rate:2,s->ear_pause,s->stem_hid,s->dbg_mode,s->btn_mode?s->btn_mode:1,s->ldac_quality?s->ldac_quality:2,s->lhdc_rate?s->lhdc_rate:2);return true;
+   printf("\n[control] {\"kind\":\"settings\",\"usbset\":%u,\"slot\":%u,\"connmode\":%u,\"usbvol\":%u,\"phvol\":%u,\"gamelevel\":%u,\"eldrate\":%u,\"earpause\":%u,\"stem\":%u,\"debug\":%u,\"btnmode\":%u,\"ldacq\":%u,\"lhdcrate\":%u}\n",s->usbset,read_uint8_last_flash(),s->connmode,s->usb_vol_p1?s->usb_vol_p1-1:100,s->relay_vol_p1?s->relay_vol_p1-1:100,s->game_level?s->game_level:1,s->eld_rate?s->eld_rate:2,s->ear_pause,s->stem_hid,s->dbg_mode,s->btn_mode?s->btn_mode:1,s->ldac_quality?s->ldac_quality:2,s->lhdc_rate?s->lhdc_rate:2);return true;
  case CONTROL_SCAN:bt_scan_start_list();return true;
  case CONTROL_SCANSTOP:gap_inquiry_stop();return true;
  case CONTROL_SCANLIST:list(true);return true;
@@ -128,7 +135,7 @@ static bool dispatch(control_command c) {
    uint8_t bit=c.id==CONTROL_UART?USBSET_UART:c.id==CONTROL_UAC1?USBSET_UAC1:c.id==CONTROL_RATE44?USBSET_RATE44:c.id==CONTROL_BOOTCONN?USBSET_BOOTCONN:c.id==CONTROL_PAUSEDC?USBSET_PAUSEDC:USBSET_SWVOL;
    if(v)s->usbset|=bit;else s->usbset&=(uint8_t)~bit;break;
  }
- case CONTROL_TELEMETRY:audio_telemetry();aacp_mic_audio_report();bt_sink_relay_dump();usb_serial_diagnostics();return true;
+ case CONTROL_TELEMETRY:audio_telemetry();a2dp_source_transport_report();aacp_mic_audio_report();bt_sink_relay_dump();usb_serial_diagnostics();return true;
  case CONTROL_REBOOT:atomic_store(&reboot_requested,true);return true;
  default:return aacp_control_submit(c.id,v);
  }
@@ -137,13 +144,13 @@ static bool dispatch(control_command c) {
 bool device_control_character(char c) {
  control_command cmd;enum control_result r=control_input_feed(&input,c,&cmd);
  if(r==CONTROL_BYPASS)return false;if(r==CONTROL_WAIT)return true;
- if(r==CONTROL_INVALID){printf("[control] {\"kind\":\"error\",\"error\":\"invalid-command\"}\n");return true;}
- if(radio_is_absent()){printf("[control] {\"kind\":\"error\",\"error\":\"no-radio\"}\n");return true;}
+ if(r==CONTROL_INVALID){printf("\n[control] {\"kind\":\"error\",\"error\":\"invalid-command\"}\n");return true;}
+ if(radio_is_absent()){printf("\n[control] {\"kind\":\"error\",\"error\":\"no-radio\"}\n");return true;}
  async_context_acquire_lock_blocking(cyw43_arch_async_context());
  if(cmd.status)status();else{
    bool ok=dispatch(cmd);
    if(cmd.id!=CONTROL_ELDSTATUS&&cmd.id!=CONTROL_INFO&&cmd.id!=CONTROL_SETTINGS&&cmd.id!=CONTROL_SCANLIST&&cmd.id!=CONTROL_SAVEDLIST)
-     printf("[control] {\"kind\":\"ack\",\"queued\":%u,\"id\":%u,\"value\":%u,\"reboot_required\":%u}\n",ok,cmd.id,cmd.value,cmd.id==CONTROL_UAC1||cmd.id==CONTROL_RATE44);
+     printf("\n[control] {\"kind\":\"ack\",\"queued\":%u,\"id\":%u,\"value\":%u,\"reboot_required\":%u}\n",ok,cmd.id,cmd.value,cmd.id==CONTROL_UAC1||cmd.id==CONTROL_RATE44);
  }
  async_context_release_lock(cyw43_arch_async_context());return true;
 }
@@ -152,6 +159,6 @@ void device_control_task(void) {
  uint32_t now=to_ms_since_boot(get_absolute_time());
  if(!reboot_at){reboot_at=now+500;return;}
  if((int32_t)(now-reboot_at)<0)return;
- if(!settings_flush()){printf("[control] {\"kind\":\"error\",\"error\":\"settings-flush\"}\n");atomic_store(&reboot_requested,false);reboot_at=0;return;}
+ if(!settings_flush()){printf("\n[control] {\"kind\":\"error\",\"error\":\"settings-flush\"}\n");atomic_store(&reboot_requested,false);reboot_at=0;return;}
  watchdog_reboot(0,0,0);
 }

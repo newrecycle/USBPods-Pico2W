@@ -7,6 +7,7 @@
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include "pico/platform.h"
+#include "pico/time.h"
 
 #include "settings.h"
 
@@ -41,7 +42,7 @@ static uint32_t s_seq;                /* seq of the loaded/last-written snapshot
 static int      s_sector;             /* active sector index (0/1) */
 static int      s_page;               /* next free page in the active sector */
 static volatile bool s_dirty;
-static volatile uint32_t s_dirty_ms;  /* debounce clock, advanced by tick */
+static volatile uint32_t s_dirty_ms;  /* time of last change/retry, in real ms */
 
 static const uint8_t *flash_ptr(uint32_t off) {
     return (const uint8_t *)(XIP_BASE + off);
@@ -233,7 +234,7 @@ void settings_init(void) {
         s_sector = 0;
         s_page = PAGES_PER_SEC;        /* force erase of sector 0 on first commit */
         s_dirty = true;                /* persist the migrated snapshot soon */
-        s_dirty_ms = 1000;             /* no debounce wait for the first save */
+        s_dirty_ms = to_ms_since_boot(get_absolute_time())-1000u;
         return;
     }
 
@@ -260,15 +261,17 @@ user_settings_t *settings(void) { return &s_cur; }
 
 void settings_mark_dirty(void) {
     s_dirty = true;
-    s_dirty_ms = 0;
+    s_dirty_ms = to_ms_since_boot(get_absolute_time());
 }
 
 static bool s_retrying;               /* commit failed: back off to 1 s */
 
 void settings_tick(void) {
     if (!s_dirty) return;
-    s_dirty_ms += 50;                  /* called on the 50 ms main-loop cadence */
-    if (s_dirty_ms < (s_retrying ? 1000u : 200u)) return;
+    uint32_t now=to_ms_since_boot(get_absolute_time());
+    /* The microphone loop runs every 2 ms, relay every 10 ms, idle every
+       50 ms. Counting calls as 50 ms caused flash writes after only 8 ms. */
+    if (now-s_dirty_ms < (s_retrying ? 1000u : 200u)) return;
     s_dirty = false;
     if (commit_snapshot()) {
         s_retrying = false;
@@ -277,7 +280,7 @@ void settings_tick(void) {
            lost every list change) — keep retrying, loudly, with backoff. */
         s_retrying = true;
         s_dirty = true;
-        s_dirty_ms = 0;
+        s_dirty_ms = to_ms_since_boot(get_absolute_time());
     }
 }
 
@@ -293,7 +296,10 @@ void settings_debug_dump(void) {
 bool settings_flush(void) {
     if (!s_dirty) return true;
     s_dirty = false;
-    return commit_snapshot();
+    if(commit_snapshot()){s_retrying=false;return true;}
+    s_dirty=true;s_retrying=true;
+    s_dirty_ms=to_ms_since_boot(get_absolute_time());
+    return false;
 }
 
 /* ---- saved-device list ----------------------------------------------------- */

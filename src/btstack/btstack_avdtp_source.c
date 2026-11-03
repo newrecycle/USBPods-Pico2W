@@ -51,6 +51,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "btstack.h"
+#include "classic/avdtp_util.h"  /* pinned SDK endpoint state diagnostics */
 #include "btstack_avdtp_source.h"
 #include "../tinyusb/uac.h"
 #include "btstack_aap.h"
@@ -1544,6 +1545,7 @@ static void src_eld_arm_timer(void) {
 }
 static void src_eld_abort(uint8_t stage,uint32_t rc) {
     if(!(eld_transition_failed(&src_eld_change)&ELD_DROP))return;
+    a2dp_source_transport_report(); /* Snapshot before teardown destroys evidence. */
     src_eld_failures++;src_eld_error_stage=stage;src_eld_last_error=rc;
     src_eld_cancel_timer();btstack_run_loop_remove_timer(&src_jitter_timer);
     src_pending_jitter=0;src_eld_reset_pending=false;
@@ -2757,6 +2759,7 @@ static void src_stream_start_accepted(void) {
         if(!(actions&ELD_RUN)){src_eld_execute(actions);return;}
         src_eld_cancel_timer();
     }
+    a2dp_source_transport_report();
     printf("Stream started.\n");
     src_started_ms = btstack_run_loop_get_time_ms();
     if (cur_codec == 4) src_prime_pending = true;   /* start prime */
@@ -2820,6 +2823,34 @@ static int find_remote_seid(uint8_t remote_seid){
     return -1;
 }
 
+static bool source_add_sep(avdtp_sep_t sep) {
+    if(find_remote_seid(sep.seid)>=0)return false;
+    if(num_remote_seps>=AVDTP_MAX_SEP_NUM) {
+        printf("[avdtp] remote SEP limit reached; ignoring seid %u\n",sep.seid);
+        return false;
+    }
+    remote_seps[num_remote_seps++].sep=sep;
+    return true;
+}
+static int source_cache_capability(uint8_t remote_seid,const uint8_t *packet,uint16_t size) {
+    int index=find_remote_seid(remote_seid);
+    if(index<0 || size>sizeof(remote_seps[0].media_codec_event)) {
+        printf("[avdtp] ignoring unknown/oversized capability seid=%u size=%u\n",remote_seid,size);
+        return -1;
+    }
+    memcpy(remote_seps[index].media_codec_event,packet,size);
+    return index;
+}
+
+void a2dp_source_transport_report(void) {
+    avdtp_stream_endpoint_t *ep=avdtp_get_stream_endpoint_for_seid(media_tracker.local_seid);
+    printf("[avdtp] cid=%u seid=%u remote=%u media=%u state=%u endpoint_remote=%u start=%u suspend=%u grant=%u tx=%lu send_fail=%lu last_rc=%u\n",
+        media_tracker.avdtp_cid,media_tracker.local_seid,media_tracker.remote_seid,
+        ep?ep->l2cap_media_cid:0,ep?(unsigned)ep->state:0,ep?ep->remote_sep.seid:0,
+        ep?ep->start_stream:0,ep?ep->suspend_stream:0,ep?ep->request_can_send_now:0,
+        (unsigned long)src_tx_pkts,(unsigned long)src_send_fails,src_send_fail_rc);
+}
+
 
 
 #ifdef HAVE_AAC_FDK
@@ -2836,6 +2867,7 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
 }
 static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
     if (packet_type != HCI_EVENT_PACKET) return;
+    if (size<5 || (uint16_t)packet[1]+2u!=size) return;
     if (hci_event_packet_get_type(packet) != HCI_EVENT_AVDTP_META) return;
     UNUSED(channel);
     UNUSED(size);
@@ -3033,12 +3065,16 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             sep.type = avdtp_subevent_signaling_sep_found_get_sep_type(packet);
             PLOG("Found sep: seid %u, in_use %d, media type %d, sep type %d (1-SNK)\n", sep.seid, sep.in_use, sep.media_type, sep.type);
             if (sep.type == AVDTP_SINK) {
-                remote_seps[num_remote_seps].sep = sep;
-                num_remote_seps++;
+                (void)source_add_sep(sep);
             }
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_SEP_DICOVERY_DONE:
+            if(!num_remote_seps) {
+                printf("[avdtp] no usable sink endpoints; disconnecting\n");
+                if(src_con_handle)gap_disconnect(src_con_handle);
+                break;
+            }
             // select remote if there's only a single remote
             if (num_remote_seps == 1){
                 media_tracker.remote_seid = remote_seps[0].sep.seid;
@@ -3111,9 +3147,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_SBC_CAPABILITY:
             // cache
             remote_seid = avdtp_subevent_signaling_media_codec_sbc_capability_get_remote_seid(packet);
-            local_remote_seid_index = find_remote_seid(remote_seid);
-            btstack_assert(local_remote_seid_index >= 0);
-            (void) memcpy(remote_seps[local_remote_seid_index].media_codec_event, packet, size);
+            local_remote_seid_index = source_cache_capability(remote_seid,packet,size);
+            if(local_remote_seid_index<0)break;
             remote_seps[local_remote_seid_index].sep.capabilities.media_codec.media_codec_type = AVDTP_CODEC_SBC;
             remote_seps[local_remote_seid_index].have_media_codec_apabilities = true;
             codec_sbc_on_capability(packet);
@@ -3122,9 +3157,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_MPEG_AUDIO_CAPABILITY:
             // cache
             remote_seid = avdtp_subevent_signaling_media_codec_sbc_capability_get_remote_seid(packet);
-            local_remote_seid_index = find_remote_seid(remote_seid);
-            btstack_assert(local_remote_seid_index >= 0);
-            (void) memcpy(remote_seps[local_remote_seid_index].media_codec_event, packet, size);
+            local_remote_seid_index = source_cache_capability(remote_seid,packet,size);
+            if(local_remote_seid_index<0)break;
             remote_seps[local_remote_seid_index].sep.capabilities.media_codec.media_codec_type = AVDTP_CODEC_MPEG_1_2_AUDIO;
             remote_seps[local_remote_seid_index].have_media_codec_apabilities = true;
             PLOG("CAPABILITY - MEDIA_CODEC: MPEG AUDIO, remote seid %u: \n", remote_seid);
@@ -3134,9 +3168,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_MPEG_AAC_CAPABILITY: {
             // cache
             remote_seid = avdtp_subevent_signaling_media_codec_sbc_capability_get_remote_seid(packet);
-            local_remote_seid_index = find_remote_seid(remote_seid);
-            btstack_assert(local_remote_seid_index >= 0);
-            (void) memcpy(remote_seps[local_remote_seid_index].media_codec_event, packet, size);
+            local_remote_seid_index = source_cache_capability(remote_seid,packet,size);
+            if(local_remote_seid_index<0)break;
             remote_seps[local_remote_seid_index].sep.capabilities.media_codec.media_codec_type = AVDTP_CODEC_MPEG_2_4_AAC;
             remote_seps[local_remote_seid_index].have_media_codec_apabilities = true;
             codec_aac_on_capability(packet);
@@ -3146,9 +3179,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_ATRAC_CAPABILITY:
             // cache
             remote_seid = avdtp_subevent_signaling_media_codec_sbc_capability_get_remote_seid(packet);
-            local_remote_seid_index = find_remote_seid(remote_seid);
-            btstack_assert(local_remote_seid_index >= 0);
-            (void) memcpy(remote_seps[local_remote_seid_index].media_codec_event, packet, size);
+            local_remote_seid_index = source_cache_capability(remote_seid,packet,size);
+            if(local_remote_seid_index<0)break;
             remote_seps[local_remote_seid_index].sep.capabilities.media_codec.media_codec_type = AVDTP_CODEC_ATRAC_FAMILY;
             remote_seps[local_remote_seid_index].have_media_codec_apabilities = true;
             PLOG("CAPABILITY - MEDIA_CODEC: ATRAC, remote seid %u: \n", remote_seid);
@@ -3156,11 +3188,12 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_OTHER_CAPABILITY:
+            if(size<17 || avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(packet)<6 ||
+               avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(packet)>size-11u)break;
             // cache
             remote_seid = avdtp_subevent_signaling_media_codec_sbc_capability_get_remote_seid(packet);
-            local_remote_seid_index = find_remote_seid(remote_seid);
-            btstack_assert(local_remote_seid_index >= 0);
-            (void) memcpy(remote_seps[local_remote_seid_index].media_codec_event, packet, size);
+            local_remote_seid_index = source_cache_capability(remote_seid,packet,size);
+            if(local_remote_seid_index<0)break;
             remote_seps[local_remote_seid_index].sep.capabilities.media_codec.media_codec_type  = AVDTP_CODEC_NON_A2DP;
             remote_seps[local_remote_seid_index].have_media_codec_apabilities = true;
             const uint8_t *media_info = avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information(packet);
@@ -3172,11 +3205,13 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
             if (codec_ldac_matches(vendor_id, codec_id))
             {
+                if(avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(packet)<8)break;
                 codec_ldac_note_capability(true);
                 PLOG("CAPABILITY - LDAC, remote seid %u\n", remote_seid);
             }
             else if (codec_aaceld_matches(vendor_id, codec_id))
             {
+                if(avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(packet)<14)break;
                 codec_aaceld_note_capability(true);   /* 44.1 mode resamples 441->480 */
                 PLOG("CAPABILITY - Apple AAC-ELD, remote seid %u\n", remote_seid);
                 uint16_t info_len = avdtp_subevent_signaling_media_codec_other_capability_get_media_codec_information_len(packet);
@@ -3227,6 +3262,8 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             printf("Config not handled for %s\n", codec_name_for_type(remote_seps[selected_remote_sep_index].sep.capabilities.media_codec.media_codec_type));
             break;
         case AVDTP_SUBEVENT_SIGNALING_MEDIA_CODEC_OTHER_CONFIGURATION:
+            if(size<19 || avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<6 ||
+               avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)>size-13u)break;
             if (avdtp_subevent_signaling_media_codec_other_configuration_get_avdtp_cid(packet)
                     == media_tracker.avdtp_cid)
                 src_codec_configured = true;
@@ -3238,14 +3275,17 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
             // LDAC
             if (codec_ldac_matches(vendor_id, codec_id)) {
+                if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<8)break;
                 codec_ldac_on_configuration(packet);
             }
             // LHDC V5
             else if (codec_lhdc_matches(vendor_id, codec_id)) {
+                if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<11)break;
                 codec_lhdc_on_configuration(packet);
             }
             // Apple AAC-ELD
             else if (codec_aaceld_matches(vendor_id, codec_id)) {
+                if(avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet)<14)break;
                 PLOG("A2DP Source: Received Apple AAC-ELD configuration!\n");
                 PLOG("  raw config bytes: ");
                 uint16_t config_info_len = a2dp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(packet);
@@ -3265,6 +3305,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             break;
 
         case AVDTP_SUBEVENT_STREAMING_CAN_SEND_MEDIA_PACKET_NOW:
+            if(avdtp_subevent_streaming_can_send_media_packet_now_get_local_seid(packet)!=media_tracker.local_seid)break;
             a2dp_demo_send_media_packet();
             break;  
 
@@ -3272,6 +3313,9 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
         case AVDTP_SUBEVENT_SIGNALING_ACCEPT:
             src_wedge_strikes = 0;   /* an accepted command proves signaling alive */
             signal_identifier = avdtp_subevent_signaling_accept_get_signal_identifier(packet);
+            if((signal_identifier==AVDTP_SI_START || signal_identifier==AVDTP_SI_SUSPEND ||
+                signal_identifier==AVDTP_SI_CLOSE || signal_identifier==AVDTP_SI_ABORT) &&
+               avdtp_subevent_signaling_accept_get_local_seid(packet)!=media_tracker.local_seid)break;
             if (is_cmd_triggered_localy){
                 is_cmd_triggered_localy = 0;
                 printf("AVDTP Source command accepted\n");
@@ -3840,7 +3884,7 @@ void avdtp_disconnect_keep_pairing(){
     btstack_run_loop_remove_timer(&src_dial_retry_timer);
     a2dp_demo_timer_stop(&media_tracker);
     a2dp_source_disconnect(media_tracker.avdtp_cid);
-    avrcp_disconnect(media_tracker.avdtp_cid);
+    avrcp_disconnect(media_tracker.avrcp_cid);
     aap_disconnect();   /* AAP rides its own L2CAP channel — the AVDTP release
                            does not take it down, and a lingering channel holds
                            the ACL so the old AirPods redial mid-next-session
@@ -3873,7 +3917,7 @@ void avdtp_disconnect_and_scan(){
     btstack_run_loop_remove_timer(&src_dial_retry_timer);
     a2dp_demo_timer_stop(&media_tracker);
     a2dp_source_disconnect(media_tracker.avdtp_cid);
-    avrcp_disconnect(media_tracker.avdtp_cid);
+    avrcp_disconnect(media_tracker.avrcp_cid);
     aap_disconnect();   /* see avdtp_disconnect_keep_pairing */
     audio_slot_queue_init(); // reset all slots on disconnect
     gap_drop_link_key_for_bd_addr((uint8_t *) get_device_addr());
@@ -4017,11 +4061,11 @@ void a2dp_source_reconnect(){
     led_set_mode(read_uint8_last_flash() == 0x2 ? LED_CONN_SLOT2 : LED_CONN_SLOT1);
     avdtp_source_connect((uint8_t *) a, &media_tracker.avdtp_cid);
     src_dial_retry_arm();
-    sleep_ms(200);
 }
 
 
 void avdtp_source_establish_stream(){
+    src_user_dc_hold=false;  /* pairing/saved-connect is explicit intent */
     avdtp_source_connect((uint8_t *) get_device_addr(), &media_tracker.avdtp_cid);
     src_dial_retry_arm();
 }
@@ -4155,6 +4199,11 @@ static void avrcp_packet_handler_inner(uint8_t packet_type, uint16_t channel, ui
                 printf("AVRCP: from phone %s — ignored (sink relay)\n", bd_addr_to_str(event_addr));
                 return;
             }
+            if(!a2dp_is_connected_flag || memcmp(event_addr,cur_active_device,sizeof(bd_addr_t))) {
+                printf("AVRCP: ignoring channel from inactive headset\n");
+                avrcp_disconnect(local_cid);
+                return;
+            }
             media_tracker.avrcp_cid = local_cid;
 
             printf("AVRCP: Channel to %s successfully opened, avrcp_cid 0x%02x\n", bd_addr_to_str(event_addr), media_tracker.avrcp_cid);
@@ -4208,6 +4257,9 @@ bool is_muted = false;
 bool get_bt_mute(){
     return is_muted;
 }
+
+uint32_t a2dp_source_tx_packets(void){return src_tx_pkts;}
+uint32_t a2dp_source_send_failures(void){return src_send_fails;}
 
 
 static void avrcp_target_packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);

@@ -1,5 +1,13 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
+**LIVE VALIDATION ON HOLD — 2026-11-03. Do not rerun the 238ed609 package.**
+The first physical run exposed both a runner framing failure and a separate
+startup media TX stall/disconnect. The runner fixes do not establish a working
+audio transport. See [the verification findings](VERIFICATION-2026-11-03.md).
+New packages carry a blocking validation status and refuse hardware access
+until the documented blockers are resolved. The procedure below is retained
+for development review, not an instruction to perform another test now.
+
 This package is an **offline-verified test candidate**, not a claim of working
 hardware. It reconstructs controls/settings, AACP notifications, wear/stem
 policy and phone relay on top of the 0065/microphone fork. It uses CDC instead
@@ -14,18 +22,18 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    microphone. Use UAC2 and manual connect mode for the automatic run. The
    runner saves UAC2/manual/48 kHz preferences and asks for one replug/rerun if
    needed. The distinct 192/256/320 kbps profiles require 48 kHz USB playback.
-3. For physical UART capture, use a **3.3 V logic** USB-to-UART adapter. Pico
-   GP0/TX (physical pin 1) goes to adapter RX; Pico GND (pin 3) goes to GND.
-   UART RX is GP1 (pin 2); it is optional for read-only capture. Do not connect
-   adapter power or 5 V serial signals. The script opens this separate COM
-   port at 115200 baud and enables the firmware's UART mirror over CDC.
+3. One USB connection and the Pico's **single CDC COM port** collect application,
+   AACP, codec, USB and firmware HID submission logs. No USB-to-UART adapter is
+   required and the runner does not prompt for one. Audio and HID endpoints
+   are not additional COM ports.
 4. In PowerShell, from the extracted package, run:
 
    ```powershell
-   .\Run-Test.ps1 -TargetName "Your exact AirPods Bluetooth name" -CdcPort COM7 -UartPort COM9
+   .\Run-Test.ps1 -CdcPort COM3
    ```
 
-   Replace the names/ports. Omit `-TargetName` to select the intended AirPods
+   Replace COM3 with the Pico's actual COM port. Add `-TargetName` for an exact
+   name match, or omit it to select the intended AirPods
    explicitly from the scan results; duplicate or truncated names are not guessed.
    Add `-PhoneRelay` to include a phone while both USB audio streams remain open.
    `-StageSeconds 20 -SoakSeconds 600` are the defaults: allow about 13–15 minutes
@@ -39,13 +47,18 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    ```powershell
    py -3 -m venv .venv
    .\.venv\Scripts\python.exe -m pip install -r live-requirements.txt
-   .\.venv\Scripts\python.exe live_test.py --target-name "Your exact AirPods Bluetooth name" --cdc COM7 --uart COM9
+   .\.venv\Scripts\python.exe live_test.py --cdc COM3
    ```
 
    `--target-mac AA:BB:CC:DD:EE:FF` can replace the name. Name matching is exact,
    and duplicate matches are refused. The script cannot physically put the
    AirPods case into pairing mode; it prompts you, scans without auto-pairing,
-   stops discovery and pairs only the selected target. Both occupied favorites
+   stops discovery and connects only the selected target. At the pairing prompt,
+   put both AirPods Pro 3 in the case, open the lid, and double-tap the front
+   until the light flashes white. Press Enter, wait for the scan results, then
+   enter the intended device's numeric index. The runner reports Bluetooth
+   connection and AACP handshake separately. An existing stored key may be
+   reused; this does not prove a new bond was created. Both occupied favorites
    may cause a favorite reassignment; saved history remains available.
 
 5. Follow the prompts. The audio matrix plays quiet stereo 440/660 Hz tones
@@ -75,8 +88,10 @@ being hidden by padded silence. The first run may expose the unresolved clock
 question; return failed results too. Configuration readback does not measure
 end-to-end acoustic latency or actual average VBR throughput.
 
-The Pico UART connection is the application log mirror at 115200 baud; it does
-not claim access to a separate controller HCI UART. The raw HID reader may be
+An optional external 3.3 V UART adapter can be selected explicitly with
+`-UartPort`/`--uart`; it mirrors application output at 115200 baud and does
+not expose a separate controller HCI UART. CDC already receives that application
+output while USB is operational. The raw HID reader may be
 blocked by Windows, so successful firmware submission logs and counters are
 collected separately. Listen to the WAV clips before answering the pitch/speed
 question; hearing your own voice directly does not validate recorded timing.
@@ -106,7 +121,7 @@ licenses, delete all pairings, or flash a different image automatically.
   owned. Stem-to-HID is separately opt-in. HID send/release logs are included.
 - Raw HID access can be blocked by Windows for system-owned media controls.
   The script records that limitation and still captures `[hid] sent ...` logs
-  over CDC/UART. Firmware logs mean TinyUSB accepted the report, not that the
+  over CDC. Firmware logs mean TinyUSB accepted the report, not that the
   host app acted on it. Confirm the resulting behavior manually.
 - AAC-LC relay receives RTP/LATM directly, with bounded fragment assembly and
   sequence/timestamp checks. Unsupported malformed/oversized/fractured streams
@@ -118,7 +133,7 @@ licenses, delete all pairings, or flash a different image automatically.
 ## Additional guided matrix
 
 These checks need your physical inputs or a second device; the automatic run
-does not mark them passed just because it sent a command. Keep CDC and UART
+does not mark them passed just because it sent a command. Keep CDC
 capture running while performing them and note the time/results in a text file
 inside the returned results directory before zipping it again if necessary.
 

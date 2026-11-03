@@ -54,6 +54,10 @@ def health(before, after):
         s=item.get('status',{});e=item.get('eldstatus',{})
         if not s.get('streaming') or s.get('codec')!=4 or e.get('transition')!='ready':
             errors.append('Playback was not in a ready AAC-ELD stream')
+    if not delta(before.get('status',{}),after.get('status',{}),'tx_packets'):
+        errors.append('No playback media packets progressed')
+    if delta(before.get('status',{}),after.get('status',{}),'send_failures'):
+        errors.append('Playback media submission failed')
     if not a or not b or not u or not v:return ['Missing firmware diagnostic snapshots']
     if a.get('generation')!=b.get('generation'):errors.append('Microphone generation changed during steady playback')
     if not b.get('capture') or not v.get('running'):errors.append('USB capture stopped')

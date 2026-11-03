@@ -1,0 +1,103 @@
+"""Execute production discovery and favorite-selection code under ASan/UBSan."""
+from pathlib import Path
+import os
+import re
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+
+def function(file, name):
+    source = (ROOT/file).read_text()
+    match = re.search(r'^(?:static )?(?:void|bool|int) '+name+r'\([^;]*?\)\s*\{',source,re.M)
+    assert match, name
+    begin = source.index('{',match.start())
+    depth,end = 1,begin+1
+    while depth:
+        depth += (source[end]=='{')-(source[end]=='}')
+        end += 1
+    return source[match.start():end]
+
+fixture = r'''
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#define AVDTP_MAX_SEP_NUM 10
+typedef struct {uint8_t seid;} avdtp_sep_t;
+static struct {avdtp_sep_t sep; uint8_t media_codec_event[100];} remote_seps[AVDTP_MAX_SEP_NUM];
+static uint16_t num_remote_seps;
+static struct {uint8_t addr[6];char name[24];} s_found[16];
+static uint8_t device_addr[6],s_found_n,slot=1,favorites[2][6];
+static bool scan_active,s_list_mode,s_pairing;
+static unsigned dials,clears;
+static void a2dp_source_wedge_clear(void){clears++;}
+static void gap_inquiry_stop(void){}
+static uint8_t read_uint8_last_flash(void){return slot;}
+static void write_uint8_last_flash(uint8_t v){slot=v;}
+static void read_slot1_mac(uint8_t *m){memcpy(m,favorites[0],6);}
+static void read_slot2_mac(uint8_t *m){memcpy(m,favorites[1],6);}
+static void write_slot1_mac(const uint8_t *m){memcpy(favorites[0],m,6);}
+static void write_slot2_mac(const uint8_t *m){memcpy(favorites[1],m,6);}
+static void write_slot_name(uint8_t s,const char *n){(void)s;(void)n;}
+static void settings_saved_add(const uint8_t *m,const char *n){(void)m;(void)n;}
+#define slot_replace_purge(s,m) ((void)0)
+static void get_link_keys(void){}
+static void avdtp_source_establish_stream(void){dials++;}
+static const char *bd_addr_to_str(const uint8_t *m){(void)m;return "fixture";}
+static bool src_user_dc_hold;
+static uint32_t src_dial_window_ms;
+static unsigned src_dial_tries,src_dial_retry_timer;
+static struct {uint16_t avdtp_cid,avrcp_cid;} media_tracker;
+static uint16_t dropped_avdtp,dropped_avrcp;
+static void btstack_run_loop_remove_timer(unsigned *t){assert(t==&src_dial_retry_timer);}
+static void a2dp_demo_timer_stop(void *context){assert(context==&media_tracker);}
+static void a2dp_source_disconnect(uint16_t c){dropped_avdtp=c;}
+static void avrcp_disconnect(uint16_t c){dropped_avrcp=c;}
+static void aap_disconnect(void){}
+static void audio_slot_queue_init(void){}
+static void led_idle_unless_pairing(void){}
+'''
+tests = r'''
+static void choose(uint8_t mac) {
+ memset(s_found,0,sizeof s_found);s_found_n=1;memset(s_found[0].addr,mac,6);
+ unsigned before=dials;assert(bt_pair_to(0));assert(dials==before+1 && !s_found_n);
+ assert(!bt_pair_to(0));assert(dials==before+1);
+}
+int main(void) {
+ // Empty favorites, same device repeated, free-other preference, full replacement.
+ choose(1);assert(slot==1 && favorites[0][0]==1 && !favorites[1][0]);
+ slot=2;choose(1);assert(slot==1 && !favorites[1][0]);
+ choose(2);assert(slot==2 && favorites[0][0]==1 && favorites[1][0]==2);
+ slot=1;choose(2);assert(slot==2 && favorites[0][0]==1);
+ choose(3);assert(slot==2 && favorites[0][0]==1 && favorites[1][0]==3);
+ assert(clears==5);
+ // AVRCP and AVDTP are independent CID spaces, not interchangeable values.
+ media_tracker.avdtp_cid=0x42;media_tracker.avrcp_cid=0x91;
+ src_dial_window_ms=100;src_dial_tries=3;
+ avdtp_disconnect_keep_pairing();
+ assert(src_user_dc_hold && !src_dial_window_ms && !src_dial_tries);
+ assert(dropped_avdtp==0x42 && dropped_avrcp==0x91);
+ // Duplicate endpoints cannot exhaust the bounded discovery table.
+ for(uint8_t seid=1;seid<=10;seid++)assert(source_add_sep((avdtp_sep_t){seid}));
+ for(uint8_t seid=1;seid<=63;seid++)assert(!source_add_sep((avdtp_sep_t){seid}));
+ assert(num_remote_seps==AVDTP_MAX_SEP_NUM);
+ uint8_t packet[256];memset(packet,0x5a,sizeof packet);
+ for(unsigned n=0;n<=sizeof packet;n++) {
+  int i=source_cache_capability(1,packet,n);
+  assert((i==0)==(n<=sizeof remote_seps[0].media_codec_event));
+  assert(source_cache_capability(63,packet,n)==-1);
+ }
+ puts("Source discovery bounds and favorite reuse/replacement passed");
+}
+'''
+names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing')]
+names += [('src/btstack/btstack_hci.c',n) for n in ('slot_mac_valid','bt_pair_to')]
+if __name__=='__main__':
+    with tempfile.TemporaryDirectory() as temp:
+        path=Path(temp)
+        (path/'test.c').write_text(fixture+'\n'.join(function(f,n) for f,n in names)+tests)
+        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-O1','-fsanitize=address,undefined',str(path/'test.c'),'-o',str(path/'test')],check=True)
+        result=subprocess.run([str(path/'test')],check=True,capture_output=True,text=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'})
+        print(result.stdout.splitlines()[-1])
