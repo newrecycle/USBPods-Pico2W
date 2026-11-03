@@ -5,8 +5,9 @@
 #include <string.h>
 static unsigned calls,fail_at,live,peak;static bool bad_info;
 static UINT parameters[32];
+static UINT expected_modules;
 static int step(void){return ++calls==fail_at?AACENC_INVALID_CONFIG:AACENC_OK;}
-AACENC_ERROR aacEncOpen(HANDLE_AACENCODER*h,UINT modules,UINT channels){assert(modules==3&&channels==2);int e=step();if(!e){live++;if(live>peak)peak=live;*h=(void*)(uintptr_t)live;}return e;}
+AACENC_ERROR aacEncOpen(HANDLE_AACENCODER*h,UINT modules,UINT channels){assert(modules==expected_modules&&channels==2);int e=step();if(!e){live++;if(live>peak)peak=live;*h=(void*)(uintptr_t)live;}return e;}
 AACENC_ERROR aacEncClose(HANDLE_AACENCODER*h){assert(*h&&live);live--;*h=NULL;return 0;}
 AACENC_ERROR aacEncoder_SetParam(HANDLE_AACENCODER h,AACENC_PARAM p,UINT v){assert(h);assert((unsigned)p<32);parameters[p]=v;return step();}
 AACENC_ERROR aacEncEncode(HANDLE_AACENCODER h,void*a,void*b,void*c,void*d){assert(h);(void)a;(void)b;(void)c;(void)d;return step();}
@@ -15,6 +16,7 @@ int main(void){
  HANDLE_AACENCODER h=NULL;AACENC_InfoStruct info;
  for(unsigned mode=0;mode<4;mode++) {
  eld_profile p=eld_profile_select(mode?mode:3,mode==0,1,0,0,5,1);
+ expected_modules=p.sbr?3:1;
  calls=0;fail_at=0;bad_info=false;
  assert(eld_encoder_open(&h,&info,&p)==0);unsigned steps=calls;
  assert(parameters[AACENC_BITRATE]==p.bitrate);

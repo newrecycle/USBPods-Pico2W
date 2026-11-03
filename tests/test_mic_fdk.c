@@ -39,6 +39,16 @@ static void lc_roundtrip(UINT rate) {
  printf("FDK LATM AAC-LC after ELD: %u Hz, %u frames, 1024 samples\n",rate,count);
 }
 int main(void) {
+ // The embedded QC overlay has two channels; reject larger AAC/SBR requests.
+ for(unsigned channels=3;channels<=8;channels++) {
+   HANDLE_AACENCODER invalid=NULL;
+   assert(aacEncOpen(&invalid,0x03,channels)==AACENC_INVALID_CONFIG && !invalid);
+ }
+ HANDLE_AACENCODER invalid=NULL;
+ assert(aacEncOpen(&invalid,0x03,0x0302)==AACENC_INVALID_CONFIG && !invalid);
+ HANDLE_AACENCODER defaults=NULL;assert(aacEncOpen(&defaults,0x03,0)==AACENC_OK);
+ assert(aacEncoder_SetParam(defaults,AACENC_CHANNELMODE,MODE_1_2_2_1)==AACENC_INVALID_CONFIG);
+ aacEncClose(&defaults);
  HANDLE_AACENCODER encoder=NULL;
  assert(aacEncOpen(&encoder,0x03,1)==AACENC_OK);
  param(encoder,AACENC_AOT,39); param(encoder,AACENC_SAMPLERATE,48000);

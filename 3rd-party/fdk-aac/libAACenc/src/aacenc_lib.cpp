@@ -1521,8 +1521,8 @@ AACENC_ERROR aacEncOpen(HANDLE_AACENCODER *phAacEncoder, const UINT encModules,
 
   /* Determine max channel configuration. */
   if (maxChannels == 0) {
-    hAacEncoder->nMaxAacChannels = (8);
-    hAacEncoder->nMaxSbrChannels = (8);
+    hAacEncoder->nMaxAacChannels = USBPODS_AACENC_MAX_CHANNELS;
+    hAacEncoder->nMaxSbrChannels = USBPODS_AACENC_MAX_CHANNELS;
   } else {
     hAacEncoder->nMaxAacChannels = (maxChannels & 0x00FF);
     if ((hAacEncoder->encoder_modis & ENC_MODE_FLAG_SBR)) {
@@ -1531,8 +1531,8 @@ AACENC_ERROR aacEncOpen(HANDLE_AACENCODER *phAacEncoder, const UINT encModules,
                                          : hAacEncoder->nMaxAacChannels;
     }
 
-    if ((hAacEncoder->nMaxAacChannels > (8)) ||
-        (hAacEncoder->nMaxSbrChannels > (8))) {
+    if ((hAacEncoder->nMaxAacChannels > USBPODS_AACENC_MAX_CHANNELS) ||
+        (hAacEncoder->nMaxSbrChannels > USBPODS_AACENC_MAX_CHANNELS)) {
       err = AACENC_INVALID_CONFIG;
       goto bail;
     }

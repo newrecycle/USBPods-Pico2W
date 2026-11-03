@@ -198,7 +198,13 @@ struct AAC_ENC {
  +++++++++++++++++++++++++++++++++++++++++++++++++++++
 */
 
-#define BUF_SIZE_0 (ALIGN_SIZE(sizeof(QC_OUT_CHANNEL)) * (8))
+/* USBPods modification, 2026-11-03: this embedded fork accepts mono/stereo
+   encoders only. The eight-channel QC overlay otherwise wastes six channel
+   buffers alongside the microphone decoder. Public/core entry points enforce
+   this bound before any channel-indexed allocation or configuration. */
+#define USBPODS_AACENC_MAX_CHANNELS 2
+#define BUF_SIZE_0 \
+  (ALIGN_SIZE(sizeof(QC_OUT_CHANNEL)) * USBPODS_AACENC_MAX_CHANNELS)
 #define BUF_SIZE_1                                                           \
   (ALIGN_SIZE(maxSize(maxSize(sizeof(PSY_DYNAMIC),                           \
                               (BIT_LOOK_UP_SIZE + MERGE_GAIN_LOOK_UP_SIZE)), \

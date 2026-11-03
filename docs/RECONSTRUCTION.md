@@ -44,6 +44,16 @@ handle and clears the stream info instead of publishing a partial encoder.
 The old handle is closed before allocating a new one, avoiding a temporary
 double encoder heap alongside the mic decoder.
 
+The embedded FDK encoder QC overlay is bounded to stereo, matching the source
+codecs. Public and core entry points reject larger AAC/SBR channel allocations
+before they can index the smaller overlay. This saves 57,312 requested bytes
+in the 64-bit native fixture, reducing peak codec requests from 365,126 to
+307,814 bytes. CBR/game profiles additionally omit the unused SBR encoder
+module. Both native round trips and the complete duplex matrix run with an
+AddressSanitizer-instrumented FDK build; the separate 32-bit audit supplies the
+closer memory estimate. Host figures still exclude BT, allocator and target
+runtime overhead.
+
 Live rebuild is serialized with the CYW43 async context; it no longer masks all
 USB interrupts during FDK allocation/configuration. TinyUSB can continue draining
 the microphone PCM queue. BT scheduling and actual audio continuity during this
@@ -79,6 +89,8 @@ claim that dynamic allocations were exercised on the board.
   tracking. The audit excludes the host-only playback reference decoder and
   allocator cache retention. CI compares requested codec bytes to the linked
   target heap region and records remaining space before allocator/BT overhead.
+  A nonpositive remainder fails verification; the pre-optimization audit needed
+  360,422 bytes against a 338,224-byte target region.
   This is a resource estimate, not proof of target allocation or deadlines.
 - Relay regressions cover wrong-CID teardown, stop overriding pending start,
   preservation of signaling ownership, checked RTP extensions, fragments,

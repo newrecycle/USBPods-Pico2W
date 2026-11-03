@@ -5,7 +5,8 @@ AACENC_ERROR eld_encoder_open(HANDLE_AACENCODER *h,AACENC_InfoStruct *info,const
  AACENC_ERROR e;
  if(*h)aacEncClose(h);
  *h=NULL;memset(info,0,sizeof(*info));
- if((e=aacEncOpen(h,0x03,2))!=AACENC_OK)goto failed;
+ /* CBR/game profiles do not need the SBR encoder or its input history. */
+ if((e=aacEncOpen(h,p->sbr?0x03:0x01,2))!=AACENC_OK)goto failed;
 #define SET(k,v) do {e=aacEncoder_SetParam(*h,k,v);if(e!=AACENC_OK)goto failed;}while(0)
  SET(AACENC_AOT,39);SET(AACENC_BITRATE,p->bitrate);SET(AACENC_SAMPLERATE,48000);
  SET(AACENC_CHANNELMODE,MODE_2);SET(AACENC_GRANULE_LENGTH,480);

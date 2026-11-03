@@ -108,6 +108,8 @@ def verify(build, evidence, name="USBPods_Pico2W_Lite"):
             if audit["pointer_bytes"] != 4: raise ValueError("codec allocation audit must use 32-bit pointers")
             audit["remaining_before_allocator_and_other_heap_users"] = region - audit["codec_requested_peak"]
             report["memory"]["host_codec_estimate"] = audit
+            if audit["remaining_before_allocator_and_other_heap_users"] <= 0:
+                raise ValueError("32-bit codec request estimate exceeds target heap before allocator/BT overhead")
     total, families = verify_uf2(uf2, binary)
     if name.startswith("USBPods_"):
         report["usb_descriptors"] = verify_microphone_descriptors(binary,symbols)

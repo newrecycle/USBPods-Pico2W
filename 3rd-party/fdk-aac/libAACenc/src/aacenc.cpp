@@ -383,6 +383,11 @@ AAC_ENCODER_ERROR FDKaacEnc_Open(HANDLE_AAC_ENC *phAacEnc, const INT nElements,
   if (phAacEnc == NULL) {
     return AAC_ENC_INVALID_HANDLE;
   }
+  /* USBPods stereo overlay bound (2026-11-03), also enforced by aacEncOpen. */
+  if (nChannels < 1 || nChannels > USBPODS_AACENC_MAX_CHANNELS ||
+      nElements < 1 || nElements > USBPODS_AACENC_MAX_CHANNELS || nSubFrames != 1) {
+    return AAC_ENC_UNSUPPORTED_CHANNELCONFIG;
+  }
 
   /* allocate encoder structure */
   hAacEnc = GetRam_aacEnc_AacEncoder();
@@ -444,7 +449,7 @@ AAC_ENCODER_ERROR FDKaacEnc_Initialize(
   /******************* sanity checks *******************/
 
   /* check config structure */
-  if (config->nChannels < 1 || config->nChannels > (8)) {
+  if (config->nChannels < 1 || config->nChannels > USBPODS_AACENC_MAX_CHANNELS) {
     return AAC_ENC_UNSUPPORTED_CHANNELCONFIG;
   }
 
