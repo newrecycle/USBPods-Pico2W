@@ -1,3 +1,4 @@
+#include "aacp_mic.h"
 #include <sys/cdefs.h>
 #include "hardware/watchdog.h"   /* scratch[7] hang forensics */
 /*
@@ -4164,6 +4165,7 @@ static void avrcp_packet_handler_inner(uint8_t packet_type, uint16_t channel, ui
             if (avrcp_subevent_connection_released_get_avrcp_cid(packet) != media_tracker.avrcp_cid) return;
             printf("AVRCP Target: Disconnected, avrcp_cid 0x%02x\n", avrcp_subevent_connection_released_get_avrcp_cid(packet));
             media_tracker.avrcp_cid = 0;
+            aap_disconnect();
             s_avrcp_batt = -1;
             return;
         default:
@@ -4340,6 +4342,7 @@ int btstack_main(int argc, const char * argv[]){
 
     // Initialize SDP
     sdp_init();
+    aacp_mic_init();
     memset(sdp_avdtp_source_service_buffer, 0, sizeof(sdp_avdtp_source_service_buffer));
     a2dp_source_create_sdp_record(sdp_avdtp_source_service_buffer, 0x10002, AVDTP_SOURCE_FEATURE_MASK_PLAYER, NULL, NULL);
     sdp_register_service(sdp_avdtp_source_service_buffer);

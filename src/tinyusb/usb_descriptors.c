@@ -54,8 +54,13 @@ extern uint32_t sample_rates[];   /* uac.c — pipeline rate set at boot */
    the variants, and the web UI tells them apart by PID/name BEFORE opening
    the device (the vendor HID collection it would probe does not exist). */
 #ifdef USBPODS_LITE
-#define USB_PID_BASE          0x6000
-#define USBPODS_PRODUCT_BASE  "USBPods Lite"
+#ifdef USBPODS_MIC_DECODE
+#define USB_PID_BASE          0x7200
+#define USBPODS_PRODUCT_BASE "USBPods Mic Experimental"
+#else
+#define USB_PID_BASE          0x7000
+#define USBPODS_PRODUCT_BASE "USBPods Mic Transport"
+#endif
 #else
 #define USB_PID_BASE          0x5000
 #define USBPODS_PRODUCT_BASE  "USBPods"
@@ -285,7 +290,7 @@ uint8_t const desc_configuration_uac2[] =
     TUD_CONFIG_DESCRIPTOR(CFGNUM_UAC2, ITF_NUM_TOTAL, 0, CONFIG_UAC2_TOTAL_LEN, 0x00, 100),
 
     // Interface number, string index, EP Out & EP In address, EP size
-    TUD_AUDIO_HEADSET_STEREO_DESCRIPTOR(2, EPNUM_AUDIO_OUT, 0x00, EPNUM_AUDIO_INT | 0x80),
+    TUD_AUDIO_HEADSET_STEREO_DESCRIPTOR(2, EPNUM_AUDIO_OUT, EPNUM_AUDIO_IN | 0x80, EPNUM_AUDIO_INT | 0x80),
 
     // HID media keys
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 16, 10),

@@ -30,6 +30,9 @@
  
  // Unit numbers are arbitrary selected
  #define UAC2_ENTITY_CLOCK               0x04
+ #define UAC2_ENTITY_MIC_CLOCK 0x14
+ #define UAC2_ENTITY_MIC_INPUT_TERMINAL 0x11
+ #define UAC2_ENTITY_MIC_OUTPUT_TERMINAL 0x13
  // Speaker path
  #define UAC2_ENTITY_SPK_INPUT_TERMINAL  0x01
  #define UAC2_ENTITY_SPK_FEATURE_UNIT    0x02
@@ -39,6 +42,7 @@
  {
    ITF_NUM_AUDIO_CONTROL = 0,
    ITF_NUM_AUDIO_STREAMING_SPK,
+   ITF_NUM_AUDIO_STREAMING_MIC,
    ITF_NUM_HID,
    ITF_NUM_CDC,        /* CDC notification (comm) interface */
    ITF_NUM_CDC_DATA,   /* CDC data interface                */
@@ -63,21 +67,23 @@
      + TUD_AUDIO_DESC_CS_AS_INT_LEN\
      + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN\
      + TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN\
+     + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN\
+     + TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN\
+     + 2*TUD_AUDIO_DESC_STD_AS_INT_LEN + TUD_AUDIO_DESC_CS_AS_INT_LEN\
+     + TUD_AUDIO_DESC_TYPE_I_FORMAT_LEN + TUD_AUDIO_DESC_STD_AS_ISO_EP_LEN\
      + TUD_AUDIO_DESC_CS_AS_ISO_EP_LEN)
  
- #define TUD_AUDIO_HEADSET_STEREO_DESCRIPTOR(_stridx, _epout, _epin_unused, _epint) \
+ #define TUD_AUDIO_HEADSET_STEREO_DESCRIPTOR(_stridx, _epout, _epin, _epint) \
      /* Standard Interface Association Descriptor (IAD) */\
-     /* IAD spans ONLY the audio function's 2 interfaces (AC + AS). It used to
-        say ITF_NUM_TOTAL, which silently grew to 3 when the HID interface was
-        added — the IAD then claimed the HID itf too, TinyUSB double-bound it,
-        and SET_CONFIGURATION failed: no device on the host at all. */\
-     TUD_AUDIO_DESC_IAD(/*_firstitf*/ ITF_NUM_AUDIO_CONTROL, /*_nitfs*/ 2, /*_stridx*/ 0x00),\
+     /* Audio function: AC + speaker AS + microphone AS. */\
+     TUD_AUDIO_DESC_IAD(/*_firstitf*/ ITF_NUM_AUDIO_CONTROL, /*_nitfs*/ 3, /*_stridx*/ 0x00),\
      /* Standard AC Interface Descriptor(4.7.1) */\
      TUD_AUDIO_DESC_STD_AC(/*_itfnum*/ ITF_NUM_AUDIO_CONTROL, /*_nEPs*/ 0x01, /*_stridx*/ _stridx),\
      /* Class-Specific AC Interface Header Descriptor(4.7.2) */\
      TUD_AUDIO_DESC_CS_AC(/*_bcdADC*/ 0x0200, /*_category*/ AUDIO_FUNC_HEADSET, \
          /*_totallen*/ TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + \
-                      TUD_AUDIO_DESC_FEATURE_UNIT_TWO_CHANNEL_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN, \
+                      TUD_AUDIO_DESC_FEATURE_UNIT_TWO_CHANNEL_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN + \
+                      TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN, \
          /*_ctrl*/ AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS),\
      /* Clock Source Descriptor(4.7.2.1) */\
      TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 1, /*_ctrl*/ 1, \
@@ -99,6 +105,12 @@
          /*_termtype*/ AUDIO_TERM_TYPE_OUT_HEADPHONES, /*_assocTerm*/ 0x00, \
          /*_srcid*/ UAC2_ENTITY_SPK_FEATURE_UNIT, /*_clkid*/ UAC2_ENTITY_CLOCK, \
          /*_ctrl*/ 0x0000, /*_stridx*/ 0x00),\
+     /* Independent, read-only 64 kHz microphone clock. */\
+     TUD_AUDIO_DESC_CLK_SRC(UAC2_ENTITY_MIC_CLOCK, 1, 1, 0, 0),\
+     TUD_AUDIO_DESC_INPUT_TERM(UAC2_ENTITY_MIC_INPUT_TERMINAL, AUDIO_TERM_TYPE_IN_GENERIC_MIC, \
+         0, UAC2_ENTITY_MIC_CLOCK, 1, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0, 0, 0),\
+     TUD_AUDIO_DESC_OUTPUT_TERM(UAC2_ENTITY_MIC_OUTPUT_TERMINAL, AUDIO_TERM_TYPE_USB_STREAMING, \
+         0, UAC2_ENTITY_MIC_INPUT_TERMINAL, UAC2_ENTITY_MIC_CLOCK, 0, 0),\
      /* Standard AC Interrupt Endpoint Descriptor(4.8.2.1) */\
      TUD_AUDIO_DESC_STD_AC_INT_EP(/*_ep*/ _epint, /*_interval*/ 0x01), \
      /* Interface 1, Alternate 0 (zero-bandwidth) */\
@@ -113,6 +125,15 @@
          TUD_AUDIO_EP_SIZE(CFG_TUD_AUDIO_FUNC_1_MAX_SAMPLE_RATE, \
          CFG_TUD_AUDIO_FUNC_1_FORMAT_1_N_BYTES_PER_SAMPLE_RX, CFG_TUD_AUDIO_FUNC_1_N_CHANNELS_RX), 0x01),\
      TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
-         AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, 0x0001)
+         AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC, 0x0001),\
+     TUD_AUDIO_DESC_STD_AS_INT(ITF_NUM_AUDIO_STREAMING_MIC, 0, 0, 0),\
+     TUD_AUDIO_DESC_STD_AS_INT(ITF_NUM_AUDIO_STREAMING_MIC, 1, 1, 0),\
+     TUD_AUDIO_DESC_CS_AS_INT(UAC2_ENTITY_MIC_OUTPUT_TERMINAL, AUDIO_CTRL_NONE, AUDIO_FORMAT_TYPE_I, \
+         AUDIO_DATA_FORMAT_TYPE_I_PCM, 1, AUDIO_CHANNEL_CONFIG_NON_PREDEFINED, 0),\
+     TUD_AUDIO_DESC_TYPE_I_FORMAT(2, 16),\
+     TUD_AUDIO_DESC_STD_AS_ISO_EP(_epin, TUSB_XFER_ISOCHRONOUS | TUSB_ISO_EP_ATT_ASYNCHRONOUS | TUSB_ISO_EP_ATT_DATA, \
+         TUD_AUDIO_EP_SIZE(64000, 2, 1), 1),\
+     TUD_AUDIO_DESC_CS_AS_ISO_EP(AUDIO_CS_AS_ISO_DATA_EP_ATT_NON_MAX_PACKETS_OK, AUDIO_CTRL_NONE, \
+         AUDIO_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED, 0)
 
  #endif

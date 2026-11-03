@@ -62,15 +62,15 @@ void     license_device_id(uint8_t out[22]){ memset(out, 0, 22); }
 
 /* ---- AirPods AACP client ------------------------------------------------ */
 
-void aap_connect(bd_addr_t addr){ (void)addr; }
-void aap_disconnect(void){}
+
+
 void aap_set_jitter_raw(uint8_t value){ (void)value; }
 void aap_cycle_jitter(void){}
 void aap_probe_4c(void){}
 void aap_send_09_03(uint8_t v){ (void)v; }
 void aap_get_battery(uint8_t out[3]){ memset(out, 0xFF, 3); }   /* 0xFF = none */
-bool aap_channel_open(void){ return false; }
-bool aap_protocol_seen(void){ return false; }
+
+
 uint8_t aap_get_noise_mode(void){ return 0; }      /* unknown */
 bool aap_get_ear_pause(void){ return false; }
 bool aap_get_game(void){ return false; }

@@ -17,7 +17,7 @@ permissions:
   contents: read
 jobs:
   build:
-    name: Pico 2 W - ${{ matrix.firmware }}
+    name: Pico 2 W - ${{ matrix.firmware }} - ${{ matrix.mic }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -25,7 +25,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        firmware: [stock0031, rpi0065]
+        include:
+          - {firmware: stock0031, mic: transport, decode: 'OFF'}
+          - {firmware: rpi0065, mic: transport, decode: 'OFF'}
+          - {firmware: rpi0065, mic: aaceld, decode: 'ON'}
     steps:
       - uses: actions/checkout@v4
       - name: Require authorized Full sources before downloading toolchains
@@ -49,6 +52,11 @@ jobs:
           echo "PICO_SDK_PATH=$RUNNER_TEMP/pico-sdk" >> "$GITHUB_ENV"
           git -C "$RUNNER_TEMP/pico-sdk/lib/btstack" apply "$GITHUB_WORKSPACE/sdk-patches/btstack-usbpods.patch"
           git -C "$RUNNER_TEMP/pico-sdk/lib/tinyusb" apply "$GITHUB_WORKSPACE/sdk-patches/tinyusb-usbpods.patch"
+      - name: Test microphone protocol, lifecycle, and UF2 validation
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_aacp_mic.c src/btstack/aacp_mic_protocol.c -o /tmp/test-aacp
+          /tmp/test-aacp
+          python3 tests/test_verify_uf2.py
       - name: Select and validate unchanged controller firmware
         env:
           BTFW_SELECTION: ${{ matrix.firmware }}
@@ -60,9 +68,9 @@ jobs:
       - name: Configure Pico 2 W firmware
         run: |
           if [ "$USBPODS_EDITION" = "lite" ]; then
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF
           else
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
           fi
       - name: Build
         run: cmake --build build --parallel 2
@@ -83,7 +91,7 @@ jobs:
         if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: pico2w-${{ env.USBPODS_EDITION }}-${{ matrix.firmware }}
+          name: pico2w-${{ env.USBPODS_EDITION }}-${{ matrix.firmware }}-${{ matrix.mic }}
           if-no-files-found: error
           path: |
             build/*.uf2

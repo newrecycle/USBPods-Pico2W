@@ -1,3 +1,5 @@
+#include "btstack/aacp_mic.h"
+#include "pico/async_context.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdio_uart.h"     /* early-boot synchronous UART console */
 #include "pico/cyw43_driver.h"   /* cyw43_set_pins_wl (universal radio probe) */
@@ -586,6 +588,7 @@ int main() {
     }
 #endif
 
+    aacp_mic_audio_init();
     if (!radio_absent) {
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
         btstack_main(0, NULL);
@@ -636,6 +639,10 @@ int main() {
            mid-boot. Skip them and the board runs as a USB device that simply
            has no Bluetooth, which is what the UI now says. */
         if (!radio_absent) {
+            async_context_acquire_lock_blocking(cyw43_arch_async_context());
+            aacp_mic_poll();
+            async_context_release_lock(cyw43_arch_async_context());
+            aacp_mic_audio_work();
             for (int rn = 0; rn < 6 && bt_sink_relay_work(); rn++) { }
             watchdog_hw->scratch[6] = 4;
             a2dp_source_main_work();   /* deferred ELD encoder rebuild (TX stall) */
@@ -670,7 +677,7 @@ int main() {
            the Pico — "aac-lc no longer stable"). Sleep 10 under relay:
            6/(108+10) ~= 51 pkt/s with margin. The earlier revert to a flat
            50 ms used ceiling math that ignored decode time — wrong. */
-        sleep_ms(bt_sink_relay_streaming() ? 10 : 50);
+        sleep_ms(aacp_mic_capture() ? 2 : (bt_sink_relay_streaming() ? 10 : 50));
     }
 
 }

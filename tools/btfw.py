@@ -88,7 +88,7 @@ def select(sdk, image, output):
     destination = sdk / "lib/cyw43-driver/firmware/cyw43_btfw_43439.h"
     url = ("https://raw.githubusercontent.com/georgerobotics/cyw43-driver/"
            + spec["ref"] + "/firmware/cyw43_btfw_43439.h")
-    if image == "stock0031":
+    if destination.exists() and sha(destination.read_bytes()) == spec["header_sha256"]:
         header = destination.read_bytes()
     else:
         with urllib.request.urlopen(url, timeout=60) as response:
@@ -99,8 +99,7 @@ def select(sdk, image, output):
     report = inspect(data)
     if sha(data) != spec["payload_sha256"] or len(data) != spec["bytes"]:
         raise ValueError("firmware payload mismatch")
-    if image != "stock0031":
-        destination.write_bytes(header)
+    destination.write_bytes(header)
     output.mkdir(parents=True, exist_ok=True)
     (output / "btfw.bin").write_bytes(data)
     report.update({"selection": image, "source": url,

@@ -44,6 +44,16 @@ include(pico_sdk_import.cmake)
 project(USBPods_Pico2W C CXX ASM)
 
 
+# Select the pinned SDIO image explicitly; local builds default to 0065.
+set(USBPODS_BTFW rpi0065 CACHE STRING "Controller image: rpi0065 or stock0031")
+set_property(CACHE USBPODS_BTFW PROPERTY STRINGS rpi0065 stock0031)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/tools/btfw.py
+    --sdk ${PICO_SDK_PATH} --image ${USBPODS_BTFW} --output ${CMAKE_BINARY_DIR}/radio-evidence
+    RESULT_VARIABLE _btfw_result)
+if(NOT _btfw_result EQUAL 0)
+    message(FATAL_ERROR "Pinned Bluetooth controller firmware selection failed")
+endif()
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
@@ -94,7 +104,7 @@ add_custom_command(
 add_custom_target(lhdcv5_rust DEPENDS ${LHDCV5_LIB})
 
 
-# FDK-AAC (encoder only)
+# FDK-AAC (existing encoder and optional microphone decoder)
 set(FDK_DIR ${CMAKE_CURRENT_LIST_DIR}/3rd-party/fdk-aac)
 set(FDK_BUILD_DIR ${CMAKE_BINARY_DIR}/fdk-aac)
 
@@ -133,6 +143,10 @@ if(NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/private/full.cmake)
     set(USBPODS_LITE ON)
     message(STATUS "usbpods: building the open-source variant")
 endif()
+option(USBPODS_MIC_DECODE "Experimental AAC-ELD microphone decoding (Pico 2 W only)" OFF)
+if(NOT USBPODS_LITE)
+    message(FATAL_ERROR "AACP microphone transport currently requires the public Lite build; Full needs an adapter to its private AACP channel")
+endif()
 if(USBPODS_LITE)
     set(USBPODS_VARIANT_SOURCES      src/lite_stubs.c)
     set(USBPODS_VARIANT_INCLUDE_DIRS "")
@@ -166,8 +180,17 @@ add_executable(${PROJECT_NAME}
     src/tinyusb/usb_descriptors.c
     src/btstack/codec/codec_lhdc.c
     3rd-party/lhdcv5/src/lhdcv5BT_enc.c
+    src/btstack/aacp_mic.c
+    src/btstack/aacp_mic_protocol.c
+    src/btstack/aacp_mic_audio.c
     ${USBPODS_VARIANT_SOURCES}
 )
+if(USBPODS_MIC_DECODE)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_MIC_DECODE=1)
+    set(USBPODS_OUT_NAME USBPods_Pico2W_Lite_AACELD_Mic)
+else()
+    set(USBPODS_OUT_NAME USBPods_Pico2W_Lite_AACP_Transport)
+endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${USBPODS_OUT_NAME})
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/usbpods-output-name.txt"
      CONTENT "${USBPODS_OUT_NAME}\n")

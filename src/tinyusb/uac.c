@@ -1,3 +1,4 @@
+#include "../btstack/aacp_mic.h"
 /*
  * The MIT License (MIT)
  *
@@ -267,6 +268,7 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
      usb_desc_set_audio_exposed(want);
      printf("[connmode] audio %s -> USB replug\n", want ? "restored" : "hidden");
      usb_replug_hold = true;         /* park the IRQ-side tud_task (race!) */
+     aacp_mic_set_capture(false);
      tud_disconnect();               /* same soft replug the WebHID op uses */
      sleep_ms(150);
      tud_connect();
@@ -352,6 +354,7 @@ void tinyusb_control_task(void){
  // Invoked when device is unmounted
  void tud_umount_cb(void)
  {
+   aacp_mic_set_capture(false);
    //blink_interval_ms = BLINK_NOT_MOUNTED;
  }
  
@@ -360,6 +363,7 @@ void tinyusb_control_task(void){
  // Within 7ms, device must draw an average of current less than 2.5 mA from bus
  void tud_suspend_cb(bool remote_wakeup_en)
  {
+   aacp_mic_set_capture(false);
    (void)remote_wakeup_en;
    printf("tud_suspend_cb\n");
  }
@@ -373,7 +377,8 @@ void tinyusb_control_task(void){
  // Helper for clock get requests
  static bool tud_audio_clock_get_request(uint8_t rhport, audio_control_request_t const *request)
  {
-   TU_ASSERT(request->bEntityID == UAC2_ENTITY_CLOCK);
+   TU_ASSERT(request->bEntityID == UAC2_ENTITY_CLOCK || request->bEntityID == UAC2_ENTITY_MIC_CLOCK);
+   uint32_t rate = request->bEntityID == UAC2_ENTITY_MIC_CLOCK ? 64000 : current_sample_rate;
  
    if (request->bControlSelector == AUDIO_CS_CTRL_SAM_FREQ)
    {
@@ -381,7 +386,7 @@ void tinyusb_control_task(void){
      {
        TU_LOG1("Clock get current freq %" PRIu32 "\r\n", current_sample_rate);
  
-       audio_control_cur_4_t curf = { (int32_t) tu_htole32(current_sample_rate) };
+       audio_control_cur_4_t curf = { (int32_t) tu_htole32(rate) };
        return tud_audio_buffer_and_schedule_control_xfer(rhport, (tusb_control_request_t const *)request, &curf, sizeof(curf));
      }
      else if (request->bRequest == AUDIO_CS_REQ_RANGE)
@@ -393,8 +398,8 @@ void tinyusb_control_task(void){
        TU_LOG1("Clock get %d freq ranges\r\n", N_SAMPLE_RATES);
        for(uint8_t i = 0; i < N_SAMPLE_RATES; i++)
        {
-         rangef.subrange[i].bMin = (int32_t) sample_rates[i];
-         rangef.subrange[i].bMax = (int32_t) sample_rates[i];
+         rangef.subrange[i].bMin = (int32_t) tu_htole32(request->bEntityID == UAC2_ENTITY_MIC_CLOCK ? 64000 : sample_rates[i]);
+         rangef.subrange[i].bMax = rangef.subrange[i].bMin;
          rangef.subrange[i].bRes = 0;
          TU_LOG1("Range %d (%d, %d, %d)\r\n", i, (int)rangef.subrange[i].bMin, (int)rangef.subrange[i].bMax, (int)rangef.subrange[i].bRes);
        }
@@ -529,7 +534,7 @@ void tinyusb_control_task(void){
  {
    audio_control_request_t const *request = (audio_control_request_t const *)p_request;
  
-   if (request->bEntityID == UAC2_ENTITY_CLOCK)
+   if (request->bEntityID == UAC2_ENTITY_CLOCK || request->bEntityID == UAC2_ENTITY_MIC_CLOCK)
      return tud_audio_clock_get_request(rhport, request);
    if (request->bEntityID == UAC2_ENTITY_SPK_FEATURE_UNIT)
      return tud_audio_feature_unit_get_request(rhport, request);
@@ -564,6 +569,12 @@ void tinyusb_control_task(void){
  
    uint8_t const itf = tu_u16_low(tu_le16toh(p_request->wIndex));
    uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
+   if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
+     TU_VERIFY(alt <= 1);
+     aacp_mic_set_capture(false);
+     return true;
+   }
+
  
   if (ITF_NUM_AUDIO_STREAMING_SPK == itf && alt == 0) {
       blink_interval_ms = BLINK_MOUNTED;
@@ -597,6 +608,12 @@ void tinyusb_control_task(void){
    (void)rhport;
    uint8_t const itf = tu_u16_low(tu_le16toh(p_request->wIndex));
    uint8_t const alt = tu_u16_low(tu_le16toh(p_request->wValue));
+   if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
+     TU_VERIFY(alt <= 1);
+     aacp_mic_set_capture(alt == 1);
+     return true;
+   }
+
  
    TU_LOG2("Set interface %d alt %d\r\n", itf, alt);
    {   /* EP reopen: a pending live-close grace ends as a non-event */
@@ -905,16 +922,15 @@ volatile uint8_t usb_splice_sim;
    return true;
  }
  
-//  bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t cur_alt_setting)
-//  {
-//    (void)rhport;
-//    (void)itf;
-//    (void)ep_in;
-//    (void)cur_alt_setting;
- 
-//    // This callback could be used to fill microphone data separately
-//    return true;
-//  }
+bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t alt)
+ {
+   (void)rhport; (void)itf; (void)ep_in;
+   if (alt != 1) return true;
+   int16_t packet[64] = {0};
+   aacp_mic_audio_read(packet,64);
+   tud_audio_write(packet,sizeof(packet));
+   return true;
+ }
  
  //--------------------------------------------------------------------+
  // AUDIO Task
