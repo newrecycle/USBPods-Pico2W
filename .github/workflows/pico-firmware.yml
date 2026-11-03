@@ -2,6 +2,9 @@ name: Pico firmware build
 on:
   push:
   workflow_dispatch:
+concurrency:
+  group: pico-firmware-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -33,12 +36,25 @@ jobs:
         env:
           BTFW_SELECTION: ${{ matrix.firmware }}
         run: python3 tools/btfw.py --sdk "$PICO_SDK_PATH" --image "$BTFW_SELECTION" --output evidence
+      - name: Test firmware parser and audit newer UART candidate
+        run: |
+          python3 tests/test_btfw.py "$PICO_SDK_PATH/lib/cyw43-driver/firmware/cyw43_btfw_43439.h"
+          python3 tools/audit_hcd.py --output evidence/uart0076-audit.json
       - name: Configure Pico 2 W firmware
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=ON
       - name: Build
         run: cmake --build build --parallel 2
       - name: Verify linked radio image and UF2
         run: python3 tools/verify_build.py --build build --evidence evidence
+      - name: Build SCO diagnostics for both Pico wireless boards
+        run: |
+          for board in pico_w pico2_w; do
+            cmake -S tests/sco_probe -B "probe-$board" -G Ninja -DPICO_BOARD="$board" -DCMAKE_BUILD_TYPE=Release
+            cmake --build "probe-$board" --parallel 2
+            mkdir -p "evidence/$board"
+            cp evidence/firmware.json evidence/btfw.bin "evidence/$board/"
+            python3 tools/verify_build.py --build "probe-$board" --evidence "evidence/$board" --stem usbpods_sco_probe
+          done
       - name: Upload firmware and verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +65,9 @@ jobs:
             build/USBPods_Pico2W_Lite.uf2
             build/USBPods_Pico2W_Lite.elf
             build/USBPods_Pico2W_Lite.bin
-            evidence/*.json
+            evidence/**/*.json
+            probe-*/usbpods_sco_probe.uf2
+            probe-*/usbpods_sco_probe.elf
+            probe-*/usbpods_sco_probe.bin
             build/CMakeCache.txt
             build/compile_commands.json

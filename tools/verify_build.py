@@ -7,10 +7,10 @@ from pathlib import Path
 import struct
 import subprocess
 
-def verify(build, evidence):
+def verify(build, evidence, name="USBPods_Pico2W_Lite"):
     report = json.loads((evidence / "firmware.json").read_text())
     fw = (evidence / "btfw.bin").read_bytes()
-    stem = build / "USBPods_Pico2W_Lite"
+    stem = build / name
     binary = stem.with_suffix(".bin").read_bytes()
     elf = stem.with_suffix(".elf")
     uf2 = stem.with_suffix(".uf2").read_bytes()
@@ -58,5 +58,6 @@ if __name__ == "__main__":
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--build", type=Path, required=True)
     p.add_argument("--evidence", type=Path, required=True)
+    p.add_argument("--stem", default="USBPods_Pico2W_Lite")
     a=p.parse_args()
-    verify(a.build,a.evidence)
+    verify(a.build,a.evidence,a.stem)
