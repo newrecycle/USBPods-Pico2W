@@ -19,6 +19,7 @@ static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
 static void release_channel(void) {
+ aacp_mic_discontinuity();
  uint16_t old=cid; cid=0; opened=requested=false;
  memset(&session,0,sizeof(session));
  if (old) l2cap_disconnect(old);
