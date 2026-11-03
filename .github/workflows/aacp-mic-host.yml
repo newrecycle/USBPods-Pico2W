@@ -1,0 +1,46 @@
+name: AACP microphone host regressions
+on:
+  push:
+    branches: ['work/aacp-mic-*']
+  pull_request:
+    paths:
+      - 'src/btstack/aacp_mic*'
+      - 'tests/test_aacp_mic.c'
+      - 'tests/test_aacp_transport.c'
+      - 'tests/test_mic_audio.c'
+      - 'tests/test_mic_telemetry.c'
+      - 'tests/mic_mocks/**'
+      - 'tests/transport_mocks/**'
+      - '.github/workflows/aacp-mic-host.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mic-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and exercise AACP parser, transport, queue and cadence
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ASAN_OPTIONS=detect_leaks=0
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack \
+            tests/test_aacp_mic.c src/btstack/aacp_mic_protocol.c -o /tmp/test-aacp
+          /tmp/test-aacp
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -I tests/transport_mocks -I src/btstack \
+            tests/test_aacp_transport.c src/btstack/aacp_mic.c \
+            src/btstack/aacp_control.c src/btstack/aacp_mic_protocol.c \
+            -o /tmp/test-transport
+          /tmp/test-transport
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack \
+            tests/test_mic_audio.c src/btstack/aacp_mic_audio.c \
+            -o /tmp/test-mic-audio
+          /tmp/test-mic-audio
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -I src/btstack tests/test_mic_telemetry.c \
+            src/btstack/aacp_mic_audio.c -o /tmp/test-mic-telemetry
+          /tmp/test-mic-telemetry
