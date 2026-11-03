@@ -23,9 +23,7 @@ jobs:
     env:
       USBPODS_EDITION: ${{ inputs.edition || 'lite' }}
       PICO_SDK_REVISION: bddd20f928ce76142793bef434d4f75f4af6e433
-      PICO_SDK_PATH: ${{ runner.temp }}/pico-sdk
       RUSTUP_TOOLCHAIN: 1.85.1
-      CCACHE_DIR: ${{ runner.temp }}/ccache
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_COMPILERCHECK: content
       CCACHE_MAXSIZE: 350M
@@ -47,7 +45,10 @@ jobs:
           fi
       - name: Identify runner image for native dependency caches
         id: runner-image
-        run: echo "version=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=${ImageOS}-${ImageVersion}" >> "$GITHUB_OUTPUT"
+          echo "PICO_SDK_PATH=$RUNNER_TEMP/pico-sdk" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
       # Restore installed package files, rather than only downloaded .deb files.
       # The action includes the package list in its key; refresh on image changes.
       - name: Restore or install Arm build dependencies
