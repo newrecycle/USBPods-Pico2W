@@ -77,10 +77,10 @@ static bool dispatch(control_command c) {
  case CONTROL_ELDSTATUS: {
    eld_runtime_status state;a2dp_source_eld_status(&state);
    struct mallinfo heap=mallinfo();
-   printf("[control] {\"kind\":\"eldstatus\",\"selected_rate\":%u,\"game\":%u,\"gamelevel\":%u,\"ready\":%u,\"pending\":%u,\"desired_bitrate\":%lu,\"active_bitrate\":%lu,\"active_vbr\":%u,\"active_sbr\":%u,\"active_slots\":%u,\"input_rate\":%u,\"failures\":%lu,\"rebuilds\":%lu,\"heap_region\":%lu,\"heap_inuse\":%lu,\"heap_free_arena\":%lu}\n",
+   printf("[control] {\"kind\":\"eldstatus\",\"selected_rate\":%u,\"game\":%u,\"gamelevel\":%u,\"ready\":%u,\"pending\":%u,\"desired_bitrate\":%lu,\"active_bitrate\":%lu,\"active_vbr\":%u,\"active_sbr\":%u,\"active_slots\":%u,\"input_rate\":%u,\"failures\":%lu,\"rebuilds\":%lu,\"heap_region\":%lu,\"heap_inuse\":%lu,\"heap_free_arena\":%lu,\"transition\":\"%s\",\"requested_revision\":%lu,\"built_revision\":%lu,\"error_stage\":%u,\"last_error\":%lu,\"max_rebuild_us\":%lu}\n",
       s->eld_rate?s->eld_rate:2,aap_get_game(),s->game_level?s->game_level:1,state.ready,state.pending,
       (unsigned long)state.desired.bitrate,(unsigned long)state.active.bitrate,state.active.vbr,state.active.sbr,state.active.slots,state.active.input_rate,
-      (unsigned long)state.failures,(unsigned long)state.rebuilds,(unsigned long)((uintptr_t)__HeapLimit-(uintptr_t)end),(unsigned long)heap.uordblks,(unsigned long)heap.fordblks);return true;
+      (unsigned long)state.failures,(unsigned long)state.rebuilds,(unsigned long)((uintptr_t)__HeapLimit-(uintptr_t)end),(unsigned long)heap.uordblks,(unsigned long)heap.fordblks,eld_transition_phase_name(state.phase),(unsigned long)state.requested_revision,(unsigned long)state.built_revision,state.error_stage,(unsigned long)state.last_error,(unsigned long)state.max_rebuild_us);return true;
  }
  case CONTROL_SETTINGS:
    printf("[control] {\"kind\":\"settings\",\"usbset\":%u,\"slot\":%u,\"connmode\":%u,\"usbvol\":%u,\"phvol\":%u,\"gamelevel\":%u,\"eldrate\":%u,\"earpause\":%u,\"stem\":%u,\"debug\":%u,\"btnmode\":%u,\"ldacq\":%u,\"lhdcrate\":%u}\n",s->usbset,read_uint8_last_flash(),s->connmode,s->usb_vol_p1?s->usb_vol_p1-1:100,s->relay_vol_p1?s->relay_vol_p1-1:100,s->game_level?s->game_level:1,s->eld_rate?s->eld_rate:2,s->ear_pause,s->stem_hid,s->dbg_mode,s->btn_mode?s->btn_mode:1,s->ldac_quality?s->ldac_quality:2,s->lhdc_rate?s->lhdc_rate:2);return true;

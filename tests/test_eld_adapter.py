@@ -1,0 +1,147 @@
+"""Run production transition adapters/callbacks with deterministic SDK transport.
+
+Actual FDK fidelity/allocation is checked separately by test_eld_duplex_fdk.c.
+This fixture executes production function bodies, not a duplicate state model.
+"""
+from pathlib import Path
+import os
+import re
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+source = (ROOT / 'src/btstack/btstack_avdtp_source.c').read_text()
+
+def function(name):
+    match = re.search(r'^(?:static )?(?:void|bool|uint8_t) ' + re.escape(name) + r'\([^;]*?\)\s*\{', source, re.M)
+    assert match, name
+    begin = source.index('{', match.start())
+    depth, end = 1, begin + 1
+    while depth:
+        depth += (source[end] == '{') - (source[end] == '}')
+        end += 1
+    return source[match.start():end]
+
+tests = r'''
+static void advance(uint32_t ms) {
+ uint32_t target=now+ms;
+ for(unsigned budget=0;budget<20;budget++) {
+   btstack_timer_source_t *next=NULL,*timers[]={&src_eld_change_timer,&src_jitter_timer};
+   for(unsigned i=0;i<2;i++)if(timers[i]->active && (int32_t)(target-timers[i]->deadline)>=0 &&
+       (!next || (int32_t)(timers[i]->deadline-next->deadline)<0))next=timers[i];
+   if(!next){now=target;return;}
+   now=next->deadline;next->active=false;next->handler(next);
+ }
+ assert(!"unbounded timer loop");
+}
+static void connected(void) {
+ memset(&media_tracker,0,sizeof(media_tracker));media_tracker.avdtp_cid=0x42;media_tracker.local_seid=1;
+ memset(&src_eld_change_timer,0,sizeof(src_eld_change_timer));memset(&src_jitter_timer,0,sizeof(src_jitter_timer));
+ src_eld_timer_armed=false;src_eld_reset_pending=src_codec_release_pending=false;
+ is_streaming=false;a2dp_is_connected_flag=finish_scan_avdtp_codec=true;
+ src_user_dc_hold=src_auto_kick_pending=false;src_con_handle=0x123;cur_codec=4;
+ src_eld_failures=src_eld_rebuilds=src_eld_last_error=src_eld_max_rebuild_us=0;src_eld_error_stage=0;
+ src_suspend_ms=0;src_pending_jitter=150;src_session_streamed=false;core1_encoder_active=false;
+ suspends=starts=pumps=disconnects=rebuild_calls=jitters=leds=0;
+ suspend_rc=start_rc=encode_rc=0;locks=0;game=relay=false;config.eld_rate=2;config.game_level=1;now=100;
+ handleAAC=(void*)1;active_slot_count=6;eld_transition_configured(&src_eld_change);
+ src_start_stream(0x42,1);src_stream_start_accepted();assert(is_streaming&&pumps==1);
+ advance(500);assert(jitters==1);jitters=0;
+}
+static void request(uint8_t rate,bool gaming,unsigned level) {
+ config.eld_rate=rate;game=gaming;config.game_level=level;a2dp_source_apply_eld_rate();
+}
+int main(void) {
+ connected();request(3,true,2);unsigned before=pumps;
+ a2dp_source_main_work();assert(!rebuild_calls && starts==1 && suspends==1);
+ advance(200);request(1,false,1);assert(suspends==1); // One SUSPEND, latest policy.
+ src_stream_start_accepted();assert(pumps==before); // Old START cannot run pump.
+ src_stream_suspend_accepted();assert(!is_streaming && !rebuild_calls);
+ a2dp_source_main_work();assert(rebuild_calls==1 && starts==2 && built_bitrate==192000);
+ assert(pumps==before && !jitters && src_eld_change.phase==ELD_WAIT_START);
+ src_stream_start_accepted();assert(is_streaming && pumps==before+1);
+ advance(499);assert(!jitters);advance(1);assert(jitters==1 && last_jitter==150);
+ src_stream_start_accepted();assert(pumps==before+1); // Duplicate ignored.
+
+ // A request during START waits for acceptance and performs another suspend.
+ connected();request(3,false,1);src_stream_suspend_accepted();a2dp_source_main_work();
+ request(2,true,2);a2dp_source_main_work();assert(rebuild_calls==1 && starts==2);
+ src_stream_start_accepted();assert(suspends==2 && pumps==1 && !jitters);
+ src_stream_suspend_accepted();a2dp_source_main_work();assert(rebuild_calls==2 && starts==3);
+ assert(built_bitrate==192000 && active_slot_count==4);
+ src_stream_start_accepted();advance(500);assert(last_jitter==60 && jitters==1);
+
+ // Rejected/failed SUSPEND never restarts a live pump or opens a new encoder.
+ connected();suspend_rc=12;request(3,false,1);a2dp_source_main_work();
+ assert(disconnects==1 && pumps==1 && !is_streaming && !rebuild_calls);
+ assert(src_user_dc_hold && src_eld_error_stage==1 && src_eld_last_error==12);
+ assert(!src_eld_change_timer.active && !src_jitter_timer.active);
+ src_stream_start_accepted();assert(pumps==1);request(1,false,1);assert(disconnects==1);
+ connected();request(3,false,1);assert(src_eld_signaling_rejected(AVDTP_SI_SUSPEND));
+ assert(disconnects==1 && !rebuild_calls);
+
+ // No SUSPEND response: repeated settings cannot move the original deadline.
+ connected();request(1,true,1);uint32_t deadline=src_eld_change_timer.deadline;
+ advance(2500);request(3,true,2);assert(src_eld_change_timer.deadline==deadline);
+ advance(500);assert(disconnects==1 && src_eld_error_stage==4 && !rebuild_calls);
+
+ // Encoder failure does not issue START, send jitter or report streaming.
+ connected();request(3,false,1);src_stream_suspend_accepted();encode_rc=33;
+ a2dp_source_main_work();assert(!handleAAC && disconnects==1 && starts==1 && pumps==1 && !jitters);
+ assert(!src_eld_reset_pending && src_eld_error_stage==3 && src_eld_last_error==33);
+
+ // START immediate failure, rejection and missing response each fail boundedly.
+ for(unsigned failure=0;failure<3;failure++) {
+   connected();request(3,false,1);src_stream_suspend_accepted();if(failure==0)start_rc=12;
+   a2dp_source_main_work();
+   if(failure==1)assert(src_eld_signaling_rejected(AVDTP_SI_START));
+   if(failure==2)advance(3000);
+   assert(disconnects==1 && !is_streaming && !jitters && pumps==1);
+ }
+
+ // Channel-late jitter reapply and new requests supersede old settle timers.
+ connected();a2dp_source_queue_jitter(90);advance(200);request(3,true,2);advance(500);
+ assert(!jitters);src_stream_suspend_accepted();a2dp_source_main_work();src_stream_start_accepted();
+ advance(500);assert(jitters==1 && last_jitter==60);
+ a2dp_source_queue_jitter(60);advance(500);assert(jitters==2);
+
+ // Disconnect invalidates a queued rebuild; a new session can start cleanly.
+ connected();request(3,false,1);src_stream_suspend_accepted();
+ src_eld_link_reset();
+ a2dp_is_connected_flag=false;a2dp_source_main_work();advance(5000);
+ assert(!rebuild_calls && starts==1 && !jitters);
+ connected();assert(is_streaming && !src_user_dc_hold && locks==0);
+ assert(src_event_matches_headset(0x42));phone_cid=0x43;
+ assert(!src_event_matches_headset(0) && !src_event_matches_headset(0x41) && !src_event_matches_headset(0x43));
+
+ // A setting before initial START does not rebuild while that START is pending.
+ connected();src_eld_link_reset();is_streaming=false;eld_transition_configured(&src_eld_change);
+ request(1,true,2);a2dp_source_main_work();assert(!rebuild_calls && !suspends);
+ src_start_stream(0x42,1);src_stream_start_accepted();assert(suspends==1);
+ src_stream_suspend_accepted();a2dp_source_main_work();src_stream_start_accepted();
+ advance(500);assert(last_jitter==60 && built_bitrate==192000);
+
+ // Initial START silence cannot leave an in-flight gate stuck forever.
+ connected();src_eld_link_reset();is_streaming=false;eld_transition_configured(&src_eld_change);
+ src_start_stream(0x42,1);advance(3000);
+ assert(src_eld_change.phase==ELD_READY && src_suspend_ms && !disconnects);
+ // SDK timer arithmetic and phase deadline remain bounded across tick wrap.
+ connected();now=UINT32_MAX-100;request(3,false,1);advance(3000);assert(disconnects==1);
+ puts("Production ELD adapter: suspend/build/START/jitter, coalescing, deadlines and failure teardown passed");
+}
+'''
+
+names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer',
+         'src_eld_link_reset', 'src_event_matches_headset',
+         'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
+         'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
+         'src_jitter_handler', 'a2dp_source_queue_jitter', 'a2dp_source_apply_eld_rate',
+         'a2dp_source_main_work', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
+with tempfile.TemporaryDirectory() as temp:
+    path = Path(temp)
+    (path / 'test.c').write_text((ROOT / 'tests/eld_adapter_mocks.h').read_text() + '\n' + '\n'.join(function(n) for n in names) + tests)
+    subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-O1', '-fsanitize=address,undefined',
+                    '-I', str(ROOT / 'tests/encoder_mocks'), '-I', str(ROOT / 'src/btstack'),
+                    str(path / 'test.c'), str(ROOT / 'src/btstack/eld_transition.c'),
+                    str(ROOT / 'src/btstack/eld_profile.c'), '-o', str(path / 'test')], check=True)
+    subprocess.run([str(path / 'test')], check=True, env={**os.environ, 'ASAN_OPTIONS': 'detect_leaks=0'})
