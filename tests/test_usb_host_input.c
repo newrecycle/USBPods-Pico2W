@@ -85,7 +85,7 @@ static void test_hid(void) {
  fail_next=1; tick(1);
  assert(report_count==2);
  tick(1); assert(reports[2]==0);
- tick(4);
+ tick(3);
  assert(report_count==6);
  assert(reports[3]==0xCD && reports[4]==0 && reports[5]==0xB5);
  tick(1); assert(reports[6]==0 && usb_hid_media_idle());
