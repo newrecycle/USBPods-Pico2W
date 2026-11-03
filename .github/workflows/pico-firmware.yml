@@ -1,8 +1,15 @@
-name: Full Pico firmware build
+name: Pico firmware build
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      edition:
+        description: Build edition (Lite is a temporary baseline, Full needs vendor sources)
+        type: choice
+        options: [lite, full]
+        default: lite
+        required: true
 concurrency:
   group: pico-firmware-${{ github.ref }}
   cancel-in-progress: true
@@ -13,6 +20,8 @@ jobs:
     name: Pico 2 W - ${{ matrix.firmware }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    env:
+      USBPODS_EDITION: ${{ inputs.edition || 'lite' }}
     strategy:
       fail-fast: false
       matrix:
@@ -20,6 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Require authorized Full sources before downloading toolchains
+        if: env.USBPODS_EDITION == 'full'
         run: |
           if [ ! -f private/full.cmake ]; then
             echo "::error::Full edition is required. This public fork lacks private/full.cmake and the vendor Full modules. Supply authorized Full sources through a private build context; Lite fallback is disabled."
@@ -48,7 +58,12 @@ jobs:
           python3 tests/test_btfw.py "$PICO_SDK_PATH/lib/cyw43-driver/firmware/cyw43_btfw_43439.h"
           python3 tools/audit_hcd.py --output evidence/uart0076-audit.json
       - name: Configure Pico 2 W firmware
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
+        run: |
+          if [ "$USBPODS_EDITION" = "lite" ]; then
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF
+          else
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
+          fi
       - name: Build
         run: cmake --build build --parallel 2
       - name: Verify linked radio image and UF2
@@ -68,7 +83,7 @@ jobs:
         if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: pico2w-full-${{ matrix.firmware }}
+          name: pico2w-${{ env.USBPODS_EDITION }}-${{ matrix.firmware }}
           if-no-files-found: error
           path: |
             build/*.uf2
