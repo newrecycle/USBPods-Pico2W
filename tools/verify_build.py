@@ -102,6 +102,12 @@ def verify(build, evidence, name="USBPods_Pico2W_Lite"):
         region = addresses["__HeapLimit"] - addresses["end"]
         if region <= 0: raise ValueError("no linker heap region remains")
         report["memory"] = {"heap_region_bytes": region, "heap_start": hex(addresses["end"]), "heap_limit": hex(addresses["__HeapLimit"]), "runtime_allocation_verified": False}
+        audit_path = evidence / "codec-heap32.json"
+        if name.startswith("USBPods_") and audit_path.exists():
+            audit = json.loads(audit_path.read_text())
+            if audit["pointer_bytes"] != 4: raise ValueError("codec allocation audit must use 32-bit pointers")
+            audit["remaining_before_allocator_and_other_heap_users"] = region - audit["codec_requested_peak"]
+            report["memory"]["host_codec_estimate"] = audit
     total, families = verify_uf2(uf2, binary)
     if name.startswith("USBPods_"):
         report["usb_descriptors"] = verify_microphone_descriptors(binary,symbols)

@@ -75,6 +75,11 @@ claim that dynamic allocations were exercised on the board.
   PCM is checked for non-silence and frame continuity; encoded AU bounds are
   checked against the packet budget.
 - Existing protocol, queue, stale-connection, CDC-parser and UF2 checks remain.
+- A 32-bit native FDK build runs the same duplex fixture with malloc/calloc/free
+  tracking. The audit excludes the host-only playback reference decoder and
+  allocator cache retention. CI compares requested codec bytes to the linked
+  target heap region and records remaining space before allocator/BT overhead.
+  This is a resource estimate, not proof of target allocation or deadlines.
 - Relay regressions cover wrong-CID teardown, stop overriding pending start,
   preservation of signaling ownership, checked RTP extensions, fragments,
   sequence loss and bounded assembly.

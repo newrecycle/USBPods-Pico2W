@@ -9,6 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef USBPODS_ALLOC_AUDIT
+#include "fdk_alloc_tracker.h"
+#else
+#define fdk_alloc_begin() ((void)0)
+#define fdk_alloc_end() ((void)0)
+#define fdk_alloc_report() ((void)0)
+#endif
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -40,8 +47,10 @@ int main(void){
  for(unsigned transition=0;transition<3*sizeof(modes)/sizeof(modes[0]);transition++){
    unsigned mode=transition%(sizeof(modes)/sizeof(modes[0]));
    eld_profile p=eld_profile_select(modes[mode].rate,modes[mode].game,modes[mode].level,modes[mode].r44,modes[mode].relay,5,1);
+   fdk_alloc_begin();
    assert(eld_encoder_open(&encoder,&ei,&p)==AACENC_OK);
    assert(aacp_mic_audio_ready() && aacp_mic_generation()==generation);
+   fdk_alloc_end(); /* Reference playback decoder below is host-only. */
 #ifdef __GLIBC__
    struct mallinfo2 heap=mallinfo2();
    printf("ELD host heap mic+encoder profile %u: inuse=%zu free_arena=%zu (not target RAM measurement)\n",mode,(size_t)heap.uordblks,(size_t)heap.fordblks);
@@ -84,8 +93,9 @@ int main(void){
      assert(aacp_mic_generation()==generation);
    }
    assert(frames>=124);all_frames+=frames;aacDecoder_Close(decoder);
+   fdk_alloc_begin();fdk_alloc_end(); /* Include any lazy mic allocation. */
    printf("ELD duplex transition %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",transition,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
  }
- assert(mic_peak>1000);aacEncClose(&encoder);aacp_mic_set_capture(false);
+ assert(mic_peak>1000);fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
  printf("ELD rate/game transitions with active mic queue: %u playback frames, mic peak=%d\n",all_frames,mic_peak);
 }
