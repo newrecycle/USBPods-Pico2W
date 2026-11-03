@@ -55,9 +55,13 @@ jobs:
         uses: awalsh128/cache-apt-pkgs-action@553a35bb8ebd9fcabcb1c9451aa4c98e1b4ca8a9 # v1.6.3
         with:
           packages: cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib libusb-1.0-0-dev pkg-config ccache
+          # Newlib creates compiler search-path links in its post-install script.
+          execute_install_scripts: true
           version: pico-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.runner-image.outputs.version }}
-      - name: Refresh restored shared-library links
-        run: sudo ldconfig
+      - name: Verify restored compiler libraries and shared-library links
+        run: |
+          sudo ldconfig
+          test -f "$(arm-none-eabi-gcc -print-file-name=nosys.specs)"
       - name: Cache pinned Rust toolchain
         id: rust-toolchain
         uses: actions/cache@v4
