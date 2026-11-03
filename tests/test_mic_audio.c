@@ -92,3 +92,4 @@ int main(void) {
  assert(s.au_high_water<=32 && s.pcm_high_water<=16);
  puts("microphone cadence, timestamp, burst, overflow and reconnect tests passed");
 }
+

@@ -60,3 +60,4 @@ int main(void) {
  uint16_t n; assert(!aacp_mic_command(5,&n) && !n);
  puts("AACP transactional parser and session tests passed");
 }
+

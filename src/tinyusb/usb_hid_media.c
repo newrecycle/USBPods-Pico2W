@@ -16,7 +16,12 @@ static _Atomic bool active;
 static _Atomic uint32_t accepted, full, inactive, stale, sent, released, busy, failed, highwater;
 /* Poll is only called by the serialized USB control task. */
 static uint32_t seen_epoch;
-static bool release_due;
+static _Atomic bool release_due;
+static uint32_t queued(void) {
+ /* Load consumer first: a fast consumer must not wrap a diagnostic depth. */
+ uint32_t r=atomic_load(&rd),w=atomic_load(&wr),depth=w-r;
+ return depth>USB_HID_MEDIA_CAPACITY?USB_HID_MEDIA_CAPACITY:depth;
+}
 void usb_hid_media_init(void) {
  for(uint32_t i=0;i<USB_HID_MEDIA_CAPACITY;i++) atomic_store(&slots[i].seq,i);
  atomic_store(&wr,0); atomic_store(&rd,0); atomic_store(&epoch,1);
@@ -43,8 +48,9 @@ bool usb_hid_media_enqueue(uint16_t usage) {
    slot->usage=usage; slot->session=gen;
    atomic_store_explicit(&slot->seq,pos+1,memory_order_release);
    atomic_fetch_add(&accepted,1);
-   uint32_t depth=pos+1-atomic_load(&rd), old=atomic_load(&highwater);
-   while(depth>old && !atomic_compare_exchange_weak(&highwater,&old,depth)) {}
+   uint32_t depth=queued(),old=atomic_load(&highwater);
+   for(unsigned retry=0;retry<USB_HID_MEDIA_CAPACITY && depth>old;retry++)
+    if(atomic_compare_exchange_strong(&highwater,&old,depth))break;
    return true;
   }
   if(dif<0) break;
@@ -81,6 +87,7 @@ void usb_hid_media_poll(bool ready, bool (*send)(uint16_t)) {
   uint16_t usage; uint32_t session;
   if(!peek(&usage,&session)) break;
   if(session!=gen) { pop(); atomic_fetch_add(&stale,1); continue; }
+  if(gen!=atomic_load(&epoch) || !atomic_load(&active))return;
   if(send && send(usage)) {
    pop(); release_due=true; atomic_fetch_add(&sent,1);
   } else atomic_fetch_add(&failed,1);
@@ -93,7 +100,7 @@ bool usb_hid_media_idle(void) {
 usb_hid_media_snapshot_t usb_hid_media_snapshot(void) {
  return (usb_hid_media_snapshot_t) {
   .active=atomic_load(&active),.release_pending=release_due,
-  .queue_depth=atomic_load(&wr)-atomic_load(&rd),.high_water=atomic_load(&highwater),
+  .queue_depth=queued(),.high_water=atomic_load(&highwater),
   .accepted=atomic_load(&accepted),.dropped_full=atomic_load(&full),
   .dropped_inactive=atomic_load(&inactive),.stale=atomic_load(&stale),
   .presses_sent=atomic_load(&sent),.releases_sent=atomic_load(&released),

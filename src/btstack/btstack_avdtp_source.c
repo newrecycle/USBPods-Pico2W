@@ -753,6 +753,7 @@ static bool suspend_recovery_pending = false;
 #define SUSPEND_RECOVERY_TIMEOUT_MS 3000
 
 static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context);
+static uint8_t src_start_stream(uint16_t cid,uint8_t seid);
 
 static void suspend_recovery_handler(btstack_timer_source_t *timer) {
     (void)timer;
@@ -761,7 +762,7 @@ static void suspend_recovery_handler(btstack_timer_source_t *timer) {
 
     printf("Suspend recovery: no response after %d ms, restarting stream\n", SUSPEND_RECOVERY_TIMEOUT_MS);
     // Try to start the stream directly (skip suspend since it timed out)
-    avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+    src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
 }
 
 void audio_slot_queue_init(void) {
@@ -1183,6 +1184,18 @@ bool get_allow_switch_slot(){
 
 #ifdef HAVE_AAC_FDK
 
+static eld_transition src_eld_change;
+static volatile bool src_eld_setup_pending;
+static bool src_eld_early_start;
+static uint16_t src_eld_setup_cid;
+static void src_stream_start_accepted(void);
+static void src_eld_initialize(void);
+static uint8_t src_eld_error_stage;
+static uint32_t src_eld_last_error,src_eld_max_rebuild_us;
+static uint32_t src_suspend_ms;
+static void src_eld_abort(uint8_t stage,uint32_t rc);
+static void src_eld_execute(unsigned actions);
+static uint8_t src_start_stream(uint16_t cid,uint8_t seid);
 static volatile bool src_eld_reset_pending;  /* TX-stall ELD reset: run in main loop */
 /* Codec teardown also runs in the main loop, and for a harder reason than the
    ELD reset: every release() frees, and pico's free() takes malloc_mutex via
@@ -1226,8 +1239,12 @@ static eld_profile src_eld_profile(void) {
 static uint32_t src_eld_bitrate(void) { return src_eld_profile().bitrate; }
 void a2dp_source_eld_status(eld_runtime_status *out) {
  out->desired=src_eld_profile();out->active=src_active_eld;
- out->ready=cur_codec==CODEC_ID_AACELD && handleAAC!=NULL;
- out->pending=src_eld_reset_pending;out->failures=src_eld_failures;out->rebuilds=src_eld_rebuilds;
+ out->ready=cur_codec==CODEC_ID_AACELD && handleAAC!=NULL && !src_eld_setup_pending && src_eld_change.phase!=ELD_FAILED && src_eld_change.phase!=ELD_OFF;
+ out->pending=src_eld_reset_pending || (eld_transition_busy(&src_eld_change) && src_eld_change.phase!=ELD_FAILED);
+ out->phase=src_eld_change.phase;out->error_stage=src_eld_error_stage;out->last_error=src_eld_last_error;
+ out->requested_revision=src_eld_change.requested;out->built_revision=src_eld_change.built;
+ out->max_rebuild_us=src_eld_max_rebuild_us;
+ out->failures=src_eld_failures;out->rebuilds=src_eld_rebuilds;
 }
 
 /* Live on-air bitrate of the CURRENT codec, kbps (0 = unknown/not streaming).
@@ -1268,6 +1285,7 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     int          total_samples_read               = 0;
 
     if (src_eld_reset_pending) return 0;   /* encoder rebuild in flight (main loop) */
+    if(cur_codec==CODEC_ID_AACELD && src_eld_change.phase!=ELD_READY)return 0;
     if (handleAAC == NULL) return 0;       /* released; same guard as lhdc_fill */
 
     unsigned int num_audio_samples_per_aac_buffer = acc_num_simples;
@@ -1485,10 +1503,98 @@ void a2dp_source_remote_bye(uint16_t handle, uint8_t reason){
    delayed push (AACP may open after AVDTP START). */
 static volatile uint8_t src_pending_jitter;   /* raw ms, 0 = none */
 static btstack_timer_source_t src_jitter_timer;
+static btstack_timer_source_t src_eld_change_timer;
+static bool src_eld_timer_armed;
+static eld_phase src_eld_timer_phase;
+static void src_eld_cancel_timer(void) {
+    btstack_run_loop_remove_timer(&src_eld_change_timer);src_eld_timer_armed=false;
+}
+static void src_eld_link_reset(void) {
+    eld_transition_reset(&src_eld_change);src_eld_reset_pending=false;
+    src_eld_setup_pending=false;src_eld_early_start=false;src_eld_setup_cid=0;
+    src_eld_cancel_timer();btstack_run_loop_remove_timer(&src_jitter_timer);
+    src_pending_jitter=0;
+}
+static void src_eld_schedule_setup(void) {
+    a2dp_demo_timer_stop(&media_tracker);is_streaming=false;
+    src_eld_link_reset();src_eld_setup_cid=media_tracker.avdtp_cid;
+    src_eld_setup_pending=true;src_eld_reset_pending=true;cur_codec=CODEC_ID_AACELD;
+}
+static bool src_event_matches_headset(uint16_t cid) {
+    return cid && cid==media_tracker.avdtp_cid && !bt_sink_relay_owns_cid(cid);
+}
+static void src_eld_change_timeout(btstack_timer_source_t *ts) {
+    (void)ts;src_eld_timer_armed=false;
+    if(eld_transition_busy(&src_eld_change))src_eld_abort(4,src_eld_change.phase);
+    else if(src_eld_change.phase==ELD_WAIT_START) {
+        if(!src_stream_established){src_eld_abort(6,0x200u|AVDTP_SI_OPEN);return;}
+        (void)eld_transition_rejected(&src_eld_change);
+        src_suspend_ms=btstack_run_loop_get_time_ms();
+        printf("[eld] initial/resume START timed out; self-heal armed\n");
+    }
+}
+static void src_eld_arm_timer(void) {
+    if((!eld_transition_busy(&src_eld_change) && src_eld_change.phase!=ELD_WAIT_START) || src_eld_change.phase==ELD_FAILED)return;
+    /* Coalesced writes must not extend an in-flight phase indefinitely. */
+    if(src_eld_timer_armed && src_eld_timer_phase==src_eld_change.phase)return;
+    src_eld_cancel_timer();src_eld_timer_phase=src_eld_change.phase;src_eld_timer_armed=true;
+    btstack_run_loop_set_timer_handler(&src_eld_change_timer,src_eld_change_timeout);
+    btstack_run_loop_set_timer(&src_eld_change_timer,3000);
+    btstack_run_loop_add_timer(&src_eld_change_timer);
+}
+static void src_eld_abort(uint8_t stage,uint32_t rc) {
+    if(!(eld_transition_failed(&src_eld_change)&ELD_DROP))return;
+    src_eld_failures++;src_eld_error_stage=stage;src_eld_last_error=rc;
+    src_eld_cancel_timer();btstack_run_loop_remove_timer(&src_jitter_timer);
+    src_pending_jitter=0;src_eld_reset_pending=false;
+    a2dp_demo_timer_stop(&media_tracker);is_streaming=false;
+    src_auto_kick_pending=false;src_suspend_ms=0;
+    /* OOM/rejected transitions require an explicit reconnect, not a dial loop. */
+    src_user_dc_hold=true;src_dial_window_ms=0;
+    printf("[eld] transition FAILED stage=%u rc=%lu revision=%lu; dropping headset ACL\n",
+        stage,(unsigned long)rc,(unsigned long)src_eld_change.requested);
+    if(src_con_handle)gap_disconnect(src_con_handle);
+}
+static uint8_t src_start_stream(uint16_t cid,uint8_t seid) {
+    bool eld=cur_codec==CODEC_ID_AACELD;
+    if(eld && src_eld_setup_pending)return ERROR_CODE_SUCCESS;
+    if(eld && !eld_transition_begin_start(&src_eld_change))return ERROR_CODE_SUCCESS;
+    uint8_t rc=avdtp_source_start_stream(cid,seid);
+    if(eld && rc) {
+        if(eld_transition_busy(&src_eld_change))src_eld_abort(2,rc);
+        else {
+            (void)eld_transition_rejected(&src_eld_change);
+            src_suspend_ms=btstack_run_loop_get_time_ms();
+        }
+    } else if(eld)src_eld_arm_timer();
+    return rc;
+}
+static void src_eld_execute(unsigned actions) {
+    if(actions&ELD_STOP){
+        a2dp_demo_timer_stop(&media_tracker);btstack_run_loop_remove_timer(&src_jitter_timer);
+    }
+    if(actions&ELD_BUILD)src_eld_reset_pending=true;
+    if(actions&ELD_SUSPEND) {
+        uint8_t rc=avdtp_source_suspend(media_tracker.avdtp_cid,media_tracker.local_seid);
+        if(rc){src_eld_abort(1,rc);return;}
+    }
+    if(actions&ELD_START)(void)src_start_stream(media_tracker.avdtp_cid,media_tracker.local_seid);
+    if(actions)src_eld_arm_timer();
+}
+static bool src_eld_signaling_rejected(uint8_t signal) {
+    if(cur_codec==CODEC_ID_AACELD && signal==AVDTP_SI_OPEN && !src_stream_established) {
+        src_eld_abort(6,0x100u|signal);return true;
+    }
+    if(cur_codec!=CODEC_ID_AACELD || (signal!=AVDTP_SI_START && signal!=AVDTP_SI_SUSPEND))return false;
+    if(eld_transition_busy(&src_eld_change)) {
+        src_eld_abort(signal==AVDTP_SI_START?2:1,0x100u|signal);return true;
+    }
+    (void)eld_transition_rejected(&src_eld_change);return false;
+}
 static void src_jitter_handler(btstack_timer_source_t *ts){
     (void)ts;
     if (!src_pending_jitter || !a2dp_is_connected_flag || !is_streaming ||
-        src_eld_reset_pending || suspend_recovery_pending) return;
+        src_eld_reset_pending || suspend_recovery_pending || src_eld_change.phase!=ELD_READY) return;
     extern void aap_set_jitter_raw(uint8_t value);
     aap_set_jitter_raw(src_pending_jitter);
     src_pending_jitter = 0;
@@ -1500,7 +1606,7 @@ void a2dp_source_queue_jitter(uint8_t ms){
         src_pending_jitter=0;aap_set_jitter_raw(ms);return;
     }
     src_pending_jitter = ms;
-    if (is_streaming && !src_eld_reset_pending && !suspend_recovery_pending) {
+    if (is_streaming && !src_eld_reset_pending && !suspend_recovery_pending && src_eld_change.phase==ELD_READY) {
         btstack_run_loop_set_timer_handler(&src_jitter_timer, src_jitter_handler);
         btstack_run_loop_set_timer(&src_jitter_timer, 500);
         btstack_run_loop_add_timer(&src_jitter_timer);
@@ -1516,7 +1622,7 @@ void a2dp_source_queue_jitter(uint8_t ms){
    episode; the AAP wake/ear signal expedites it (fresh tries). For ELD the
    re-START gets fresh seq/ts + a main-loop encoder rebuild, the same
    hygiene as the TX-stall recovery (AirPods decoder resyncs cleanly). */
-static uint32_t src_suspend_ms;      /* nonzero = SUSPENDED since this tick   */
+/* src_suspend_ms: nonzero = SUSPENDED since this tick. */
 static uint8_t  src_resume_tries;    /* bounded re-STARTs per suspend episode */
 static btstack_timer_source_t src_selfheal_timer;
 
@@ -1578,15 +1684,14 @@ static void src_wedge_retry_handler(btstack_timer_source_t *ts) {
 }
 
 static void src_resume_suspended(const char *why) {
+    if(cur_codec==CODEC_ID_AACELD && eld_transition_busy(&src_eld_change))return;
     src_suspend_ms = btstack_run_loop_get_time_ms();   /* re-arm the dwell */
     printf("suspended stream: re-START (%s, try %u/3)%s\n",
            why, src_resume_tries, cur_codec == 4 ? " + ELD reset" : "");
     if (cur_codec == 4) {
-        aaceld_frame_sequence = 1;
-        media_tracker.rtp_timestamp = 0;
-        src_eld_reset_pending = true;    /* encoder rebuilt in the main loop */
+        a2dp_source_apply_eld_rate();return;
     }
-    uint8_t st = avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+    uint8_t st = src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
     if (st == ERROR_CODE_COMMAND_DISALLOWED) src_sig_disallowed(why);
 }
 
@@ -1657,7 +1762,7 @@ static void src_park_check(btstack_timer_source_t *ts){
                 src_park_starts++;
                 printf("[watchdog] stream parked with host live -> START (total %lu)\n",
                        (unsigned long)src_park_starts);
-                avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+                src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
             }
         }
     } else {
@@ -1676,36 +1781,81 @@ void a2dp_source_parkwatch_init(void){
    resyncs cleanly). No-op unless an ELD stream is up; otherwise the new
    rate simply applies at the next encoder init. */
 void a2dp_source_apply_eld_rate(void) {
-    if (cur_codec != 4 || !a2dp_is_connected_flag) return;
+    if (cur_codec != CODEC_ID_AACELD || !a2dp_is_connected_flag) return;
+    unsigned actions=eld_transition_request(&src_eld_change,is_streaming);
+    if(!actions)return;
+    src_eld_error_stage=0;src_eld_last_error=0;
     btstack_run_loop_remove_timer(&src_jitter_timer);
     src_pending_jitter=src_eld_profile().jitter;
+    src_eld_reset_pending=true;
+    printf("[eld] request revision=%lu phase=%s rate=%lu\n",
+        (unsigned long)src_eld_change.requested,eld_transition_phase_name(src_eld_change.phase),
+        (unsigned long)src_eld_bitrate());
+    src_eld_execute(actions);
+}
+
+static void src_eld_initialize(void) {
+    /* Only the main loop calls this, with the CYW43 context lock held.
+       Retain a peer START that arrived before the deferred allocation. */
+    bool early_start=src_eld_early_start;
+    src_eld_link_reset();eld_transition_configured(&src_eld_change);
+    src_eld_error_stage=0;src_eld_last_error=0;
+    eld_profile profile=src_eld_profile();
+    uint32_t begin=time_us_32();
+    AACENC_ERROR err=eld_encoder_open(&handleAAC,&aacinf,&profile);
+    uint32_t elapsed=time_us_32()-begin;
+    if(elapsed>src_eld_max_rebuild_us)src_eld_max_rebuild_us=elapsed;
+    if(err!=AACENC_OK) {
+        src_eld_abort(5,(uint32_t)err);
+        printf("[eld] initial encoder FAILED status=%u\n",err);
+        return;
+    }
+    src_active_eld=profile;src_eld_rebuilds++;src_eld_reset_pending=false;
+    btstack_run_loop_remove_timer(&src_jitter_timer);
+    src_pending_jitter=profile.jitter;
+    src_full_bitrate=profile.bitrate;src_vbr_mode=0;src_relay_rate_low=false;
+
+    PLOG("AAC-ELD setup complete! frameLength=%d, inputChannels=%d, bitrate=%lu (encoder reports %lu, sbr=%lu ratio=%lu vbr=%lu)\n",
+           aacinf.frameLength, aacinf.inputChannels,
+           (unsigned long)src_eld_bitrate(),
+           (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_BITRATE),
+           (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_SBR_MODE),
+           (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_SBR_RATIO),
+           (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_BITRATEMODE));
+
+    eld_resample = usb_pipeline_rate()==44100;
+    if (eld_resample) {
+        /* 44.1 pipeline: pop 441-frame slots (10 ms @ 44.1 =
+           3 x 147 polyphase periods -> EXACTLY one 480-sample
+           48 k granule). Encoder + RTP clock stay 48 k. */
+        current_sample_rate = 44100;
+        acc_num_simples = 441;
+        resamp44_reset();
+        printf("AAC-ELD: 44.1 pipeline, resampling 441->480 per granule\n");
+    } else {
+        current_sample_rate = 48000;
+        acc_num_simples = aacinf.frameLength;  // use actual frame size from encoder
+    }
+    rtp_samples_per_frame = aacinf.frameLength;   /* 480: 48 k RTP clock */
+    audio_timer_interval = 10;
+
+    PLOG("AAC-ELD acc_num_simples=%d\n", acc_num_simples);
+
+    audio_slot_queue_configure_with_count(acc_num_simples, src_eld_slot_count());
+
+    // Core 1 path exists, but FDK-AAC is currently encoded on Core 0.
     aaceld_frame_sequence = 1;
-    media_tracker.rtp_timestamp = 0;
-    src_eld_reset_pending = true;      /* encoder rebuilt in the main loop */
-    printf("AAC-ELD bitrate -> %lu — pausing stream to apply\n",
-           (unsigned long)src_eld_bitrate());
-    /* Suspend first (user feedback: hot-swapping the encoder under a LIVE
-       stream glitches the AirPods decoder). The SUSPEND-accept handler
-       auto-restarts the stream, which lands on the freshly rebuilt encoder
-       — the same choreography as the TX-stall recovery. */
-    if (is_streaming) {
-        a2dp_demo_timer_stop(&media_tracker);
-        int st = avdtp_source_suspend(media_tracker.avdtp_cid, media_tracker.local_seid);
-        if (st != ERROR_CODE_SUCCESS) {
-            printf("suspend failed (%d) — applying live instead\n", st);
-            a2dp_demo_timer_start(&media_tracker);
-            /* disallowed = possible signaling wedge: the "live" apply cannot
-               unmute wedged buds — count it so the escape ladder runs */
-            if (st == ERROR_CODE_COMMAND_DISALLOWED) src_sig_disallowed("refresh suspend");
-        } else {
-            /* if the suspend-accept never arrives, the recovery timer (and
-               behind it the self-heal) restarts the stream */
-            suspend_recovery_pending = true;
-            btstack_run_loop_remove_timer(&suspend_recovery_timer);
-            btstack_run_loop_set_timer_handler(&suspend_recovery_timer, suspend_recovery_handler);
-            btstack_run_loop_set_timer(&suspend_recovery_timer, SUSPEND_RECOVERY_TIMEOUT_MS);
-            btstack_run_loop_add_timer(&suspend_recovery_timer);
-        }
+    core1_encoder_active = false;
+    PLOG("AAC-ELD Core 0 encoder active\n");
+
+    cur_codec = CODEC_ID_AACELD;
+
+    if(early_start)src_stream_start_accepted();
+    else if(src_stream_established)(void)src_start_stream(media_tracker.avdtp_cid,media_tracker.local_seid);
+    else {
+        uint8_t rc=avdtp_source_open_stream(media_tracker.avdtp_cid,media_tracker.local_seid,media_tracker.remote_seid);
+        if(rc)src_eld_abort(6,rc);
+        else src_eld_arm_timer();
     }
 }
 
@@ -1733,11 +1883,15 @@ void a2dp_source_main_work(void) {
            the old leak for one session (error 33, recoverable), never a free
            of live state.
 
+           Deferred ELD setup is also safe: the target codec is latched but
+           no new encoder exists yet, and the pump is gated. Sweep old codec
+           families before the initial ELD allocation to avoid transient OOM.
+
            The async context lock makes the check/sweep atomic against BT
            configuration, while USB interrupts continue draining microphone
            PCM. Allocation/free stays in thread mode. */
         async_context_acquire_lock_blocking(cyw43_arch_async_context());
-        if (cur_codec == 0) {
+        if (cur_codec == 0 || src_eld_setup_pending) {
             for (int i = 0; codec_registry[i]; i++)
                 if (codec_registry[i]->release) codec_registry[i]->release();
             async_context_release_lock(cyw43_arch_async_context());
@@ -1746,7 +1900,18 @@ void a2dp_source_main_work(void) {
             async_context_release_lock(cyw43_arch_async_context());
         }
     }
+    if(src_eld_setup_pending) {
+        async_context_acquire_lock_blocking(cyw43_arch_async_context());
+        if(src_eld_setup_pending && a2dp_is_connected_flag &&
+           src_eld_setup_cid==media_tracker.avdtp_cid && cur_codec==CODEC_ID_AACELD)
+            src_eld_initialize();
+        else src_eld_link_reset();
+        async_context_release_lock(cyw43_arch_async_context());return;
+    }
     if (!src_eld_reset_pending) return;
+    /* Never allocate before the peer has accepted SUSPEND, or while START is
+       still in flight. New settings coalesce into the next owned rebuild. */
+    if(eld_transition_busy(&src_eld_change) && src_eld_change.phase!=ELD_REBUILD)return;
     /* Serialize BT encoder ownership without masking USB IRQs: microphone IN
        continues draining its PCM queue while the encoder heap is rebuilt. */
     async_context_acquire_lock_blocking(cyw43_arch_async_context());
@@ -1754,16 +1919,24 @@ void a2dp_source_main_work(void) {
         src_eld_reset_pending=false;
         async_context_release_lock(cyw43_arch_async_context());return;
     }
+    if(eld_transition_busy(&src_eld_change) && src_eld_change.phase!=ELD_REBUILD) {
+        async_context_release_lock(cyw43_arch_async_context());return;
+    }
     eld_profile profile=src_eld_profile();
+    uint32_t begin=time_us_32();
     AACENC_ERROR error=eld_encoder_open(&handleAAC,&aacinf,&profile);
+    uint32_t elapsed=time_us_32()-begin;
+    if(elapsed>src_eld_max_rebuild_us)src_eld_max_rebuild_us=elapsed;
     if(error==AACENC_OK) {
         src_active_eld=profile;src_full_bitrate=profile.bitrate;src_eld_rebuilds++;
         if(active_slot_count!=profile.slots)
             audio_slot_queue_configure_with_count(acc_num_simples,profile.slots);
+        aaceld_frame_sequence=1;media_tracker.rtp_timestamp=0;
+        __dmb();src_eld_reset_pending=false;
+        src_eld_execute(eld_transition_built(&src_eld_change,true));
     } else {
-        src_eld_failures++;
+        src_eld_abort(3,(uint32_t)error);
     }
-    __dmb();src_eld_reset_pending=false;
     async_context_release_lock(cyw43_arch_async_context());
     printf("[eld] rebuild status=%u rate=%lu vbr=%u sbr=%u slots=%u failures=%lu\n",
         error,(unsigned long)profile.bitrate,profile.vbr,profile.sbr,profile.slots,(unsigned long)src_eld_failures);
@@ -2110,7 +2283,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
                 extern uint8_t aap_game_jitter(void);
                 src_sync_splice_seen = src_live_splices;
                 src_sync_reassert_ms = rnow;
-                aap_set_jitter_raw(settings()->game_level ? aap_game_jitter() : 150);
+                a2dp_source_queue_jitter(src_eld_profile().jitter);
                 printf("[sync] post-churn jitter re-assert (splices %lu — drains the buds' ratcheted buffer)\n",
                        (unsigned long)src_live_splices);
             }
@@ -2350,19 +2523,8 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
                     src_storm_pending = true;
 
                     // Reset AAC-ELD encoder + sequence so both sides start fresh
-                    if (cur_codec == 4) {
-                        aaceld_frame_sequence = 1;
-                        context->rtp_timestamp = 0;
-                        /* The FDK close/open storm is DEFERRED to the main
-                           loop (a2dp_source_main_work): mallocing HERE (BT
-                           context) deadlocks against a main-loop malloc in
-                           flight — e.g. the relay decoder opening as a phone
-                           connects (HW: watchdog "loop starved >2s" right
-                           after phone connect + TX stall). The stream is
-                           suspended below, so nothing encodes meanwhile;
-                           fill is also gated on this flag. */
-                        src_eld_reset_pending = true;
-                        printf("AAC-ELD: seq/ts cleared, encoder reset deferred to main loop\n");
+                    if (cur_codec == CODEC_ID_AACELD) {
+                        a2dp_source_apply_eld_rate();fail_count=0;return;
                     }
 
                     a2dp_demo_timer_stop(context);
@@ -2588,6 +2750,58 @@ static void a2dp_demo_timer_pause(a2dp_media_sending_context_t * context){
 
 
 
+static void src_stream_start_accepted(void) {
+    if(cur_codec==CODEC_ID_AACELD && src_eld_setup_pending){src_eld_early_start=true;return;}
+    if(cur_codec==CODEC_ID_AACELD) {
+        unsigned actions=eld_transition_started(&src_eld_change);
+        if(!(actions&ELD_RUN)){src_eld_execute(actions);return;}
+        src_eld_cancel_timer();
+    }
+    printf("Stream started.\n");
+    src_started_ms = btstack_run_loop_get_time_ms();
+    if (cur_codec == 4) src_prime_pending = true;   /* start prime */
+    if (src_pending_jitter){   /* game jitter AFTER the rate dance */
+        btstack_run_loop_remove_timer(&src_jitter_timer);
+        btstack_run_loop_set_timer_handler(&src_jitter_timer, src_jitter_handler);
+        btstack_run_loop_set_timer(&src_jitter_timer, 500);
+        btstack_run_loop_add_timer(&src_jitter_timer);
+    }
+    src_suspend_ms = 0;          /* streaming: disarm self-heal */
+    src_resume_tries = 0;
+    if (finish_scan_avdtp_codec){
+        a2dp_demo_timer_start(&media_tracker);
+        is_streaming = true;
+        src_session_streamed = true;  /* audio: not a wedged peer */
+        src_nostream_run = 0;
+        src_wedge_hold   = false;     /* it streamed: unlatch */
+        start_led_blink();
+    }
+
+}
+static void src_stream_suspend_accepted(void) {
+    if(cur_codec==CODEC_ID_AACELD && src_eld_setup_pending)src_eld_early_start=false;
+    printf("Stream paused.\n");
+    // Cancel recovery timer — suspend response arrived
+    suspend_recovery_pending = false;
+    btstack_run_loop_remove_timer(&suspend_recovery_timer);
+    a2dp_demo_timer_pause(&media_tracker);
+    /* Arm the self-heal dwell: if the immediate restart below
+       is rejected/ignored (asleep AirPods), the 1 s timer
+       re-STARTs after 3 s, bounded to 3 tries. */
+    src_suspend_ms = btstack_run_loop_get_time_ms();
+    if(cur_codec==CODEC_ID_AACELD) {
+        unsigned actions=eld_transition_suspended(&src_eld_change);
+        if(actions&ELD_BUILD)src_eld_reset_pending=true;
+        src_eld_execute(actions);return;
+    }
+    // Auto-restart: ask to resume so AirPods reset their decoder
+    printf("Auto-restarting stream...\n");
+    {   uint8_t rst = src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+        if (rst == ERROR_CODE_COMMAND_DISALLOWED) src_sig_disallowed("auto-restart");
+    }
+
+}
+
 static void dump_remote_sink_endpoints(void){
     PLOG("Remote Endpoints:\n");
     int i;
@@ -2651,7 +2865,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             case AVDTP_SUBEVENT_SIGNALING_CONNECTION_RELEASED:
                 break;                     /* attributed inside the cases below */
             default:
-                if (bt_sink_relay_owns_cid(ev_cid)) return;   /* phone event */
+                if (!src_event_matches_headset(ev_cid)) return;
                 break;
         }
     }
@@ -2807,7 +3021,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             // fresh ACL broke AVRCP on AirPods (the long-standing -aacp-repo
             // bug). It opens after AVRCP establishes — see avrcp_packet_handler.
 
-            avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+            src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
             avrcp_connect((uint8_t *) cur_active_device, &media_tracker.avrcp_cid);
             break;
 
@@ -3040,54 +3254,9 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                 }
                 printf("\n");
 
-                eld_profile profile=src_eld_profile();
-                AACENC_ERROR err=eld_encoder_open(&handleAAC,&aacinf,&profile);
-                if(err!=AACENC_OK) {
-                    src_eld_failures++;
-                    printf("[eld] initial encoder FAILED status=%u\n",err);
-                    break;
-                }
-                src_active_eld=profile;src_eld_rebuilds++;src_eld_reset_pending=false;
-                btstack_run_loop_remove_timer(&src_jitter_timer);
-                src_pending_jitter=profile.jitter;
-                src_full_bitrate=profile.bitrate;src_vbr_mode=0;src_relay_rate_low=false;
-
-                PLOG("AAC-ELD setup complete! frameLength=%d, inputChannels=%d, bitrate=%lu (encoder reports %lu, sbr=%lu ratio=%lu vbr=%lu)\n",
-                       aacinf.frameLength, aacinf.inputChannels,
-                       (unsigned long)src_eld_bitrate(),
-                       (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_BITRATE),
-                       (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_SBR_MODE),
-                       (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_SBR_RATIO),
-                       (unsigned long)aacEncoder_GetParam(handleAAC, AACENC_BITRATEMODE));
-
-                eld_resample = usb_pipeline_rate()==44100;
-                if (eld_resample) {
-                    /* 44.1 pipeline: pop 441-frame slots (10 ms @ 44.1 =
-                       3 x 147 polyphase periods -> EXACTLY one 480-sample
-                       48 k granule). Encoder + RTP clock stay 48 k. */
-                    current_sample_rate = 44100;
-                    acc_num_simples = 441;
-                    resamp44_reset();
-                    printf("AAC-ELD: 44.1 pipeline, resampling 441->480 per granule\n");
-                } else {
-                    current_sample_rate = 48000;
-                    acc_num_simples = aacinf.frameLength;  // use actual frame size from encoder
-                }
-                rtp_samples_per_frame = aacinf.frameLength;   /* 480: 48 k RTP clock */
-                audio_timer_interval = 10;
-
-                PLOG("AAC-ELD acc_num_simples=%d\n", acc_num_simples);
-
-                audio_slot_queue_configure_with_count(acc_num_simples, src_eld_slot_count());
-
-                // Core 1 path exists, but FDK-AAC is currently encoded on Core 0.
-                aaceld_frame_sequence = 1;
-                core1_encoder_active = false;
-                PLOG("AAC-ELD Core 0 encoder active\n");
-
-                cur_codec = CODEC_ID_AACELD;
-
-                avdtp_source_open_stream(media_tracker.avdtp_cid, media_tracker.local_seid, media_tracker.remote_seid);
+                /* Publish setup intent only. FDK open/free must not run in
+                   the BT callback and preempt a main-loop allocator owner. */
+                src_eld_schedule_setup();
             }
             else
             {
@@ -3101,7 +3270,6 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
 
         case AVDTP_SUBEVENT_SIGNALING_ACCEPT:
-            // TODO check cid
             src_wedge_strikes = 0;   /* an accepted command proves signaling alive */
             signal_identifier = avdtp_subevent_signaling_accept_get_signal_identifier(packet);
             if (is_cmd_triggered_localy){
@@ -3115,45 +3283,15 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                 case AVDTP_SI_SET_CONFIGURATION:
                     break;
                 case  AVDTP_SI_START:
-                    printf("Stream started.\n");
-                    src_started_ms = btstack_run_loop_get_time_ms();
-                    if (cur_codec == 4) src_prime_pending = true;   /* start prime */
-                    if (src_pending_jitter){   /* game jitter AFTER the rate dance */
-                        btstack_run_loop_remove_timer(&src_jitter_timer);
-                        btstack_run_loop_set_timer_handler(&src_jitter_timer, src_jitter_handler);
-                        btstack_run_loop_set_timer(&src_jitter_timer, 500);
-                        btstack_run_loop_add_timer(&src_jitter_timer);
-                    }
-                    src_suspend_ms = 0;          /* streaming: disarm self-heal */
-                    src_resume_tries = 0;
-                    if (finish_scan_avdtp_codec){
-                        a2dp_demo_timer_start(&media_tracker);
-                        is_streaming = true;
-                        src_session_streamed = true;  /* audio: not a wedged peer */
-                        src_nostream_run = 0;
-                        src_wedge_hold   = false;     /* it streamed: unlatch */
-                        start_led_blink();
-                    }
+                    src_stream_start_accepted();
                     break;
                 case AVDTP_SI_SUSPEND:
-                    printf("Stream paused.\n");
-                    // Cancel recovery timer — suspend response arrived
-                    suspend_recovery_pending = false;
-                    btstack_run_loop_remove_timer(&suspend_recovery_timer);
-                    a2dp_demo_timer_pause(&media_tracker);
-                    /* Arm the self-heal dwell: if the immediate restart below
-                       is rejected/ignored (asleep AirPods), the 1 s timer
-                       re-STARTs after 3 s, bounded to 3 tries. */
-                    src_suspend_ms = btstack_run_loop_get_time_ms();
-                    // Auto-restart: ask to resume so AirPods reset their decoder
-                    printf("Auto-restarting stream...\n");
-                    {   uint8_t rst = avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
-                        if (rst == ERROR_CODE_COMMAND_DISALLOWED) src_sig_disallowed("auto-restart");
-                    }
+                    src_stream_suspend_accepted();
                     break;
                 case AVDTP_SI_ABORT:
                 case AVDTP_SI_CLOSE:
                     printf("Stream released.\n");
+                    src_eld_early_start=false;
                     a2dp_demo_timer_stop(&media_tracker);
                     break;
                 default:
@@ -3163,6 +3301,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
         case AVDTP_SUBEVENT_SIGNALING_REJECT:
             signal_identifier = avdtp_subevent_signaling_reject_get_signal_identifier(packet);
+            if(src_eld_signaling_rejected(signal_identifier))break;
             printf("Rejected %s\n", avdtp_si2str(signal_identifier));
             /* SET_CONFIGURATION rejects arrive ASYNCHRONOUSLY, long after
                set_next_codec() returned "command sent OK" — so the selection
@@ -3204,6 +3343,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             break;
         case AVDTP_SUBEVENT_SIGNALING_GENERAL_REJECT:
             signal_identifier = avdtp_subevent_signaling_general_reject_get_signal_identifier(packet);
+            if(src_eld_signaling_rejected(signal_identifier))break;
             printf("Rejected %s\n", avdtp_si2str(signal_identifier));
             if (signal_identifier == AVDTP_SI_SUSPEND || signal_identifier == AVDTP_SI_START) {
                 suspend_recovery_pending = false;
@@ -3215,6 +3355,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             }
             break;
         case AVDTP_SUBEVENT_STREAMING_CONNECTION_RELEASED:
+            src_eld_early_start=false;
             l2cap_set_flushable_local_cid(0);   /* stale cid must never mark a
                                                    later channel flushable */
             a2dp_demo_timer_stop(&media_tracker);
@@ -3237,8 +3378,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                cleared its cid for this same (broadcast) event. Only the
                HEADSET's release may tear the source state down. */
             if (little_endian_read_16(packet, 3) != media_tracker.avdtp_cid) break;
-            btstack_run_loop_remove_timer(&src_jitter_timer);
-            src_pending_jitter=0;
+            src_eld_link_reset();
             a2dp_demo_timer_stop(&media_tracker);
             finish_scan_avdtp_codec = false;
             if (a2dp_is_connected_flag && (read_settings_byte() & USBSET_PAUSEDC)) {
@@ -3631,7 +3771,7 @@ bool a2dp_source_console_key(char cmd){
             break;
         case 'm':
             printf("Start stream between local %d and remote %d seid, \n", media_tracker.local_seid, media_tracker.remote_seid);
-            status = avdtp_source_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
+            status = src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
             break;
         case 'x':
             printf("Abort stream between local %d and remote %d seid\n", media_tracker.local_seid, media_tracker.remote_seid);

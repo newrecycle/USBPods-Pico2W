@@ -151,7 +151,9 @@
  /* Queue all media keys, including repeated presses, without invoking TinyUSB
     from the BT producer context. USB task owns press/release sequencing. */
 static bool usb_hid_send_report(uint16_t usage) {
- return tud_hid_report(1, &usage, sizeof(usage));
+ if(!tud_hid_report(1, &usage, sizeof(usage)))return false;
+ printf("[hid] sent usage=0x%04x phase=%s\n",usage,usage?"press":"release");
+ return true;
 }
 void usb_hid_consumer(uint16_t usage) {
  (void)usb_hid_media_enqueue(usage);
@@ -920,7 +922,7 @@ volatile uint8_t usb_splice_sim;
  }
  
 bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, uint8_t alt)
- { 
+ {
     (void)rhport; (void)ep_in;
     /* TinyUSB 0.18 passes the AUDIO FUNCTION INDEX here, not bInterfaceNumber.
        CFG_TUD_AUDIO is 1: function 0 has the single microphone IN endpoint. */
