@@ -37,6 +37,21 @@ results ZIP even if it exits early. See [AACP-SESSION-0555.md](AACP-SESSION-0555
 This package diagnoses the repeatable disconnect; its physical cause is still
 unresolved. Omit `-SessionOnly` for the complete matrix after that issue is closed.
 
+After the first pairing, a package containing the local runner's new
+`-ReusePairing` option can reuse the current or uniquely selected saved bond:
+
+```powershell
+.\Run-Test.ps1 -CdcPort COM4 -SessionOnly -ReusePairing
+```
+
+This mode does not scan, request case pairing mode, or send a fresh pairing
+command. A disconnected selected device is dialed through `savedconnect`.
+Ambiguous history requires `-TargetName` or `-TargetMac`; a different connected
+headset is refused. The launcher's existing flash/identity checks still apply.
+The verified `880dc31` package does not yet contain this new runner option.
+The local supplemental probes reused its existing connection and saved bond.
+See [the local Windows findings](LOCAL-WINDOWS-20261104.md).
+
 1. Save your known-working UF2. Have `picotool` in PATH and connect the Pico
    **2 W**, either running the previous USBPods firmware or already in BOOTSEL.
    The launcher verifies the bundle, attempts `picotool reboot -u -f` for a

@@ -43,6 +43,22 @@ def choose_target(items, mac=None, name=None):
         raise ValueError(f'Expected one exact AirPods match; found {len(matches)}. Specify --target-mac or an exact --target-name.')
     return matches[0]
 
+def reuse_saved_pairing(link, items, mac=None, name=None):
+    """Reuse a selected bond without discovery, pair commands or key changes."""
+    saved=[x for x in items if x.get('mac','').upper() not in ('','00:00:00:00:00:00','FF:FF:FF:FF:FF:FF')]
+    state=link.request('status')
+    if mac or name:chosen=choose_target(saved,mac,name)
+    elif state.get('connected'):chosen=choose_target(saved,mac=state.get('peer',''))
+    elif len(saved)==1:chosen=saved[0]
+    else:raise ValueError('Saved pairing is ambiguous or absent; specify --target-mac or --target-name, or pair once without --reuse-pairing')
+    if state.get('connected'):
+        if state.get('peer','').upper()!=chosen['mac'].upper():
+            raise ValueError('A different headset is connected; refusing to replace it during saved-pairing reuse')
+    else:
+        link.request('savedconnect '+str(chosen['index']))
+    state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
+    return chosen,state
+
 def restoration_commands(original, current):
     """Avoid side effects from reapplying unchanged preferences after a failure."""
     if not current:return []
@@ -267,6 +283,7 @@ def main():
     parser.add_argument('--soak-seconds',type=int,default=600)
     parser.add_argument('--phone-relay',action='store_true',help='Include phone relay with both USB streams open')
     parser.add_argument('--session-only',action='store_true',help='Only a 45-second AAC-ELD/mic/USB session probe; omit the full feature matrix')
+    parser.add_argument('--reuse-pairing',action='store_true',help='Reuse the current or uniquely selected saved bond without scanning or fresh pairing')
     parser.add_argument('--output',type=Path,default=Path.cwd())
     parser.add_argument('--noninteractive',action='store_true')
     args=parser.parse_args()
@@ -274,7 +291,7 @@ def main():
     if not 10<=args.soak_seconds<=1800:parser.error('--soak-seconds must be 10..1800')
     if args.phone_relay and args.noninteractive:parser.error('--phone-relay requires physical phone prompts')
     if args.phone_relay and args.session_only:parser.error('--session-only cannot include phone relay')
-    if args.noninteractive and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
+    if args.noninteractive and not args.reuse_pairing and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
     recorder=Recorder(root);link=None;original=None;summary={'schema':1,'hardware_run':True,'tests':{},'host':platform.platform(),'started':stamp}
@@ -317,22 +334,26 @@ def main():
         result('diagnostic_transport','PASS',{'transport':'usb-cdc','port':cdc.device,'log':'cdc.jsonl','includes':'application, AACP, codec, USB and firmware HID submission logs'})
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
         except Exception as e:result('hid_connection','SKIP',str(e))
-        link.request('disconnect')
-        link.wait(lambda s:not s.get('connected'),15)
-        prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
-        link.request('scan');time.sleep(16);link.request('scanstop')
-        items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
-        try:chosen=choose_target(items,args.target_mac,args.target_name)
-        except ValueError:
-            if args.noninteractive:raise
-            print('Scanned devices:',json.dumps(items,indent=2),flush=True)
-            index=int(prompt('Enter the index of the intended AirPods from that list (no automatic guess):'))
-            selected=[item for item in items if item.get('index')==index]
-            if len(selected)!=1:raise ValueError('Not one scanned target at that index')
-            chosen=selected[0]
+        if args.reuse_pairing:
+            chosen,state=reuse_saved_pairing(link,summary['original_saved']['items'],args.target_mac,args.target_name)
+            result('saved_pairing_reuse','PASS',{'fresh_pairing':False,'target':chosen})
+        else:
+            link.request('disconnect')
+            link.wait(lambda s:not s.get('connected'),15)
+            prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
+            link.request('scan');time.sleep(16);link.request('scanstop')
+            items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
+            try:chosen=choose_target(items,args.target_mac,args.target_name)
+            except ValueError:
+                if args.noninteractive:raise
+                print('Scanned devices:',json.dumps(items,indent=2),flush=True)
+                index=int(prompt('Enter the index of the intended AirPods from that list (no automatic guess):'))
+                selected=[item for item in items if item.get('index')==index]
+                if len(selected)!=1:raise ValueError('Not one scanned target at that index')
+                chosen=selected[0]
+            link.request('pair '+str(chosen['index']))
+            state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
         summary['target']=chosen
-        link.request('pair '+str(chosen['index']))
-        state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
         result('targeted_connection','PASS',state)
         state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
         result('aacp_peer_response','PASS',state)

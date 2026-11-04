@@ -269,6 +269,10 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 link.request(f'profile {rate} {int(gaming)} {level}')
             applied=await_profile(link,profile)
             dwell(2,'settle_'+name)
+            # A delayed damage refresh can start during the fixed dwell after
+            # await_profile returned. Require both live paths to settle before
+            # taking the steady interval's starting snapshot, as on reconnect.
+            await_duplex_ready(link,recorder,profile,name+'_ready')
             seconds=45 if probe_only else args.duration
             audio.set_phase(name);print(f'{name}: {seconds} seconds of concurrent playback/capture. Phone-speaker input for the first 20 seconds is sufficient.',flush=True)
             before=snapshot(link,recorder,name+'_begin');dwell(seconds,name)

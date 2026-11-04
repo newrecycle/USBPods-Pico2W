@@ -1,0 +1,57 @@
+name: Live runner host regressions
+on:
+  push:
+    branches: ['work/local-windows-*']
+  pull_request:
+    paths:
+      - 'tools/live_test.py'
+      - 'tools/live_audio.py'
+      - 'tools/Run-Test.ps1'
+      - 'tests/test_live_runner.py'
+      - 'tests/test_live_matrix.py'
+      - 'tests/test_live_cli_e2e.py'
+      - 'tests/test_start_script.ps1'
+      - '.github/workflows/live-runner-host.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: live-runner-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runner-host:
+    name: Linux runner contracts and compiled CLI simulations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install host simulation dependency
+        run: python3 -m pip install 'numpy>=2,<3'
+      - name: Run production runner contracts and matrix replay
+        run: |
+          python3 tests/test_live_runner.py
+          python3 tests/test_live_matrix.py
+      - name: Compile production parser and run CLI scenarios without hardware
+        run: python3 tests/test_live_cli_e2e.py --output build-live-runner-cli
+      - name: Retain simulated results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-runner-cli-simulations
+          path: build-live-runner-cli/
+          if-no-files-found: ignore
+  windows-launcher:
+    name: Windows automatic flash launcher contracts
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exercise launcher with simulated Python entry points
+        shell: pwsh
+        run: ./tests/test_start_script.ps1

@@ -305,6 +305,16 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+The local Windows laptop session on verified `880dc31` is recorded in
+[LOCAL-WINDOWS-20261104.md](LOCAL-WINDOWS-20261104.md). Earlier tests were on
+the user's PC without audio enhancements. Laptop MaxxAudioPro caused mixing,
+but mic-close left-ear silence still reproduced after disabling it. A manual
+`K` refresh timed out; a saved-bond reconnect restored left playback with
+capture closed. 256 kbps passed, 192 kbps still lost mic AUs/USB samples.
+Keep the existing ten-minute-soak evidence; the user does not want it repeated.
+Local runner changes add saved-pairing reuse and bounded profile settling;
+they are not part of the unchanged verified firmware/package.
+
 The 062729 probe stopped before capture because preflight sampled a brief
 automatic ELD refresh. Playback resumed approximately 230 ms after suspension;
 this session did not reproduce the final 30-second ACL drop. The new trace

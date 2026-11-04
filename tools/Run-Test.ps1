@@ -5,7 +5,8 @@ param(
   [int]$StageSeconds = 20,
   [int]$SoakSeconds = 600,
   [switch]$PhoneRelay,
-  [switch]$SessionOnly
+  [switch]$SessionOnly,
+  [switch]$ReusePairing
 )
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
@@ -32,6 +33,7 @@ if ($TargetName) { $RunArgs += @('--target-name', $TargetName) }
 if ($TargetMac) { $RunArgs += @('--target-mac', $TargetMac) }
 if ($PhoneRelay) { $RunArgs += '--phone-relay' }
 if ($SessionOnly) { $RunArgs += '--session-only' }
+if ($ReusePairing) { $RunArgs += '--reuse-pairing' }
 if ($CdcPort) { $RunArgs += @('--cdc', $CdcPort) }
 & $Python @RunArgs
 $Code = $LASTEXITCODE

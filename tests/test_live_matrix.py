@@ -19,7 +19,7 @@ import live_audio
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy required')
 class MatrixReplay(unittest.TestCase):
-    def run_case(self,external=False,reject=False,mic_fault=False):
+    def run_case(self,external=False,reject=False,mic_fault=False,startup_pause=False):
         import numpy as np
         events=[];results={};streams=[]
         class Recorder:
@@ -52,6 +52,7 @@ class MatrixReplay(unittest.TestCase):
             check_input_settings=lambda **kw:None,check_output_settings=lambda **kw:None,
             RawOutputStream=Stream,RawInputStream=Stream)
         def capture_active():return external or any(s.kw['device']==2 for s in streams)
+        def refreshing():return startup_pause and 5<=clock.now<6
         class Link:
             def __init__(self):
                 self.connected=True;self.failed=False;self.revision=1;self.commands=[]
@@ -72,14 +73,14 @@ class MatrixReplay(unittest.TestCase):
                     assert capture_active() and len(streams)==2
                     self.connected=False;return {}
                 if cmd=='connect':self.connected=True;return {}
-                if cmd=='status':return dict(connected=self.connected,confirmed=int(self.connected),streaming=int(self.connected),
+                if cmd=='status':return dict(connected=self.connected,confirmed=int(self.connected),streaming=int(self.connected and not refreshing()),
                     capture=int(capture_active()),codec=4 if self.connected else 0,fault_hold=int(self.failed),
                     mic_started=int(self.connected and capture_active()),mic_recovery_pending=0,
                     peer='fixture',tx_packets=int(clock.now*50)+1,send_failures=0,
                     mic_watchdog_failed=int(mic_fault and clock.now>=3),mic_retry_count=3 if mic_fault else 0)
                 if cmd=='eldstatus':
                     p=self.profile
-                    return dict(ready=int(self.connected),pending=0,transition='off' if self.failed else 'ready',
+                    return dict(ready=int(self.connected),pending=int(refreshing()),transition='off' if self.failed else 'wait-start' if refreshing() else 'ready',
                         input_rate=48000,requested_revision=self.revision,built_revision=self.revision,
                         active_bitrate=p[4],active_vbr=p[5],active_sbr=p[6],active_slots=p[7],
                         negotiated_bitrate=0 if self.failed else 256000,negotiated_vbr=1,
@@ -118,6 +119,11 @@ class MatrixReplay(unittest.TestCase):
                 else:
                     live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,lambda message:'','fixture')
                     self.assertEqual(results['duplex_soak'][0],'PASS')
+                    if startup_pause:
+                        self.assertEqual(results['eld256'][0],'PASS')
+                        settling=[obj for name,obj in events if name=='connection-preflight.jsonl' and obj.get('phase')=='eld256_ready']
+                        self.assertTrue(any(obj['eldstatus']['transition']=='wait-start' for obj in settling))
+                        self.assertEqual(settling[-1]['eldstatus']['transition'],'ready')
                     self.assertEqual(results['eld320'][0],'SKIP')
                     for i in range(1,4):self.assertEqual(results[f'capture_reconnect_{i}'][0],'PASS')
                     self.assertEqual(results['capture_close'][0],'SKIP' if external else 'PASS')
@@ -129,6 +135,7 @@ class MatrixReplay(unittest.TestCase):
                 self.assertFalse(any(c.startswith(('eldrate ','gamelevel ','game ')) for c in link.commands))
         return results
     def test_complete_owned_capture_matrix(self):self.run_case()
+    def test_profile_measurement_waits_for_refresh_after_fixed_dwell(self):self.run_case(startup_pause=True)
     def test_external_capture_is_not_a_usb_close_failure(self):self.run_case(external=True)
     def test_recorded_start_rejection_preserved_before_cleanup(self):self.run_case(reject=True)
     def test_mic_watchdog_failure_preserved_while_playback_continues(self):self.run_case(mic_fault=True)
