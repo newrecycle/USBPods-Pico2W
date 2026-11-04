@@ -31,8 +31,9 @@ class RunnerAudit(unittest.TestCase):
             ('Only the right bud played','channel','left','FAIL'),
             ('right ear only','channel','right','PASS'),
             ('only left','channel','left','PASS'),
+            ('left-only tone silent','channel','left','FAIL'),
             ('both ears played','channel','left','FAIL'),
-            ('nothing happened','channel','right','UNVERIFIED'),
+            ('nothing happened','channel','right','FAIL'),
             ('not silent','channel','left','UNVERIFIED'),
             ('no, the left is gone','channel','left','FAIL'),
             ('high pitched','quality',None,'UNVERIFIED'),
@@ -49,7 +50,6 @@ class RunnerAudit(unittest.TestCase):
         for raw,category,expected,want in checks:
             with self.subTest(raw=raw):
                 self.assertEqual(live_audio.observation_status(raw,category,expected),want)
-                self.assertEqual(raw,raw)  # Caller stores untouched text, not a normalized copy.
 
     def test_initial_ownership_does_not_erase_confirmed_final_capture_close(self):
         class Link:
