@@ -115,7 +115,7 @@ with tempfile.TemporaryDirectory() as temp:
     before_state=reference.split('void avdtp_initiator_stream_config_subsm(',1)[1].split(
         '    if (connection->initiator_connection_state ==',1)[0]
     assert 'initiator_signaling_packet.transaction_label !=' not in before_state
-    code=fixture+'static void check_late_response(label_connection_t *connection) {\\n'+guard+' accepted_responses++;\\n}\\n'
+    code=fixture+'static void check_late_response(label_connection_t *connection) {\n'+guard+' accepted_responses++;\n}\n'
     code+=extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
     code+=extract('avdtp_initiator.c','avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint')+tests
     (path/'test.c').write_text(code)
