@@ -16,6 +16,15 @@ uint32_t aacp_mic_audio_read(int16_t *dst, uint32_t samples); /* USB IRQ */
 uint32_t aacp_mic_audio_packet_samples(void); /* USB IRQ, once per 1 ms IN packet */
 bool aacp_mic_audio_ready(void);
 void aacp_mic_audio_report(void);
+/* Metadata only: no microphone content, device addresses or key payloads. */
+typedef struct {
+    uint32_t age_ms, init_mask, rx_packets, rx_unhandled, logged_headers;
+    uint32_t last_rx_age_ms, last_tx_age_ms;
+    uint16_t cid, last_opcode, last_length;
+    uint8_t init_sent, peer_seen, handshake_ack, last_tx_command;
+    bool open;
+} aacp_mic_session_diagnostics;
+void aacp_mic_get_session_diagnostics(aacp_mic_session_diagnostics *out);
 
 /* Best-effort, allocation-free telemetry snapshot. Counters are lifetime
  * totals (uint32_t wrapping naturally); depth is a point-in-time estimate.

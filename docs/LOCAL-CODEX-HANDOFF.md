@@ -305,6 +305,16 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+The subsequent 055513/055648 runs on `241dc18` both ended with remote HCI
+termination about 30.12/30.17 seconds after AACP opened. Flashing worked; mic
+frames decoded without errors or queue drops until termination. Phone Bluetooth
+was confirmed off; another host is not established as the cause. Read
+[AACP-SESSION-0555.md](AACP-SESSION-0555.md) for the unresolved session lead,
+bounded metadata API/logging, corrected handshake acceptance reporting and
+`Run-Test.ps1 -CdcPort COM3 -SessionOnly` 45-second duplex probe. It is diagnostic,
+not a demonstrated physical repair. The full matrix and protocol bytes remain
+available; do not use automatic reconnects to conceal the failing session.
+
 Capture 051250 on `2911a82` completed the ten-minute soak and both 256 kbps
 intervals were loss-free. At 192 kbps and in game modes, the timer still staged
 three-AU packets across multiple calls despite the per-fill two-AU cap. Read

@@ -817,5 +817,13 @@
       "tests/test_flash_candidate.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "aacp-session-telemetry",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_aacp_session_telemetry.py"
+    ],
+    "timeout": 120
   }
 ]

@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "hardware_run": true,
+  "raw_inputs_committed": false,
+  "runs": [
+    {
+      "archive": "USBPods-results-20261104T055513Z.zip",
+      "sha256": "5704e0e5964fd9f5e05c71db9f758f9f68e7fa094dce63866c3d15b7a033064c",
+      "source_sha": "241dc1863b96c9f79ac39c6469005c9bc2c8b190",
+      "flash_complete": true,
+      "reset_method": "already-bootsel",
+      "remote_hci_reason": 19,
+      "final_seconds_after_aacp_open": 30.119535,
+      "decoded_before_drop": 756,
+      "decode_errors_before_drop": 0,
+      "au_drops_before_drop": 0,
+      "pcm_drops_before_drop": 0,
+      "failed_phase": "capture_warmup",
+      "collector_errors": [],
+      "restore_errors": []
+    },
+    {
+      "archive": "USBPods-results-20261104T055648Z.zip",
+      "sha256": "e826797aa4943c19066ef2867a279fa68379d462c23ff2a97856b804a8bc2766",
+      "source_sha": "241dc1863b96c9f79ac39c6469005c9bc2c8b190",
+      "flash_complete": true,
+      "reset_method": "cdc-1200-fallback",
+      "remote_hci_reason": 19,
+      "final_seconds_after_aacp_open": 30.166869,
+      "decoded_before_drop": 1924,
+      "decode_errors_before_drop": 0,
+      "au_drops_before_drop": 0,
+      "pcm_drops_before_drop": 0,
+      "failed_phase": "eld256",
+      "collector_errors": [],
+      "restore_errors": []
+    }
+  ],
+  "user_context": {
+    "phone_bluetooth_disabled": true,
+    "phone_audio_from_speaker": true,
+    "watch_takeover": "Considered by user, then doubted; no supporting capture evidence"
+  },
+  "causality": "Repeatable AACP-relative timing is observed; root cause is not established",
+  "physical_fix_claimed": false,
+  "next_probe": {
+    "seconds": 45,
+    "simultaneous": [
+      "AAC-ELD playback",
+      "microphone capture",
+      "USB CDC diagnostics",
+      "HID logging"
+    ],
+    "changed_wire_policy": false
+  },
+  "offline_checks": {
+    "passed": 66,
+    "failed": 0,
+    "skipped": 0
+  },
+  "cli_replay": {
+    "scenarios": 15,
+    "passed": 15,
+    "physical_acceptance": false
+  }
+}

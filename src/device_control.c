@@ -43,9 +43,19 @@ extern void bt_phone_pair_window(bool);
 extern bool bt_phone_pair_window_open(void);
 extern bool bt_connect_saved(const uint8_t*);
 static control_input input;
+static void session_telemetry(void) {
+ aacp_mic_session_diagnostics s;aacp_mic_get_session_diagnostics(&s);
+ printf("\n[control] {\"kind\":\"aacpsession\",\"open\":%u,\"cid\":%u,\"age_ms\":%lu,\"init_sent\":%u,\"init_mask\":%lu,\"peer_seen\":%u,\"handshake_ack\":%u,\"rx_frames\":%lu,\"rx_unhandled\":%lu,\"logged_headers\":%lu,\"last_opcode\":%u,\"last_length\":%u,\"last_rx_age_ms\":%lu,\"last_tx_command\":%u,\"last_tx_age_ms\":%lu}\n",
+ (unsigned)s.open,(unsigned)s.cid,(unsigned long)s.age_ms,(unsigned)s.init_sent,
+ (unsigned long)s.init_mask,(unsigned)s.peer_seen,(unsigned)s.handshake_ack,
+ (unsigned long)s.rx_packets,(unsigned long)s.rx_unhandled,(unsigned long)s.logged_headers,
+ (unsigned)s.last_opcode,(unsigned)s.last_length,(unsigned long)s.last_rx_age_ms,
+ (unsigned)s.last_tx_command,(unsigned long)s.last_tx_age_ms);
+}
 static atomic_bool reboot_requested;
 static uint32_t reboot_at;
 static void audio_telemetry(void) {
+ session_telemetry();
  aacp_mic_audio_stats m;aacp_mic_audio_get_stats(&m);
  usb_capture_snapshot_t u=usb_capture_snapshot();
  usb_hid_media_snapshot_t h=usb_hid_media_snapshot();

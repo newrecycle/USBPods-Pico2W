@@ -82,6 +82,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         def mic_fault(self):
             return case=='mic-watchdog' and self.opened_at is not None and clock.now-self.opened_at>=3
         def status(self):
+            if case=='session-peer-timeout' and self.opened_at is not None and clock.now-self.opened_at>=30:self.connected=False
             self.tx+=int(self.connected)
             return dict(kind='status',connected=int(self.connected),confirmed=int(self.connected),
                 streaming=int(self.connected),codec=4 if self.connected else 0,peer=PEER,
@@ -135,7 +136,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
             ack=dict(kind='ack',id=c[0],value=c[1],queued=1,reboot_required=0)
             if name!='telemetry':return [ack]
             active=int(self.capture());n=int(clock.now*133)+1
-            data=[dict(kind='micstats',generation=self.generation,capture=active,decoded=n,
+            data=[dict(kind='aacpsession',open=int(self.connected),init_sent=3,init_mask=7,handshake_ack=int(case!='session-no-ack'),peer_seen=int(self.connected)),
+                  dict(kind='micstats',generation=self.generation,capture=active,decoded=n,
                        clock_windows=1,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
                   dict(kind='usbcapture',running=active,pcm_samples=int(clock.now*64000)+1),
                   dict(kind='hidstats',presses=1,releases=1)]
@@ -182,6 +184,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     hid=types.SimpleNamespace(device=Hid,enumerate=lambda *args:[dict(path=b'wrong-hid',serial_number='other'),dict(path=b'correct-hid',serial_number='correct')])
     modules={'serial':serial,'serial.tools':serial_tools,'serial.tools.list_ports':list_ports,'hid':hid,'sounddevice':sd,'live_audio':audio}
     args=['live_test.py','--manifest',str(manifest_path),'--cdc','COM_SIM','--duration','5','--soak-seconds','10','--output',str(output)]
+    session_case=case in ('session-only','session-peer-timeout','session-no-ack')
+    if session_case:args+=['--session-only']
     def answer(message):return '0' if 'Enter the index' in message else ''
     log=io.StringIO()
     with mock.patch.dict(sys.modules,modules),mock.patch.object(sys,'argv',args),mock.patch('builtins.input',answer),mock.patch.object(live,'time',clock),mock.patch.object(audio,'time',clock),contextlib.redirect_stdout(log):
@@ -189,7 +193,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     root=next(output.glob('USBPods-results-*'))
     if root.suffix=='.zip':root=root.with_suffix('')
     summary=json.loads((root/'summary.json').read_text());tests=summary['tests']
-    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault')
+    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault','session-peer-timeout')
     assert code==(2 if failed else 0),(case,code,log.getvalue()[-1200:])
     assert summary['automated_pass']==(not failed)
     assert not summary['complete'] # Physical observations remain UNVERIFIED.
@@ -198,7 +202,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert all('simulated USB device removed' in e for e in summary['collector_errors'])
     else:assert not summary['collector_errors'] and not summary.get('restore_errors')
     assert all(p.closed for p in ports) and all(h.closed for h in handles) and not streams
-    if not failed:
+    if not failed and not session_case:
         for key in ('eld256','eld192','game_stable','game_latency','restore256','duplex_soak','capture_reconnect_1','capture_reconnect_2','capture_reconnect_3'):
             assert tests[key]['status']=='PASS',(case,key,tests[key])
         assert tests['eld320']['status']==('PASS' if ceiling>=320000 else 'SKIP')
@@ -211,6 +215,17 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         for wav in root.glob('*.wav'):
             with wave.open(str(wav)) as f:assert (f.getframerate(),f.getnchannels(),f.getsampwidth())==(48000,2,2)
         assert list(root.glob('*.wav'))
+    if session_case:
+        assert not any(k in tests for k in ('eld192','game_stable','duplex_soak','noise','ear_and_stem'))
+        assert device.connect_calls==0
+        if case in ('session-only','session-no-ack'):
+            assert tests['session_probe']['status']=='PASS' and tests['full_feature_matrix']['status']=='SKIP'
+            assert tests['post_audio_controls']['status']=='SKIP' and tests['capture_close']['status']=='PASS'
+            assert tests['aacp_handshake']['status']==('UNVERIFIED' if case=='session-no-ack' else 'PASS')
+        else:
+            fault=json.loads((root/'audio-failure-state.json').read_text())
+            assert fault['before_stream_cleanup'] and fault['status']['capture'] and not fault['status']['connected']
+            assert 'Playback failed during session_probe' in tests['simultaneous_audio']['detail']
     if case in ('start-rejected','mic-watchdog'):
         fault=json.loads((root/'audio-failure-state.json').read_text())
         assert fault['before_stream_cleanup'] and fault['status']['capture']
@@ -249,7 +264,7 @@ if __name__=='__main__':
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
-        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),
+        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
                              ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)

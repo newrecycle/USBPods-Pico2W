@@ -37,9 +37,43 @@ static bool refresh_pending;
 static uint32_t refresh_due;
 static aacp_control_diagnostics wire_controls;
 static uint32_t sdus, units, bytes, malformed, last_timestamp;
+static aacp_mic_session_diagnostics session_diag;
+static uint32_t session_open_ms, session_end_ms, session_rx_ms, session_tx_ms;
+static uint32_t logged_headers[16];
+static bool session_tx_seen;
+static void session_report(const char *reason) {
+ uint32_t now=btstack_run_loop_get_time_ms();
+ printf("[aacp-session] reason=%s cid=%u age_ms=%lu init=%u mask=%lu peer_seen=%u handshake_ack=%u rx=%lu unhandled=%lu op=0x%04x len=%u rx_age_ms=%lu tx_cmd=%u tx_age_ms=%lu\n",
+ reason,cid,(unsigned long)(now-session_open_ms),session.init_sent,
+ (unsigned long)session_diag.init_mask,session.confirmed,session_diag.handshake_ack,
+ (unsigned long)session_diag.rx_packets,(unsigned long)session_diag.rx_unhandled,
+ session_diag.last_opcode,session_diag.last_length,
+ (unsigned long)(session_diag.rx_packets?now-session_rx_ms:UINT32_MAX),
+ session_diag.last_tx_command,(unsigned long)(session_tx_seen?now-session_tx_ms:UINT32_MAX));
+}
+static void session_note_control(const uint8_t *p,size_t n,bool handled) {
+ if(n<6 || p[1] || p[2]!=4 || p[3] || (p[0]!=1 && p[0]!=4))return;
+ session_diag.rx_packets++;session_rx_ms=btstack_run_loop_get_time_ms();
+ session_diag.last_opcode=(uint16_t)p[4]|((uint16_t)p[5]<<8);
+ session_diag.last_length=(uint16_t)n;
+ if(!handled)session_diag.rx_unhandled++;
+ if(p[0]==1 && session_diag.last_opcode==1)session_diag.handshake_ack=true;
+ uint32_t key=((uint32_t)p[0]<<16)|session_diag.last_opcode;
+ for(uint32_t i=0;i<session_diag.logged_headers;i++)if(logged_headers[i]==key)return;
+ if(session_diag.logged_headers>=16)return;
+ logged_headers[session_diag.logged_headers++]=key;
+ /* Header classification only, once per type/opcode (16 per channel max).
+    Unknown payloads can contain credentials; never print their bytes. */
+ printf("[aacp-rx] age_ms=%lu type=%u op=0x%04x len=%u handled=%u\n",
+ (unsigned long)(session_rx_ms-session_open_ms),p[0],session_diag.last_opcode,(unsigned)n,handled);
+}
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
-static void release_channel(void) {
+static void release_channel(const char *reason) {
+ if(cid){
+   session_report(reason);session_end_ms=btstack_run_loop_get_time_ms();
+   session_diag.init_sent=session.init_sent;session_diag.peer_seen=session.confirmed;
+ }
  aacp_mic_watch_reset(&mic_watch);refresh_pending=false;media_input_reset(&host_media);
  aacp_mic_discontinuity();
  uint16_t old=cid; cid=0; opened=requested=false;
@@ -49,7 +83,7 @@ static void release_channel(void) {
  if (old) l2cap_disconnect(old);
  due=btstack_run_loop_get_time_ms()+3000;
 }
-void aap_disconnect(void) { desired=false; release_channel(); }
+void aap_disconnect(void) { desired=false; release_channel("host-disconnect"); }
 void aap_connect(bd_addr_t addr) {
  if (desired && !memcmp(peer,addr,6)) return;
  aap_disconnect(); memcpy(peer,addr,6); desired=true; attempts=0;
@@ -94,7 +128,9 @@ static void control_notification(const uint8_t *p,size_t n,void *context) {
  if(n==8 && !memcmp(p,"\x04\x00\x04\x00\x19\x00",6))
    printf("[aacp] stem type=%u bud=%u\n",p[6],p[7]);
  bool valid=controls.ear_valid,worn=controls.worn;uint32_t stem=controls.stem_count;
- if (aacp_control_receive(&controls,p,n)) {
+ bool handled=aacp_control_receive(&controls,p,n);
+ session_note_control(p,n,handled);
+ if (handled) {
    session.confirmed=true;
    if(n==11 && p[4]==0x09)
      printf("[aacp] control notify id=0x%02x value=%u\n",p[6],p[7]);
@@ -127,7 +163,7 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    else {
      int controls_in_sdu=aacp_control_walk(p,n,control_notification,NULL);
      if(controls_in_sdu==0)control_notification(p,n,NULL);
-     else if(controls_in_sdu<0)wire_controls.framing_errors++;
+     else if(controls_in_sdu<0){wire_controls.framing_errors++;session_note_control(p,n,false);}
      else if(controls_in_sdu>1)wire_controls.batches++;
    }
 
@@ -142,9 +178,11 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
      if (!l2cap_event_channel_opened_get_status(p)) l2cap_disconnect(got);
      return;
    }
-   if (l2cap_event_channel_opened_get_status(p)) { release_channel(); return; }
+   if (l2cap_event_channel_opened_get_status(p)) { release_channel("open-failed"); return; }
    opened=true; requested=false; send_errors=0;
    memset(&session,0,sizeof(session));
+   memset(&session_diag,0,sizeof(session_diag));session_tx_seen=false;
+   session_open_ms=btstack_run_loop_get_time_ms();session_end_ms=session_open_ms;
    aacp_control_reset(&controls); deadline=btstack_run_loop_get_time_ms()+5000;
    /* Reapply current policy after a new channel handshake, never stale writes.
       The source defers this until playback has resumed after any rebuild. */
@@ -153,7 +191,7 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    break;
  }
  case L2CAP_EVENT_CHANNEL_CLOSED:
-   if (l2cap_event_channel_closed_get_local_cid(p)==cid) release_channel();
+   if (l2cap_event_channel_closed_get_local_cid(p)==cid) release_channel("channel-closed-event");
    break;
  case L2CAP_EVENT_CAN_SEND_NOW: {
    if (!opened || l2cap_event_can_send_now_get_local_cid(p)!=cid) break;
@@ -172,6 +210,13 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
      } else break;
    }
    if (l2cap_send(cid,(uint8_t *)data,len)==ERROR_CODE_SUCCESS) {
+     session_tx_seen=true;session_tx_ms=btstack_run_loop_get_time_ms();
+     session_diag.last_tx_command=command>=0?(uint8_t)command:0xff;
+     if(command>=0 && command<3) {
+       session_diag.init_mask|=1u<<command;
+       printf("[aacp-init] age_ms=%lu command=%d len=%u peer_seen=%u\n",
+       (unsigned long)(session_tx_ms-session_open_ms),command,len,session.confirmed);
+     }
      if (command>=0) aacp_mic_sent(&session,command);
      else {
        aacp_control_sent(&controls,slot,ctl[7]);
@@ -192,7 +237,7 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
           channel disappears. Explicit game/profile changes still own jitter. */
        printf("[mic] %s sent; playback unchanged\n",command==3?"START":"STOP");
      }
-   } else if (++send_errors>=3) release_channel();
+   } else if (++send_errors>=3) release_channel("send-errors");
    break;
  }
  default: break;
@@ -210,13 +255,14 @@ void aacp_mic_poll(void) {
    uint8_t status=l2cap_create_channel(handler,peer,0x1001,1691,&cid);
    if (status) { cid=0; due=now+3000; }
  }
- if (cid && (!opened || !session.confirmed || requested) && expired(now,deadline)) release_channel();
+ if (cid && (!opened || !session.confirmed || requested) && expired(now,deadline))
+   release_channel(!opened?"open-timeout":!session.confirmed?"setup-timeout":"send-grant-timeout");
  int command=opened?next_command(now):-1;
  if (opened && !requested && (command>=0 || (session.confirmed && (controls.pending || (refresh_pending && expired(now,refresh_due)))))) {
    requested=true;
    if (session.confirmed) deadline=now+3000;
    if (l2cap_request_can_send_now_event(cid)!=ERROR_CODE_SUCCESS) {
-     requested=false; if (++send_errors>=3) release_channel();
+     requested=false; if (++send_errors>=3) release_channel("send-request-errors");
    }
  }
  if(!opened || !session.confirmed || !settings()->stem_hid)media_input_reset(&host_media);
@@ -229,6 +275,7 @@ void aacp_mic_poll(void) {
    opened,session.confirmed,wanted(),session.started,attempts,(unsigned long)sdus,
    (unsigned long)units,(unsigned long)bytes,(unsigned long)malformed,(unsigned long)last_timestamp);
    aacp_mic_audio_report();
+   if(cid && opened)session_report("periodic");
  }
 }
 
@@ -241,6 +288,17 @@ static bool control_lock(void) {
  async_context_acquire_lock_blocking(cyw43_arch_async_context()); return true;
 }
 static void control_unlock(void) { async_context_release_lock(cyw43_arch_async_context()); }
+void aacp_mic_get_session_diagnostics(aacp_mic_session_diagnostics *out) {
+ if(!out)return;
+ memset(out,0,sizeof(*out));if(!control_lock())return;
+ *out=session_diag;
+ uint32_t now=opened?btstack_run_loop_get_time_ms():session_end_ms;
+ out->age_ms=now-session_open_ms;out->cid=cid;out->open=opened;
+ if(opened){out->init_sent=session.init_sent;out->peer_seen=session.confirmed;}
+ out->last_rx_age_ms=session_diag.rx_packets?now-session_rx_ms:UINT32_MAX;
+ out->last_tx_age_ms=session_tx_seen?now-session_tx_ms:UINT32_MAX;
+ control_unlock();
+}
 aacp_control_diagnostics aap_control_diagnostics(void) {
  aacp_control_diagnostics out={.allow_off=-1};
  if(!control_lock())return out;

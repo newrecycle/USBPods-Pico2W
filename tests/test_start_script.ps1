@@ -28,7 +28,7 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   $Shell = (Get-Process -Id $PID).Path
   $Launcher = Join-Path $TempRoot 'Run-Test.ps1'
   function Run-Launcher([int]$Expected) {
-    & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 *> (Join-Path $TempRoot 'launcher.log')
+    & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 -SessionOnly *> (Join-Path $TempRoot 'launcher.log')
     if ($LASTEXITCODE -ne $Expected) { throw "Launcher exited $LASTEXITCODE; expected $Expected. $(Get-Content -Raw (Join-Path $TempRoot 'launcher.log'))" }
   }
   Run-Launcher 0
@@ -37,6 +37,7 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   if ($FlashArgs[[Array]::IndexOf($FlashArgs, '--cdc') + 1] -ne 'COM3') { throw 'Original port was not sent to flasher' }
   if ($RunArgs[[Array]::IndexOf($RunArgs, '--cdc') + 1] -ne 'COM7') { throw 'Returning port was not sent to tests' }
   if ($RunArgs[[Array]::IndexOf($RunArgs, '--target-name') + 1] -ne "Justin's AirPods Pro") { throw 'Target argument was split' }
+  if ($RunArgs -notcontains '--session-only') { throw 'Session-only mode was not forwarded' }
   New-Item (Join-Path $TempRoot 'fail-run') | Out-Null
   Run-Launcher 9
   Remove-Item (Join-Path $TempRoot 'run-args.json')

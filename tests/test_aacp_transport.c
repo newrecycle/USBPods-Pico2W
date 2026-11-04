@@ -54,9 +54,22 @@ int main(void){
  event(L2CAP_EVENT_CHANNEL_OPENED,0x42);assert(aap_channel_open());
  send_rc=1;send_now();assert(last_len==16); // retry same init command
  send_rc=0;send_now();assert(last_len==16);send_now();assert(last_len==14);send_now();assert(last_len==10);
+ aacp_mic_session_diagnostics diag;aacp_mic_get_session_diagnostics(&diag);
+ assert(diag.open && diag.cid==0x42 && diag.init_sent==3 && diag.init_mask==7);
+ assert(!diag.peer_seen && !diag.handshake_ack && !diag.rx_packets);
  uint8_t bad[]={4,0,4,0,9,0};callback(L2CAP_DATA_PACKET,0x42,bad,6);assert(!aap_protocol_seen());
  uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x41,ack,6);assert(!aap_protocol_seen());
  callback(L2CAP_DATA_PACKET,0x42,ack,6);assert(aap_protocol_seen());
+ aacp_mic_get_session_diagnostics(&diag);assert(diag.peer_seen && diag.handshake_ack && diag.rx_packets==2);
+ // Unknown control metadata is bounded even for many new opcodes; the
+ // payload is never interpreted/logged. Unrelated channels do not affect it.
+ uint8_t unknown[]={4,0,4,0,0,1,0x73,0x65,0x63,0x72,0x65,0x74};
+ callback(L2CAP_DATA_PACKET,0x41,unknown,sizeof unknown);
+ for(unsigned i=0;i<40;i++){unknown[4]=(uint8_t)i;callback(L2CAP_DATA_PACKET,0x42,unknown,sizeof unknown);}
+ aacp_mic_get_session_diagnostics(&diag);
+ assert(diag.rx_packets==42 && diag.rx_unhandled==41 && diag.logged_headers==16);
+ assert(diag.last_opcode==0x127 && diag.last_length==sizeof unknown);
+ now+=30100;aacp_mic_poll();assert(aap_channel_open()); // No local 30-second session expiry.
  unsigned lifecycle_jitter=jitter_sequence;
  aap_set_noise_mode(2);assert(aap_get_noise_mode()==0);send_now();assert(last_len==19); // mic START first
  assert(jitter_sequence==lifecycle_jitter);
@@ -114,7 +127,9 @@ int main(void){
  aap_set_aa(50);capture=true;send_now();calls=rate_calls;
  uint32_t before=epochs;event(L2CAP_EVENT_CHANNEL_CLOSED,0x42);capture=false;
  assert(!aap_channel_open() && epochs>before && aap_get_noise_mode()==0 && aap_get_aa()==-1);
+ aacp_mic_get_session_diagnostics(&diag);assert(!diag.open && diag.init_mask==7 && diag.handshake_ack);
  now+=3000;aacp_mic_poll();assert(rate_calls==calls);event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
+ aacp_mic_get_session_diagnostics(&diag);assert(!diag.init_mask && !diag.handshake_ack && !diag.rx_packets);
  send_now();send_now();send_now();callback(L2CAP_DATA_PACKET,0x42,ack,6);
  last_len=0;send_now();assert(!last_len); // stale control not replayed after reconnect
  aap_set_ca(true);request_rc=1;for(int i=0;i<3;i++)aacp_mic_poll();assert(!aap_channel_open());

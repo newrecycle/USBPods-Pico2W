@@ -23,6 +23,20 @@ the UF2 hash and source commit; the runner refuses a different running commit.
 
 ## Windows setup
 
+For the current 30-second connection failure, use the focused probe:
+
+```powershell
+.\Run-Test.ps1 -CdcPort COM3 -SessionOnly
+```
+
+It automatically flashes, pairs with the selected AirPods and records 45 seconds
+of concurrent AAC-ELD playback, microphone capture, USB diagnostics and HID logs.
+Your phone-speaker clip during the first 20 seconds is sufficient. No counting,
+channel questions, control cycling or ten-minute soak is included. Return the
+results ZIP even if it exits early. See [AACP-SESSION-0555.md](AACP-SESSION-0555.md).
+This package diagnoses the repeatable disconnect; its physical cause is still
+unresolved. Omit `-SessionOnly` for the complete matrix after that issue is closed.
+
 1. Save your known-working UF2. Have `picotool` in PATH and connect the Pico
    **2 W**, either running the previous USBPods firmware or already in BOOTSEL.
    The launcher verifies the bundle, attempts `picotool reboot -u -f` for a

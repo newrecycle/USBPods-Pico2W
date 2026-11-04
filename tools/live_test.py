@@ -269,12 +269,14 @@ def main():
     parser.add_argument('--duration',type=int,default=20,help='Steady seconds per playback profile')
     parser.add_argument('--soak-seconds',type=int,default=600)
     parser.add_argument('--phone-relay',action='store_true',help='Include phone relay with both USB streams open')
+    parser.add_argument('--session-only',action='store_true',help='Only a 45-second AAC-ELD/mic/USB session probe; omit the full feature matrix')
     parser.add_argument('--output',type=Path,default=Path.cwd())
     parser.add_argument('--noninteractive',action='store_true')
     args=parser.parse_args()
     if not 5<=args.duration<=120:parser.error('--duration must be 5..120 seconds')
     if not 10<=args.soak_seconds<=1800:parser.error('--soak-seconds must be 10..1800')
     if args.phone_relay and args.noninteractive:parser.error('--phone-relay requires physical phone prompts')
+    if args.phone_relay and args.session_only:parser.error('--session-only cannot include phone relay')
     if args.noninteractive and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
@@ -336,12 +338,19 @@ def main():
         state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
         result('targeted_connection','PASS',state)
         state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
-        result('aacp_handshake','PASS',state)
+        result('aacp_peer_response','PASS',state)
+        link.request('telemetry');link.request('eldstatus')
+        session=recorder.control_snapshot().get('aacpsession',{})
+        result('aacp_handshake','PASS' if session.get('open') and session.get('handshake_ack') else 'UNVERIFIED',
+               {'session':session,'reason':'Peer traffic and locally submitted initialization do not independently establish a handshake acknowledgment'})
         result('connection_preflight','PASS',connection_preflight(link,recorder))
         link.request('earpause 0');link.request('stem 0')
         if state.get('relay_connected'):
             link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
-        prompt('Wear the AirPods. The PC will play a quiet tone. For microphone input, play a clip through your phone SPEAKER near the AirPods, or speak. Keep the phone audio off Bluetooth. Press Enter to start:')
+        if args.session_only:
+            print('Session probe starts automatically: wear the AirPods. PC playback and microphone capture stay open for 45 seconds. Play your phone-speaker clip for the first 20 seconds if convenient; no counting or talking is required.',flush=True)
+        else:
+            prompt('Wear the AirPods. The PC will play a quiet tone. For microphone input, play a clip through your phone SPEAKER near the AirPods, or speak. Keep the phone audio off Bluetooth. Press Enter to start:')
         capture_ca=link.request('status').get('ca',-1)
         audio_ok=False
         try:
@@ -362,7 +371,7 @@ def main():
                 try:submit_peer_control(link,'ca',capture_ca)
                 except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
         link.request('telemetry')
-        if audio_ok:
+        if audio_ok and not args.session_only:
             for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
                 control_state=link.request('status');initial=control_state[field]
                 if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
@@ -406,7 +415,7 @@ def main():
             note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
             result('ear_and_stem','UNVERIFIED',note or 'No physical observation supplied; see firmware HID and raw HID logs')
         else:
-            result('post_audio_controls','SKIP','Audio matrix failed; no further control mutations or physical prompts')
+            result('post_audio_controls','SKIP','Session-only diagnostic scope' if args.session_only else 'Audio matrix failed; no further control mutations or physical prompts')
         if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
         result('persistence_suspend_uac_slots_other_codecs','UNVERIFIED','Requires the guided matrix in LIVE-TEST.md; destructive/USB-reenumeration tests are not silently automated')
         link.request('savedlist');link.request('telemetry')

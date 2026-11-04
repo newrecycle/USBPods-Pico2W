@@ -256,7 +256,8 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         ceiling=limits.get('negotiated_bitrate',0)
         if ceiling<192000:raise RuntimeError('No valid AAC-ELD session ceiling: '+str(limits))
         baseline=PROFILES[-1] if ceiling>=256000 else ('restore192',1,False,1,192000,0,0,6)
-        profiles=PROFILES[:-1]+[baseline]
+        probe_only=getattr(args,'session_only',False)
+        profiles=[('session_probe',*baseline[1:])] if probe_only else PROFILES[:-1]+[baseline]
         for profile in profiles:
             name,rate,gaming,level,*_=profile
             if profile[4]>ceiling:
@@ -268,11 +269,18 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 link.request(f'profile {rate} {int(gaming)} {level}')
             applied=await_profile(link,profile)
             dwell(2,'settle_'+name)
-            audio.set_phase(name);print(f'{name}: play your phone-speaker clip near the AirPods (or speak) during {args.duration} seconds of duplex capture.',flush=True)
-            before=snapshot(link,recorder,name+'_begin');dwell(args.duration,name)
+            seconds=45 if probe_only else args.duration
+            audio.set_phase(name);print(f'{name}: {seconds} seconds of concurrent playback/capture. Phone-speaker input for the first 20 seconds is sufficient.',flush=True)
+            before=snapshot(link,recorder,name+'_begin');dwell(seconds,name)
             after=snapshot(link,recorder,name+'_end')
             errors=health(before,after)+audio.phase_errors(name)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'applied':applied,'before':before,'after':after})
+        if probe_only:
+            audio.set_phase('session_closing');audio.set_capture(False)
+            closed,detail=capture_close_state(link,external_capture)
+            result('capture_close',closed,detail)
+            result('full_feature_matrix','SKIP','45-second session diagnostic only; no channel/control prompts or ten-minute soak')
+            return
         def channel_check(label):
             for side in ('left','right'):
                 audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)

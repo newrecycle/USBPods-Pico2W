@@ -39,7 +39,7 @@ bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
  if(p[0]==1) return p[4]==1; /* handshake acknowledgment */
  if(p[0]!=4) return false;
  switch(p[4]) {
- case 0x2b: return true; /* feature acknowledgment */
+ case 0x2b: return true; /* Peer information; not a validated feature acknowledgment. */
  case 0x06:
    if(n!=8 || p[6]>3 || p[7]>3)return false;
    s->ear_valid=true;s->worn=p[6]==0 || p[7]==0;return true;
