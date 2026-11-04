@@ -82,6 +82,7 @@ def await_profile(link, profile, timeout=15):
 def await_duplex_ready(link, recorder, profile, label, timeout=20):
     """Start steady measurement after both paths settle, retaining startup logs."""
     deadline=time.monotonic()+timeout;stable_since=None;start_tx=None;last={}
+    recovery_observed=False;previous_retry=None
     while time.monotonic()<deadline:
         status=link.request('status');eld=link.request('eldstatus')
         last={'status':status,'eldstatus':eld}
@@ -91,11 +92,20 @@ def await_duplex_ready(link, recorder, profile, label, timeout=20):
         ready=(profile_matches(eld,profile) and status.get('streaming') and status.get('codec')==4 and
                status.get('confirmed') and status.get('capture') and status.get('mic_started') and
                not status.get('mic_recovery_pending'))
+        retry=(status.get('mic_restarts'),status.get('mic_retry_count'),status.get('mic_watchdog_failures'))
+        if previous_retry is not None and retry!=previous_retry:
+            recovery_observed=True;ready=False
+        previous_retry=retry
         if ready:
             if stable_since is None:stable_since=time.monotonic();start_tx=status.get('tx_packets',0)
-            if time.monotonic()-stable_since>=1 and delta({'tx_packets':start_tx},status,'tx_packets'):
+            if time.monotonic()-stable_since>=2 and delta({'tx_packets':start_tx},status,'tx_packets'):
+                last['readiness']={'continuous_ready_seconds':2,'recovery_observed':recovery_observed,
+                                   'mic_retry_count_at_ready':status.get('mic_retry_count')}
                 return last
-        else:stable_since=None
+        else:
+            if stable_since is not None or status.get('mic_recovery_pending') or status.get('mic_retry_count'):
+                recovery_observed=True
+            stable_since=None
         time.sleep(.25)
     raise TimeoutError('Duplex did not settle during '+label+': '+str(last))
 
@@ -118,12 +128,21 @@ def health(before, after):
     for item in (before,after):
         s=item.get('status',{});e=item.get('eldstatus',{})
         if s.get('mic_watchdog_failed'):errors.append('Microphone received-audio watchdog exhausted its retry budget')
+        if s.get('mic_recovery_pending'):errors.append('Microphone recovery was active during steady playback')
+        if s.get('capture') and s.get('mic_started') == 0:
+            errors.append('Microphone START was not submitted while capture was active')
+        if s.get('capture') and s.get('mic_audio_seen') == 0:
+            errors.append('Microphone framed audio was not observed')
         if not s.get('streaming') or s.get('codec')!=4 or e.get('transition')!='ready':
             errors.append('Playback was not in a ready AAC-ELD stream')
     if not delta(before.get('status',{}),after.get('status',{}),'tx_packets'):
         errors.append('No playback media packets progressed')
     if delta(before.get('status',{}),after.get('status',{}),'send_failures'):
         errors.append('Playback media submission failed')
+    for key in ('mic_restarts','mic_retry_count','mic_watchdog_failures'):
+        start_status=before.get('status',{});end_status=after.get('status',{})
+        if key in start_status and key in end_status and delta(start_status,end_status,key):
+            errors.append('Microphone recovery counter changed during steady playback: '+key)
     if not a or not b or not u or not v:return ['Missing firmware diagnostic snapshots']
     for item in (a,b):
         if not item.get('clock_windows') or abs(item.get('measured_rate',0)-64000)>3200:
@@ -297,7 +316,8 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
     sd.check_output_settings(device=output,channels=2,samplerate=48000,dtype='int16')
     input_format=capture_format(sd,inp)
     (root/'audio-format.json').write_text(json.dumps({k:v for k,v in input_format.items() if k!='extra_settings'},indent=2))
-    def dwell(seconds,label):
+    def dwell(seconds,label,steady=False):
+        faults=[]
         end=time.monotonic()+seconds
         while time.monotonic()<end:
             time.sleep(min(5,max(0,end-time.monotonic())))
@@ -305,7 +325,17 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             status=state.get('status',{});eld=state.get('eldstatus',{})
             if status.get('mic_watchdog_failed') or status.get('fault_hold') or not status.get('connected') or eld.get('transition')=='failed':
                 raise RuntimeError('Playback failed during '+label+': '+str({'status':status,'eldstatus':eld}))
+            if steady:
+                issues=[]
+                if not status.get('streaming') or status.get('codec')!=4 or eld.get('transition')!='ready' or eld.get('pending'):
+                    issues.append('Playback left the ready state during the steady interval')
+                if status.get('mic_recovery_pending') or status.get('mic_started')==0:
+                    issues.append('Microphone START/recovery state changed during the steady interval')
+                if issues:
+                    faults.extend(issues)
+                    preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(issues)))
             if audio.stop.is_set():raise RuntimeError('Audio collector stopped: '+str(audio.errors))
+        return faults
     external_capture=bool(link.request('status').get('capture'))
     recorder.log('capture-ownership.jsonl',{'capture_active_before_open':external_capture})
     with AudioSession(root,recorder,sd,np,output,inp,input_format,
@@ -332,13 +362,16 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             # A delayed damage refresh can start during the fixed dwell after
             # await_profile returned. Require both live paths to settle before
             # taking the steady interval's starting snapshot, as on reconnect.
-            await_duplex_ready(link,recorder,profile,name+'_ready')
+            readiness=await_duplex_ready(link,recorder,profile,name+'_ready')
             seconds=45 if probe_only else args.duration
             audio.set_phase(name);print(f'{name}: {seconds} seconds of concurrent playback/capture. Phone-speaker input for the first 20 seconds is sufficient.',flush=True)
-            before=snapshot(link,recorder,name+'_begin');dwell(seconds,name)
+            before=snapshot(link,recorder,name+'_begin');transient_faults=dwell(seconds,name,steady=True)
             after=snapshot(link,recorder,name+'_end')
-            errors=health(before,after)+audio.phase_errors(name)
-            result(name,'FAIL' if errors else 'PASS',{'errors':errors,'applied':applied,'before':before,'after':after})
+            errors=health(before,after)+transient_faults+audio.phase_errors(name)
+            if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
+            result(name,'FAIL' if errors else 'PASS',
+                   {'errors':errors,'applied':readiness['eldstatus'],'readiness':readiness.get('readiness'),
+                    'before':before,'after':after})
         if probe_only:
             audio.set_phase('session_closing');audio.set_capture(False)
             closed,detail=capture_close_state(link,external_capture)
@@ -374,12 +407,14 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             link.wait(lambda s:s.get('confirmed') and s.get('peer','').upper()==target_mac.upper(),45)
             await_profile(link,baseline);dwell(3,name+'_settle')
             await_duplex_ready(link,recorder,baseline,name+'_ready')
-            before=snapshot(link,recorder,name+'_begin');dwell(5,name)
-            after=snapshot(link,recorder,name+'_end');errors=health(before,after)
+            before=snapshot(link,recorder,name+'_begin');faults=dwell(5,name,steady=True)
+            after=snapshot(link,recorder,name+'_end');errors=health(before,after)+faults
+            if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
         audio.set_phase('duplex_soak');print(f'Duplex soak: {args.soak_seconds} seconds. Leave both streams open.',flush=True)
-        before=snapshot(link,recorder,'soak_begin');dwell(args.soak_seconds,'duplex_soak')
-        after=snapshot(link,recorder,'soak_end');errors=health(before,after)+audio.phase_errors('duplex_soak')
+        before=snapshot(link,recorder,'soak_begin');faults=dwell(args.soak_seconds,'duplex_soak',steady=True)
+        after=snapshot(link,recorder,'soak_end');errors=health(before,after)+faults+audio.phase_errors('duplex_soak')
+        if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('duplex_soak','FAIL' if errors else 'PASS',{'seconds':args.soak_seconds,'errors':errors,'before':before,'after':after})
         if args.phone_relay:
             audio.set_phase('phone_relay_duplex');link.request('phonepair 1')
