@@ -73,6 +73,21 @@ int main(void) {
  assert(built_bitrate==192000 && active_slot_count==4);
  src_stream_start_accepted();advance(500);assert(last_jitter==60 && jitters==1);
 
+ // A SUSPEND accepted while a managed rebuild's START is still outstanding
+ // must cancel that START into one bounded rebuild. Waiting for the 3 s
+ // deadline would abort and drop the ACL (old ELD_NOTHING behaviour).
+ connected();request(3,false,1);src_stream_suspend_accepted();a2dp_source_main_work();
+ assert(rebuild_calls==1 && starts==2 && src_eld_change.phase==ELD_WAIT_START);
+ unsigned f2_starts=starts,f2_rebuilds=rebuild_calls;
+ src_stream_suspend_accepted();
+ assert(src_eld_change.phase==ELD_REBUILD && !disconnects);
+ a2dp_source_main_work();
+ assert(rebuild_calls==f2_rebuilds+1 && starts==f2_starts+1 && !disconnects);
+ assert(src_eld_change.phase==ELD_WAIT_START && !is_streaming);
+ src_stream_start_accepted();
+ assert(is_streaming && !disconnects && src_eld_change.phase==ELD_READY);
+ advance(500);assert(jitters==1 && last_jitter==150);
+
  // Captured 220546: rate=2 builds, then gamelevel 2->1 while game is OFF.
  // The effective profile is identical; accepting the first START must RUN,
  // not immediately issue a second SUSPEND/rebuild/START.
@@ -181,7 +196,7 @@ names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer'
          'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
          'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
          'src_jitter_handler', 'a2dp_source_queue_jitter', 'src_request_eld_change', 'a2dp_source_apply_eld_rate', 'a2dp_source_recover_eld_stream',
-         'src_eld_initialize', 'a2dp_source_main_work', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
+         'src_eld_initialize', 'a2dp_source_main_work', 'src_pump_start', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)
     (path / 'test.c').write_text((ROOT / 'tests/eld_adapter_mocks.h').read_text() + '\n' + '\n'.join(function(n) for n in names) + tests)

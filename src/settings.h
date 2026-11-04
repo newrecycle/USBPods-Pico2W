@@ -8,12 +8,19 @@
  *
  * LAYOUT: two dedicated 4 KB sectors directly BELOW the BTstack bank:
  *   [ ... firmware ... | settings A | settings B | btstack TLV x2 ]
- * Each commit appends ONE 256-byte page to the active sector:
+ * v2 geometry (see settings.c REC_SIZE/PAGES_PER_SEC): each commit appends
+ * ONE 512-byte record (two flash pages, programmed together) to the active
+ * sector:
  *   u32 magic | u16 version | u16 payload_len | u32 seq | payload | pad | u32 crc
- * Load = scan all 32 pages of both sectors, highest CRC-valid seq wins — a
- * torn (power-fail) write simply loses CRC and the previous snapshot rules.
+ * 512 bytes x 8 records = one 4 KB sector. Load = scan all 8 records of both
+ * sectors, highest CRC-valid seq wins — a torn (power-fail) write simply
+ * loses CRC and the previous snapshot rules.
  * When a sector fills, the OTHER sector is erased and takes over (ping-pong):
- * one erase per 16 commits per sector ≈ millions of commits at 100k cycles.
+ * one erase per 8 commits per sector ≈ millions of commits at 100k cycles.
+ * v1 (256-byte 'PSET' records, 16 per sector) is migrated on first load.
+ * Records whose version != SETTINGS_VERSION are ignored (the v1 magic has its
+ * own migration path), so a downgrade keeps the older valid record rather
+ * than misreading a newer layout.
  *
  * CONCURRENCY: mutate the RAM cache from ANY context (USB task, BTstack
  * handlers, main loop) and call settings_mark_dirty(). Flash is written ONLY

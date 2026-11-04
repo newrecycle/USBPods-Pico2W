@@ -85,8 +85,12 @@
                       TUD_AUDIO_DESC_FEATURE_UNIT_TWO_CHANNEL_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN + \
                       TUD_AUDIO_DESC_CLK_SRC_LEN + TUD_AUDIO_DESC_INPUT_TERM_LEN + TUD_AUDIO_DESC_OUTPUT_TERM_LEN, \
          /*_ctrl*/ AUDIO_CS_AS_INTERFACE_CTRL_LATENCY_POS),\
-     /* Clock Source Descriptor(4.7.2.1) */\
-     TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 1, /*_ctrl*/ 1, \
+     /* Clock Source Descriptor(4.7.2.1).
+        Speaker clock: RW so the advertised capability matches
+        tud_audio_clock_set_request(), which accepts SET_CUR only for the
+        boot-selected rate already present in this descriptor's RANGE.
+        The mic clock below stays read-only. */\
+     TUD_AUDIO_DESC_CLK_SRC(/*_clkid*/ UAC2_ENTITY_CLOCK, /*_attr*/ 1, /*_ctrl*/ AUDIO_CTRL_RW, \
                             /*_assocTerm*/ 0x00,  /*_stridx*/ 0x00),\
      /* Input Terminal Descriptor(4.7.2.4) */\
      TUD_AUDIO_DESC_INPUT_TERM(/*_termid*/ UAC2_ENTITY_SPK_INPUT_TERMINAL, \

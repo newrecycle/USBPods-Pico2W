@@ -20,6 +20,15 @@ unsigned eld_transition_request(eld_transition *s,bool streaming) {
 }
 unsigned eld_transition_suspended(eld_transition *s) {
  if(s->phase==ELD_WAIT_SUSPEND){s->phase=ELD_REBUILD;return ELD_BUILD;}
+ if(s->phase==ELD_WAIT_START && s->managed) {
+   /* Our managed rebuild's START is still outstanding when the peer's
+      SUSPEND is accepted (a late/duplicate accept or an early peer suspend).
+      Cancel that START into one bounded rebuild, matching the unmanaged
+      early-START cancellation, instead of idling until the 3 s deadline
+      aborts the transition and drops the ACL. */
+   s->start_inflight=false;s->phase=ELD_REBUILD;
+   return ELD_STOP|ELD_BUILD;
+ }
  if(s->phase==ELD_READY || (s->phase==ELD_WAIT_START && !s->managed)) {
    s->phase=ELD_READY;s->start_inflight=false;
    return eld_transition_request(s,false);

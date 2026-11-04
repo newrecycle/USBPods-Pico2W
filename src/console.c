@@ -304,6 +304,22 @@ static void toggle_usbset(uint8_t bit, const char *label,
 
 void console_key(char cmd){
     if (device_control_character(cmd)) return;
+    /* No radio (plain Pico 2 / failed CYW43 probe): btstack_main() never ran,
+       so every BT/slot/key action would touch uninitialised BTstack/cyw43
+       state (some also call led_set_mode() before the async context exists).
+       Keep the purely local settings/menu/device-list keys and answer the
+       rest with a clear message instead of hardfaulting the diagnostic
+       console. */
+    if (radio_is_absent()) {
+        bool local = (cmd == 'h' || cmd == '?' || cmd == 'H' || cmd == 'u' ||
+                      cmd == 'k' || cmd == 'w' || cmd == 'z' || cmd == 'b' ||
+                      cmd == 'Y' || cmd == 'l' || cmd == '\n' || cmd == '\r');
+        if (!local) {
+            confirm_wipe = false;   /* its target needs the BT stack */
+            printf("Bluetooth unavailable (no radio)\n");
+            return;
+        }
+    }
     /* pending confirmation owns the next keystroke */
     if (confirm_wipe){
         confirm_wipe = false;
@@ -367,13 +383,13 @@ void console_key(char cmd){
             toggle_usbset(USBSET_PAUSEDC, "pause PC when headset drops",
                           "ON", "off", NULL);
             break;
-        case 'u':   /* descriptor order, read once at enumeration */
+        case 'u':   /* descriptor order, latched at boot before enumeration */
             toggle_usbset(USBSET_UAC1, "USB audio mode", "UAC1", "UAC2",
-                          " (replug USB to apply)");
+                          " (reboot to apply)");
             break;
-        case 'k':   /* descriptor rate, baked in at enumeration */
+        case 'k':   /* descriptor rate, latched at boot before enumeration */
             toggle_usbset(USBSET_RATE44, "USB sample rate", "44.1 kHz", "48 kHz",
-                          " (replug USB to apply)");
+                          " (reboot to apply)");
             break;
         case 'q': { /* LDAC quality — cycles 660 -> 990 -> 330, persisted */
             uint8_t cur = settings()->ldac_quality;

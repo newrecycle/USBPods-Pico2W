@@ -30,13 +30,18 @@ and resume restores it **only** if still mounted with alt 1 open.
 - `mounted`, `suspended`, `alt_active`, `capture_running`: the USB-side state.
 - `usb_packets`: number of microphone IN preload packets attempted.
 - `pcm_samples`: actual decoded PCM samples consumed by the USB path.
-- `underrun_packets`: preloads that got fewer than 64 PCM samples.
+- `underrun_packets`: preloads that got fewer than the requested 63, 64 or
+  65 PCM samples.
 - `missing_samples`: total zero-padded samples, excluding actual PCM.
-- `short_writes`: `tud_audio_write()` responses other than 128 bytes.
+- `short_writes`: `tud_audio_write()` responses other than `want * 2` bytes
+  (126, 128 or 130 for a 63/64/65-sample packet), plus any request outside
+  the supported 63..65-sample range.
 
 Counters are cumulative 32-bit wraparound values, not per-session resets.
-The USB microphone writes a 64-sample / 128-byte mono packet on each active
-IN preload, padding short reads with silence. TinyUSB 0.18 passes the audio
+The USB microphone writes a 63-, 64- or 65-sample (126/128/130-byte) mono
+packet on each active IN preload, padding short reads with silence. The
+packet size follows source drift while the 64 kHz USB clock stays fixed.
+TinyUSB 0.18 passes the audio
 function ID (0) to the preload callback, not the USB microphone interface
 number (2); the callback gates on that ID and the tracked host intent. This does **not** change the
 existing 48 kHz AACP/FDK decoder output format or the advertised 64 kHz

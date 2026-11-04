@@ -20,6 +20,7 @@
  *    re-arming.
  */
 
+#include <stdatomic.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -34,7 +35,7 @@
    UAC2 callbacks do, so audio_control_task's BT-volume sync is unchanged. */
 extern int8_t   mute[];
 extern int16_t  volume[];
-extern bool     need_change_bt_volume;
+extern _Atomic bool need_change_bt_volume;
 extern bool     is_usb_audio_running;
 extern uint16_t usb_stop_delay;
 void usb_rx_gap_probe(void);   /* uac.c — missed-ISO detector */

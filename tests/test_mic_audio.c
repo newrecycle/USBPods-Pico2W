@@ -7,7 +7,8 @@
 #include <stdio.h>
 uint32_t mock_time_us;
 static int16_t value;
-static bool fail;
+static bool fail,flush_fail;
+static unsigned flush_calls;
 static CStreamInfo info={48000,1,480};
 HANDLE_AACDECODER aacDecoder_Open(int a,int b) { (void)a;(void)b;return &info; }
 AAC_DECODER_ERROR aacDecoder_ConfigRaw(HANDLE_AACDECODER d,UCHAR **p,UINT *n) {
@@ -18,7 +19,12 @@ AAC_DECODER_ERROR aacDecoder_Fill(HANDLE_AACDECODER d,UCHAR **p,UINT *n,UINT *va
  (void)d; assert(*n==1); value=p[0][0]; *valid=0; return AAC_DEC_OK;
 }
 AAC_DECODER_ERROR aacDecoder_DecodeFrame(HANDLE_AACDECODER d,INT_PCM *p,int n,int flags) {
- (void)d; assert(n>=480); if(flags) return AAC_DEC_OK;
+ (void)d; assert(n>=480);
+ if(flags) {
+  flush_calls++;
+  if(flush_fail){flush_fail=false;return AAC_DEC_UNKNOWN;}
+  return AAC_DEC_OK;
+ }
  mock_time_us+=325; /* simulated Fill+Decode duration */
  for(int i=0;i<480;i++) p[i]=value;
  return fail?AAC_DEC_UNKNOWN:AAC_DEC_OK;
@@ -87,6 +93,14 @@ int main(void) {
  assert(!aacp_mic_audio_read(p,64));
  enqueue(46); aacp_mic_audio_work();
  assert(aacp_mic_audio_read(p,64)==64 && p[0]==46);
+ // F6: a failed CLRHIST|INTR flush must not mark the generation done, and the
+ // next AU must retry it; the current AU still decodes normally.
+ aacp_mic_discontinuity();flush_calls=0;flush_fail=true;
+ enqueue(47);aacp_mic_audio_work();
+ assert(flush_calls==1 && aacp_mic_audio_read(p,64)==64 && p[0]==47);
+ drain(); /* leave the failed-flush generation's PCM before the retry AU */
+ enqueue(48);aacp_mic_audio_work();
+ assert(flush_calls==2 && aacp_mic_audio_read(p,64)==64 && p[0]==48);
  // Decode and PCM high-water never increase past fixed queue capacities.
  aacp_mic_audio_get_stats(&s);
  assert(s.au_high_water<=32 && s.pcm_high_water<=16);

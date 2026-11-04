@@ -54,6 +54,26 @@ static void test_capture(void) {
  usb_capture_snapshot_t s=usb_capture_snapshot();
  assert(s.usb_packets==3 && s.pcm_samples==96);
  assert(s.underrun_packets==2 && s.missing_samples==96 && s.short_writes==1);
+ // The shipped packet cadence is 63/64/65 samples (126/128/130 bytes). Exact
+ // writes must not count as short, and the small/large counters must track.
+ usb_capture_snapshot_t before=usb_capture_snapshot();
+ usb_capture_note_tx(63,63,126);
+ usb_capture_note_tx(65,65,130);
+ s=usb_capture_snapshot();
+ assert(s.packets_63==1 && s.packets_65==1);
+ assert(s.expected_samples==before.expected_samples+128);
+ assert(s.usb_packets==before.usb_packets+2 && s.pcm_samples==before.pcm_samples+128);
+ assert(s.short_writes==before.short_writes);
+ assert(s.underrun_packets==before.underrun_packets && s.missing_samples==before.missing_samples);
+ // A sample count outside 63..65 is a rejected request: counted as a short
+ // write but never as a packet/expected sample.
+ before=s;
+ usb_capture_note_tx(62,62,124);
+ usb_capture_note_tx(66,66,132);
+ s=usb_capture_snapshot();
+ assert(s.short_writes==before.short_writes+2);
+ assert(s.expected_samples==before.expected_samples && s.usb_packets==before.usb_packets);
+ assert(s.pcm_samples==before.pcm_samples && s.packets_63==before.packets_63 && s.packets_65==before.packets_65);
  assert(changes>=210);
 }
 

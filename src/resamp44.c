@@ -11,6 +11,20 @@ void resamp44_reset_st(resamp44_t *st) {
 size_t resamp44_process_st(resamp44_t *st, const int16_t *in, size_t in_frames,
                            int16_t *out, size_t max_out_frames) {
     size_t oi = 0;
+
+    /* A partial block is not resumable: if the cap filled before every output
+     * for an input frame was emitted, advancing the history/phase would lose
+     * that pending output and the unconditional phase -= RS_L could make the
+     * phase negative (OOB tap read). Refuse undersized caps before touching
+     * any state; the caller must retry the whole block with enough room. */
+    size_t needed = 0;
+    int phase = st->phase;
+    for (size_t ii = 0; ii < in_frames; ii++) {
+        while (phase < RS_L) { needed++; phase += RS_M; }
+        phase -= RS_L;
+    }
+    if (max_out_frames < needed) return 0;
+
     for (size_t ii = 0; ii < in_frames; ii++) {
         for (int c = 0; c < 2; c++) {
             memmove(&st->hist[c][1], &st->hist[c][0], (RS_T - 1) * sizeof(int16_t));

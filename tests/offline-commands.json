@@ -717,5 +717,41 @@
     ],
     "requires_fdk": true,
     "timeout": 90
+  },
+  {
+    "name": "compile resamp44",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src",
+      "tests/test_resamp44.c",
+      "src/resamp44.c",
+      "-o",
+      "{TMP}/test-resamp44"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "resamp44",
+    "argv": [
+      "{TMP}/test-resamp44"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "forensics-legend",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_forensics_legend.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]

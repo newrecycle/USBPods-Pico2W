@@ -24,7 +24,11 @@ typedef struct {
 } resamp44_t;
 
 void   resamp44_reset_st(resamp44_t *st);
-/* Returns output FRAMES written (<= max_out_frames). in/out interleaved L/R. */
+/* Resamples a whole interleaved stereo block. Returns output FRAMES written.
+ * max_out_frames MUST be large enough for every output the block produces
+ * (441 frames -> 480). An undersized cap writes nothing, leaves the state
+ * untouched and returns 0: a partial block is not resumable, so callers
+ * cannot continue it in a later call. */
 size_t resamp44_process_st(resamp44_t *st, const int16_t *in, size_t in_frames,
                            int16_t *out, size_t max_out_frames);
 

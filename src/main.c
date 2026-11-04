@@ -232,9 +232,13 @@ void check_bootsel_state(void)
 }
 
 
-/* scratch[7]: WHICH IRQ-side handler was live when the watchdog fired
-   (0xN0 = entered, 0xNF = exited cleanly). Phase-5 hangs are IRQ-side —
-   this narrows them to a handler. */
+/* scratch[7]: WHICH IRQ-side handler was live when the watchdog fired.
+   Markers are written inline by the handlers; the current table is:
+   0x30 tick entered, 0x31 tick exited, 0x3A codec dispatch, 0x3B/0x3C
+   encoder in/out, 0x3F pump done, 0x40 AVDTP handler, 0x42/0x44/0x46 AVRCP
+   handlers, 0x70/0x72/0x7F HCI handlers, 0x80/0x8F HFP handler; 0x4F and
+   0x7F/0x8F are the clean-exit values. Phase-5 hangs are IRQ-side — this
+   narrows them to a handler. */
 bool usb_timer_callback(repeating_timer_t *rt){
     /* NO scratch[7] here: this IRQ preempts the low-priority BT worker every
        500 us and would MASK a spinning BT handler's marker (it did — every
@@ -298,7 +302,7 @@ void __attribute__((naked, noreturn)) usbpods_panic(const char *fmt, ...) {
 uint32_t last_fault_pc, last_fault_lr, last_fault_cfsr;
 uint8_t  last_reset_kind;
 uint8_t  last_hang_phase;   /* scratch[6] snapshot: WHERE the loop starved */
-uint8_t  last_hang_irq;     /* scratch[7]: 0x10 usb-task 0x20 bootsel 0x30 pump (0xNF = clean exit) */
+uint8_t  last_hang_irq;     /* scratch[7]: IRQ handler marker, see table above */
 uint32_t last_hang_ticks;   /* scratch[3]: usb-IRQ ticks during the starvation window */
 
 void __not_in_flash_func(hardfault_c)(uint32_t *sp) {

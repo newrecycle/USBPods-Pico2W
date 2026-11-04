@@ -29,9 +29,14 @@ static avdtp_stream_endpoint_t *stream_endpoint_aaceld;
 static bool have_aaceld;
 static eld_codec_limits negotiated;
 static uint32_t offer_ceiling=ELD_LOCAL_MAX_BITRATE,last_offer;
+/* True only while the SET_CONFIGURATION we just sent may still be rejected.
+   Acceptance (or a failed send / new capability scan) clears it, so a late
+   or duplicate rejection cannot step an accepted ceiling down again. */
+static bool offer_pending;
 
 void codec_aaceld_note_capability(bool present){
  have_aaceld=present;
+ offer_pending=false;
  if(!present){memset(&negotiated,0,sizeof negotiated);offer_ceiling=ELD_LOCAL_MAX_BITRATE;last_offer=0;}
 }
 uint32_t codec_aaceld_max_bitrate(void){return negotiated.max_bitrate;}
@@ -39,7 +44,9 @@ bool codec_aaceld_vbr_allowed(void){return negotiated.vbr;}
 bool codec_aaceld_on_configuration(const uint8_t *p){
  uint16_t n=avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information_len(p);
  const uint8_t *info=avdtp_subevent_signaling_media_codec_other_configuration_get_media_codec_information(p);
- return eld_codec_configuration(info,n,&negotiated);
+ if(!eld_codec_configuration(info,n,&negotiated))return false;
+ offer_pending=false;   /* accepted: this transaction is complete */
+ return true;
 }
 static bool aaceld_available(void){ return have_aaceld; }
 
@@ -67,6 +74,7 @@ static uint8_t local_stream_endpoint_aaceld_media_codec_configuration[14];
 /* ---- configure ---- */
 static uint8_t aaceld_configure(void){
     int aaceld_num = -1;
+    offer_pending=false;   /* any previous transaction is no longer current */
     if (num_remote_seps == 0){
         printf("Remote Stream Endpoints not discovered yet\n");
         return -1;
@@ -142,12 +150,18 @@ static uint8_t aaceld_configure(void){
 
     if (status) printf("Set Apple AAC-ELD Connection FAILED: %d\n", status);
     else        PLOG("Set Apple AAC-ELD Connection Result is 0\n");
+    /* Only a successfully sent SET_CONFIGURATION can be rejected. */
+    offer_pending = (status == ERROR_CODE_SUCCESS);
     return status;
 }
 
 bool codec_aaceld_retry_configuration(void) {
     /* A rejected higher ceiling must not abandon ELD outright. At most two
-       lower offers; never rebuild an encoder until a configuration is accepted. */
+       lower offers; never rebuild an encoder until a configuration is accepted.
+       The pending flag makes this idempotent: a duplicate/late rejection for
+       an already accepted (or not yet re-sent) transaction is a no-op, so an
+       accepted 256 kbps ceiling cannot be lowered to 192 kbps. */
+    if(!offer_pending)return false;
     while(last_offer>192000) {
         offer_ceiling=last_offer>256000?256000:192000;
         if(aaceld_configure()==ERROR_CODE_SUCCESS)return true;

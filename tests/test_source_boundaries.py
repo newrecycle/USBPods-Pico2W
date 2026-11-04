@@ -49,8 +49,17 @@ static const char *bd_addr_to_str(const uint8_t *m){(void)m;return "fixture";}
 static bool src_user_dc_hold;
 static uint32_t src_dial_window_ms;
 static unsigned src_dial_tries,src_dial_retry_timer;
-static struct {uint16_t avdtp_cid,avrcp_cid;} media_tracker;
+static struct {uint16_t avdtp_cid,avrcp_cid;uint8_t volume;} media_tracker;
 static uint16_t dropped_avdtp,dropped_avrcp;
+/* Volume ownership + pump-start gating state exercised by the helpers below. */
+static bool src_volume_known;
+static uint32_t src_vol_cmds;
+static uint8_t src_last_avrcp_volume;
+static void avrcp_controller_set_absolute_volume(uint16_t c,uint8_t v){(void)c;src_last_avrcp_volume=v;}
+static bool is_streaming,src_stream_established;
+static bool finish_scan_avdtp_codec,src_start_accepted_pending;
+enum {CODEC_ID_NONE=0,CODEC_ID_SBC=1};
+static int cur_codec;
 static void btstack_run_loop_remove_timer(unsigned *t){assert(t==&src_dial_retry_timer);}
 static void a2dp_demo_timer_stop(void *context){assert(context==&media_tracker);}
 static void a2dp_source_disconnect(uint16_t c){dropped_avdtp=c;}
@@ -76,9 +85,28 @@ int main(void) {
  // AVRCP and AVDTP are independent CID spaces, not interchangeable values.
  media_tracker.avdtp_cid=0x42;media_tracker.avrcp_cid=0x91;
  src_dial_window_ms=100;src_dial_tries=3;
+ is_streaming=true;src_stream_established=true;finish_scan_avdtp_codec=true;
+ src_start_accepted_pending=true;
  avdtp_disconnect_keep_pairing();
  assert(src_user_dc_hold && !src_dial_window_ms && !src_dial_tries);
+ assert(!is_streaming && !src_stream_established && !finish_scan_avdtp_codec);
+ assert(!src_start_accepted_pending);
  assert(dropped_avdtp==0x42 && dropped_avrcp==0x91);
+ // Volume seeding is once-only: 0 (mute) and 127 (full) are real levels.
+ assert(src_volume_seed_needed());
+ media_tracker.volume=64;src_volume_known=true;
+ assert(!src_volume_seed_needed());
+ set_bt_volume(0);                 // host slider 100% -> absolute 127
+ assert(media_tracker.volume==127 && src_last_avrcp_volume==127);
+ assert(!src_volume_seed_needed());
+ media_tracker.volume=0;           // explicit mute survives a reconnect too
+ assert(!src_volume_seed_needed());
+ // A START accepted during the capability scan starts the pump once ready.
+ src_start_accepted_pending=true;src_stream_established=true;is_streaming=false;cur_codec=CODEC_ID_SBC;
+ assert(src_pump_start_pending());
+ is_streaming=true;assert(!src_pump_start_pending());
+ is_streaming=false;src_stream_established=false;assert(!src_pump_start_pending());
+ src_stream_established=true;cur_codec=CODEC_ID_NONE;assert(!src_pump_start_pending());
  // Duplicate endpoints cannot exhaust the bounded discovery table.
  for(uint8_t seid=1;seid<=10;seid++)assert(source_add_sep((avdtp_sep_t){seid}));
  for(uint8_t seid=1;seid<=63;seid++)assert(!source_add_sep((avdtp_sep_t){seid}));
@@ -92,8 +120,22 @@ int main(void) {
  puts("Source discovery bounds and favorite reuse/replacement passed");
 }
 '''
-names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing')]
+names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing','set_bt_volume','src_volume_seed_needed','src_pump_start_pending')]
 names += [('src/btstack/btstack_hci.c',n) for n in ('slot_mac_valid','bt_pair_to')]
+# The disconnect/pairing helpers call audio_slot_queue_init() from the
+# BTstack IRQ; queue_init() allocates through the SDK malloc mutex, so the
+# production helper must allocate only once (boot path) and reset afterwards.
+avdtp_text = (ROOT / 'src/btstack/btstack_avdtp_source.c').read_text() if 'ROOT' in globals() else Path('src/btstack/btstack_avdtp_source.c').read_text()
+init_body = function('src/btstack/btstack_avdtp_source.c', 'audio_slot_queue_init')
+assert 'slot_queue_storage_ready' in init_body, 'queue init must be allocation-once'
+assert init_body.count('queue_init(&') == 2, init_body
+guard = init_body.index('if (!slot_queue_storage_ready)')
+else_branch = init_body.index('} else {')
+assert init_body.index('queue_init(&') > guard
+assert init_body.index('queue_init(&') < else_branch
+assert init_body.index('queue_try_remove(&ready_queue') > else_branch
+assert init_body.index('queue_try_remove(&free_queue') > else_branch
+
 if __name__=='__main__':
     with tempfile.TemporaryDirectory() as temp:
         path=Path(temp)

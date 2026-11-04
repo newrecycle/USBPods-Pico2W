@@ -25,6 +25,7 @@
  *
  */
 
+ #include <stdatomic.h>
  #include <stdio.h>
  #include <string.h>
  
@@ -38,6 +39,7 @@
 
  #include "../btstack/btstack_avdtp_source.h"
 #include "../btstack/btstack_sink_relay.h"   /* relay forces swvol */
+ #include "pico/cyw43_arch.h"                 /* async-context lock for BT calls */
  #include "pico/flash.h"
  #include "pico/time.h"
 
@@ -54,7 +56,11 @@
 
  uint32_t current_sample_rate  = 48000;
 
- bool need_change_bt_volume = false;
+ /* Written by the UAC1/UAC2 control handlers (tud_task, pumped from the
+    500 us timer IRQ); consumed by audio_control_task() on the main loop.
+    The exchange in apply_host_fu_volume() must be atomic so a host SET_CUR
+    that lands during the slow BT volume apply is not lost. */
+ _Atomic bool need_change_bt_volume = false;
  
  #define N_SAMPLE_RATES  TU_ARRAY_SIZE(sample_rates)
  
@@ -109,8 +115,13 @@
  extern volatile bool usb_pcm_tap;   /* 'U' console key (defined below) */
  int spk_data_size;
  // Resolution per format
- const uint8_t resolutions_per_format[CFG_TUD_AUDIO_FUNC_1_N_FORMATS] = {CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX,
-                                                                         CFG_TUD_AUDIO_FUNC_1_FORMAT_2_RESOLUTION_RX};
+ /* The UAC2 descriptor in usb_descriptors.h serves exactly speaker alt 0
+    (zero bandwidth) and alt 1 (16-bit PCM). The old second entry was never
+    advertised; N_FORMATS must not grow without a matching descriptor alt. */
+ _Static_assert(CFG_TUD_AUDIO_FUNC_1_N_FORMATS == 1,
+                "UAC2 speaker advertises one format (alt 0/1)");
+ const uint8_t resolutions_per_format[CFG_TUD_AUDIO_FUNC_1_N_FORMATS] = {
+     CFG_TUD_AUDIO_FUNC_1_FORMAT_1_RESOLUTION_RX};
  // Current resolution, update on format change
  uint8_t current_resolution;
  
@@ -185,14 +196,14 @@ void usb_hid_consumer(uint16_t usage) {
    s_vol_budget = 30;
  }
 
- static uint8_t host_fu_to_pct(void);    /* defined with the curve LUT below */
+ static uint8_t host_fu_to_pct(int16_t fu_db);  /* defined with the curve LUT below */
 
  static int host_vol_pct(void)
  {
    /* Cubic-curve inversion (see s_db_to_pct) — must match the mapping the
       rest of the volume system uses, or the UAC1 nudge loop's deadband
       would chase a phantom offset. */
-   return host_fu_to_pct();
+   return host_fu_to_pct(volume[0]);
  }
 
  static void hid_media_task(void)
@@ -235,6 +246,22 @@ void usb_hid_consumer(uint16_t usage) {
    flag parks the IRQ-side task across the replug. */
 volatile bool usb_replug_hold;
 
+/* BTstack's run loop executes in the cyw43 async-context IRQ and preempts the
+   main loop at any instruction. Main-loop code that mutates BTstack/AVRCP
+   state (dial, absolute volume) must hold the async-context lock, exactly as
+   main.c/device_control.c do. Returns false when there is no radio/context
+   (radio-absent build): the caller must then skip the BT action. */
+static bool bt_async_lock_take(void) {
+    async_context_t *ctx = cyw43_arch_async_context();
+    if (!ctx) return false;
+    async_context_acquire_lock_blocking(ctx);
+    return true;
+}
+
+static void bt_async_lock_give(void) {
+    async_context_release_lock(cyw43_arch_async_context());
+}
+
 static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
  {
    uint8_t mode = settings()->connmode;
@@ -245,7 +272,7 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
       earlier build) must not keep dialing here. */
    mode = 1;
 #endif
-   bool conn = get_a2dp_connected_flag();
+   bool conn = radio_is_absent() ? false : get_a2dp_connected_flag();
 
    /* Mode 2: descriptor shape tracks the headset. Held ~0.5 s before acting
       so a brief BT blip (reconfigure, slot switch) doesn't churn replugs. */
@@ -269,6 +296,7 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
    /* Mode 3: usb_stop_delay < 100 = speaker data seen within ~50 ms. */
    static uint16_t dial_cooldown;
    if (dial_cooldown) dial_cooldown--;
+   if (radio_is_absent()) return;   /* no BT stack: never touch BT/AVRCP state */
    if (usb_stop_delay >= 100) a2dp_user_dc_clear();  /* playback stopped: the
                                              next play is fresh user intent */
    if (mode == 3 && !conn && dial_cooldown == 0 &&
@@ -278,9 +306,10 @@ static void usb_mode_task(void)   /* 50 ms cadence (tinyusb_control_task) */
      const uint8_t *mac = settings()->slot[settings()->cur_slot == 2 ? 1 : 0].mac;
      bool have = false, zero = true;
      for (int i = 0; i < 6; i++) { have |= mac[i] != 0xFF; zero &= mac[i] == 0; }
-     if (have && !zero) {
+     if (have && !zero && bt_async_lock_take()) {
        printf("[connmode] host is playing -> dialing headset\n");
        a2dp_source_reconnect();
+       bt_async_lock_give();
      }
      dial_cooldown = 200;            /* one attempt per 10 s while it plays */
    }
@@ -576,10 +605,15 @@ void tinyusb_control_task(void){
    uint16_t const alt = tu_le16toh(p_request->wValue);
    if (itf == ITF_NUM_AUDIO_STREAMING_MIC) {
      TU_VERIFY(alt <= 1);
-     usb_capture_close();
+     /* TinyUSB calls close_EP before every SET_INTERFACE, including a
+        redundant alt 1 -> alt 1 (resume-after-suspend, repeated start).
+        Only a real close (new alt 0) may drop capture: clearing it here
+        would bump the AACP generation and discard the PCM FIFO, costing a
+        ~45 ms mic dropout while the host never closed the stream. */
+     if (alt == 0) usb_capture_close();
      return true;
    }
-   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= CFG_TUD_AUDIO_FUNC_1_N_FORMATS);
+   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= 1);
  
   if (ITF_NUM_AUDIO_STREAMING_SPK == itf && alt == 0) {
       blink_interval_ms = BLINK_MOUNTED;
@@ -618,7 +652,7 @@ void tinyusb_control_task(void){
      usb_capture_set_alt(alt == 1);
      return true;
    }
-   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= CFG_TUD_AUDIO_FUNC_1_N_FORMATS);
+   TU_VERIFY(itf == ITF_NUM_AUDIO_STREAMING_SPK && alt <= 1);
  
    TU_LOG2("Set interface %d alt %d\r\n", itf, alt);
    {   /* EP reopen: a pending live-close grace ends as a non-event */
@@ -973,8 +1007,8 @@ static const uint8_t s_db_to_pct[51] = {
      46,45,43,41,40,38,37,35,34,33,32,30,29,28,27,26,25,24,23,22,
      22,21,20,19,18,18,17,16,16,15,15 };
 
-static uint8_t host_fu_to_pct(void) {      /* volume[0] dB -> slider percent  */
-    int att_db = -(volume[0] / 256);
+static uint8_t host_fu_to_pct(int16_t fu_db) {  /* FU dB -> slider percent */
+    int att_db = -(fu_db / 256);
     if (att_db < 0) att_db = 0;
     if (att_db > 50) att_db = 50;
     return s_db_to_pct[att_db];
@@ -985,6 +1019,35 @@ static int pct_to_att_db(uint8_t pct) {    /* inverse: nearest LUT attenuation *
         if (s_db_to_pct[d] <= pct) return d;
     }
     return 50;
+}
+
+/* Apply one host feature-unit volume/mute snapshot to the headset.
+   The request flag is exchanged BEFORE the slow BT/AVRCP path and the values
+   are copied before it too, so a SET_CUR that lands while set_bt_volume()
+   runs leaves the flag set and the newer value is applied on the next pass.
+   (Previously the flag was cleared after the apply and that update was lost.) */
+static bool apply_host_fu_volume(void)
+{
+    if (!atomic_exchange(&need_change_bt_volume, false)) return false;
+    if (!bt_async_lock_take()) return false;   /* radio absent: drop request */
+    int16_t const vol = volume[0];
+    int8_t const mute_now = mute[0];
+
+    if (mute_now == 1 && volume0_last == vol) {
+        if (mute0_last == 1) {
+            set_bt_volume(-50 + host_fu_to_pct(vol) / 2);   /* cubic-corrected */
+            mute0_last = 0;
+            mute[0] = 0;
+        } else {
+            mute0_last = 1;
+            set_bt_volume(-50);
+        }
+    } else {
+        set_bt_volume(-50 + host_fu_to_pct(vol) / 2);       /* cubic-corrected */
+    }
+    volume0_last = vol;
+    bt_async_lock_give();
+    return true;
 }
 
 void audio_control_task(void)
@@ -1003,7 +1066,7 @@ void audio_control_task(void)
        sw_prev = sw_now;
        if (sw_now) {
            /* entering: adopt the host slider position as the sw gain */
-           uint8_t pct = host_fu_to_pct();
+           uint8_t pct = host_fu_to_pct(volume[0]);
            if (mute[0]) pct = 0;
            set_usb_sw_gain_pct(pct);
        } else {
@@ -1016,9 +1079,8 @@ void audio_control_task(void)
    }
    if (sw_now) {
        *get_is_bt_sink_volume_changed_ptr() = false;   /* no BT->host push  */
-       if (need_change_bt_volume) {                    /* host FU -> gain   */
-           need_change_bt_volume = false;
-           uint8_t pct = host_fu_to_pct();
+       if (atomic_exchange(&need_change_bt_volume, false)) {  /* host FU -> gain */
+           uint8_t pct = host_fu_to_pct(volume[0]);
            if (mute[0]) pct = 0;
            set_usb_sw_gain_pct(pct);
            settings()->usb_vol_p1 = (uint8_t)(pct + 1);
@@ -1026,6 +1088,8 @@ void audio_control_task(void)
        }
        return;
    }
+
+   if (radio_is_absent()) return;   /* no BT: classic headset volume sync is moot */
 
    if (*get_is_bt_sink_volume_changed_ptr())
    {
@@ -1058,38 +1122,20 @@ void audio_control_task(void)
      *get_is_bt_sink_volume_changed_ptr() = false;
    }
 
-   if (need_change_bt_volume){
+   if (apply_host_fu_volume()) {
+     const audio_interrupt_data_t data = {
+       .bInfo = 0,                                       // Class-specific interrupt, originated from an interface
+       .bAttribute = AUDIO_CS_REQ_CUR,                   // Caused by current settings
+       .wValue_cn_or_mcn = 0,                            // CH0: master volume
+       .wValue_cs = AUDIO_FU_CTRL_VOLUME,                // Volume change
+       .wIndex_ep_or_int = 0,                            // From the interface itself
+       .wIndex_entity_id = UAC2_ENTITY_SPK_FEATURE_UNIT, // From feature unit
+     };
 
-    //printf("vol is %d\n", volume[0]);
-    
-    if(mute[0] == 1 && volume0_last == volume[0]){
-      if (mute0_last == 1){
-        set_bt_volume(-50 + host_fu_to_pct() / 2);   /* cubic-corrected */
-        mute0_last = 0;
-        mute[0] = 0;
-      }else{
-        mute0_last = 1;
-        set_bt_volume(-50);
-      }
-    }else{
-      set_bt_volume(-50 + host_fu_to_pct() / 2);     /* cubic-corrected */
-    }
-    volume0_last = volume[0];
-    need_change_bt_volume = false;
-
-    const audio_interrupt_data_t data = {
-      .bInfo = 0,                                       // Class-specific interrupt, originated from an interface
-      .bAttribute = AUDIO_CS_REQ_CUR,                   // Caused by current settings
-      .wValue_cn_or_mcn = 0,                            // CH0: master volume
-      .wValue_cs = AUDIO_FU_CTRL_VOLUME,                // Volume change
-      .wIndex_ep_or_int = 0,                            // From the interface itself
-      .wIndex_entity_id = UAC2_ENTITY_SPK_FEATURE_UNIT, // From feature unit
-    };
-
-    if (!usb_uac1_active() && usb_desc_audio_exposed()) {
-      tud_audio_int_write(&data);
-    }
-    //*get_is_bt_sink_volume_changed_ptr() = false;
+     if (!usb_uac1_active() && usb_desc_audio_exposed()) {
+       tud_audio_int_write(&data);
+     }
+     //*get_is_bt_sink_volume_changed_ptr() = false;
    }
 
   }

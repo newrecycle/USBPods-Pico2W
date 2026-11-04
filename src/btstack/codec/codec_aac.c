@@ -202,37 +202,37 @@ void codec_aac_on_configuration(const uint8_t *packet){
     }
     if ((err = aacEncOpen(&handleAAC, 0x01, aac_configuration.channels)) != AACENC_OK) {
         printf("Couldn't open AAC encoder: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_AOT, 2)) != AACENC_OK) {
         printf("Couldn't set audio object type: %d\n", err);
-        return;
+        goto failed;
     }
     src_full_bitrate = aac_configuration.bit_rate;   /* ladder restore point */
     src_relay_rate_low = false;
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_BITRATE, aac_configuration.bit_rate)) != AACENC_OK) {
         printf("Couldn't set bitrate: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_SAMPLERATE, aac_configuration.sampling_frequency)) !=
         AACENC_OK) {
         printf("Couldn't set sampling rate: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_CHANNELMODE, aac_configuration.channels)) != AACENC_OK) {
         printf("Couldn't set channel mode: %d\n", err);
-        return;
+        goto failed;
     }
     if (aac_configuration.vbr) {
         if ((err = aacEncoder_SetParam(handleAAC, AACENC_BITRATEMODE, vbr)) != AACENC_OK) {
             printf("Couldn't set VBR bitrate mode %u: %d\n", aac_configuration.vbr, err);
-            return;
+            goto failed;
         }
         src_vbr_mode = (uint8_t)vbr;    /* ladder restore point */
     } else {
         if ((err = aacEncoder_SetParam(handleAAC, AACENC_BITRATEMODE, 0)) != AACENC_OK) {
             printf("Couldn't set CBR bitrate mode: %d\n", err);
-            return;
+            goto failed;
         }
         src_vbr_mode = 0;
     }
@@ -246,31 +246,31 @@ void codec_aac_on_configuration(const uint8_t *packet){
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_PEAK_BITRATE,
                                    aac_configuration.bit_rate)) != AACENC_OK) {
         printf("Couldn't set AAC peak bitrate: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_AFTERBURNER, false)) != AACENC_OK) {
         printf("Couldn't enable afterburner: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_TRANSMUX, TT_MP4_LATM_MCP1)) != AACENC_OK) {
         printf("Couldn't enable LATM transport type: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_HEADER_PERIOD, 1)) != AACENC_OK) {
         printf("Couldn't set LATM header period: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncoder_SetParam(handleAAC, AACENC_AUDIOMUXVER, 1)) != AACENC_OK) {
         printf("Couldn't set LATM version: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncEncode(handleAAC, NULL, NULL, NULL, NULL)) != AACENC_OK) {
         printf("Couldn't initialize AAC encoder: %d\n", err);
-        return;
+        goto failed;
     }
     if ((err = aacEncInfo(handleAAC, &aacinf)) != AACENC_OK) {
         printf("Couldn't get encoder info: %d\n", err);
-        return;
+        goto failed;
     }
     /* The encoder handle/slot size is shared with ELD (441/480 samples).
      * Rebuild the LC queue from its actual frame length after every switch. */
@@ -290,6 +290,22 @@ void codec_aac_on_configuration(const uint8_t *packet){
     cur_codec = CODEC_ID_AAC;
 
     /* Main-loop setup owner opens/starts media after successful allocation. */
+    return;
+
+failed:
+    /* A failed configuration must never leave a live or partially configured
+       FDK instance behind (unlike the old bare returns). cur_codec is left
+       untouched so src_codec_setup_main()'s post-check still holds and
+       disconnects exactly as before; the registry release is then a no-op. */
+    if (handleAAC != NULL) {
+        aacEncClose(&handleAAC);
+        handleAAC = NULL;
+    }
+    memset(&aacinf, 0, sizeof(aacinf));
+    src_full_bitrate = 0;
+    src_relay_rate_low = false;
+    src_vbr_mode = 0;
+    printf("AAC: configuration failed; encoder handle released\n");
 
 }
 

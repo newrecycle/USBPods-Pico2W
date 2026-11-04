@@ -223,6 +223,10 @@ static bool finish_scan_avdtp_codec = false;
    "streaming" while we encoded nothing. Silence until replug (HW: Bose QC,
    the reconnect right after the wedge-brake fix). */
 static bool src_codec_configured = false;
+/* A peer START accepted while the capability scan was still running must not
+   be forgotten: the scan-completion path has to start the pump later even
+   though no second START accept will arrive for the already-started stream. */
+static bool src_start_accepted_pending = false;
 
 uint8_t audio_timer_interval = 5;
 
@@ -485,6 +489,11 @@ static uint32_t src_tx_malformed;          /* header-chain violations ('R') */
 static uint32_t src_send_fails;            /* media sends that returned !=0 */
 static uint8_t  src_send_fail_rc;          /* last failing status           */
 static uint32_t src_vol_cmds;              /* set_bt_volume-driven AVRCP     */
+/* Absolute-volume 0 (mute) and 127 (full) are legitimate user states, not
+   "unset" markers. Track whether any host key, AVRCP notification or seed
+   has ever established the level so a reconnect cannot silently reset a
+   full-volume session back to 50%. */
+static bool src_volume_known;
 /* Malformed-packet RAM snapshot: the console ring drops the MALFORMED hex
    lines exactly when they matter (splice bursts flood it). Capture the
    first offender's bytes + walk state here instead — printed by 'R',
@@ -770,10 +779,25 @@ static void suspend_recovery_handler(btstack_timer_source_t *timer) {
     src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
 }
 
+/* Queue buffers are allocated exactly once, from the boot path. Disconnect,
+   pairing and slot-switch handlers also call this helper from the BTstack IRQ;
+   queue_init()->calloc takes the SDK malloc mutex there, and a preempted
+   thread-mode malloc could then deadlock until the watchdog fires (same class
+   as the codec-release note above). Later calls only drain and repopulate the
+   existing storage, so no heap work happens in interrupt context. */
+static bool slot_queue_storage_ready;
+
 void audio_slot_queue_init(void) {
+    if (!slot_queue_storage_ready) {
+        queue_init(&free_queue,  sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
+        queue_init(&ready_queue, sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
+        slot_queue_storage_ready = true;
+    } else {
+        uint8_t idx;
+        while (queue_try_remove(&ready_queue, &idx)) {}
+        while (queue_try_remove(&free_queue, &idx)) {}
+    }
     active_slot_count = AUDIO_SLOT_COUNT_SBC;  // default
-    queue_init(&free_queue,  sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
-    queue_init(&ready_queue, sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
     for (uint8_t i = 0; i < active_slot_count; i++) {
         queue_try_add(&free_queue, &i);
     }
@@ -2829,6 +2853,26 @@ static void a2dp_demo_timer_pause(a2dp_media_sending_context_t * context){
 
 
 
+/* One place that turns an accepted AVDTP START into a running pump, so the
+   normal accept path and the reconnect-race scan-completion path cannot
+   diverge (the old code started the pump only from the accept when
+   finish_scan_avdtp_codec was already set; a START accepted during the scan
+   left AVDTP "streaming" with the pump off until the peer suspended). */
+static void src_pump_start(void) {
+    a2dp_demo_timer_start(&media_tracker);
+    is_streaming = true;
+    src_session_streamed = true;  /* audio: not a wedged peer */
+    src_nostream_run = 0;
+    src_wedge_hold   = false;     /* it streamed: unlatch */
+    start_led_blink();
+}
+
+/* The scan finished after a START was already accepted: start the pump now. */
+static bool src_pump_start_pending(void) {
+    return src_start_accepted_pending && src_stream_established &&
+           !is_streaming && cur_codec != CODEC_ID_NONE;
+}
+
 static void src_stream_start_accepted(void) {
     if(src_fault_hold || src_user_dc_hold || !a2dp_is_connected_flag)return;
     if(src_codec_setup_pending){src_codec_early_start=true;return;}
@@ -2851,12 +2895,10 @@ static void src_stream_start_accepted(void) {
     src_suspend_ms = 0;          /* streaming: disarm self-heal */
     src_resume_tries = 0;
     if (finish_scan_avdtp_codec){
-        a2dp_demo_timer_start(&media_tracker);
-        is_streaming = true;
-        src_session_streamed = true;  /* audio: not a wedged peer */
-        src_nostream_run = 0;
-        src_wedge_hold   = false;     /* it streamed: unlatch */
-        start_led_blink();
+        src_start_accepted_pending = false;
+        src_pump_start();
+    } else {
+        src_start_accepted_pending = true;
     }
 
 }
@@ -3077,8 +3119,17 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             finish_setup_aac = false;
             src_codec_configured = false;   /* prove it per session */
             status = avdtp_source_discover_stream_endpoints(media_tracker.avdtp_cid);
+            if (status != ERROR_CODE_SUCCESS) {
+                /* No CAPABILITIES_DONE will arrive: without a scan timeout the
+                   session would sit connected and silent until a manual
+                   reconnect. Reuse the bounded wedge policy (2 s probe, then
+                   ACL drop + redial) instead of parking forever. */
+                printf("AVDTP discovery failed status=%u — bounded recovery\n", status);
+                src_sig_disallowed("discovery");
+            }
             a2dp_is_connected_flag = true;
             src_stream_established = false;   /* fresh connection: no media channel yet */
+            src_start_accepted_pending = false;
             src_con_handle = avdtp_subevent_signaling_connection_established_get_con_handle(packet);
             /* HW-tested best value: full +8 dBm cap on every link ('T'/'W'
                console keys remain for experiments) */
@@ -3140,7 +3191,12 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             // bug). It opens after AVRCP establishes — see avrcp_packet_handler.
 
             src_start_stream(media_tracker.avdtp_cid, media_tracker.local_seid);
-            avrcp_connect((uint8_t *) cur_active_device, &media_tracker.avrcp_cid);
+            {   /* AVRCP failure costs volume/battery/AAP but not streaming:
+                   log it and keep the stream (a drop here would be worse). */
+                uint8_t avrcp_rc = avrcp_connect((uint8_t *) cur_active_device, &media_tracker.avrcp_cid);
+                if (avrcp_rc != ERROR_CODE_SUCCESS)
+                    printf("AVRCP connect failed status=%u — volume/battery/AAP unavailable\n", avrcp_rc);
+            }
             break;
 
         case AVDTP_SUBEVENT_SIGNALING_SEP_FOUND:
@@ -3170,7 +3226,10 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
 
             cur_num_remote_seps = 0;
             // find 1st capabilities; should be sbc
-            avdtp_source_get_all_capabilities(media_tracker.avdtp_cid, remote_seps[0].sep.seid);
+            if (avdtp_source_get_all_capabilities(media_tracker.avdtp_cid, remote_seps[0].sep.seid) != ERROR_CODE_SUCCESS) {
+                printf("[avdtp] capability request failed for seid %u — bounded recovery\n", remote_seps[0].sep.seid);
+                src_sig_disallowed("capabilities");
+            }
 
             break;
 
@@ -3178,7 +3237,10 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             cur_num_remote_seps ++;
             if (cur_num_remote_seps < num_remote_seps){
                 PLOG("\n\n Getting next CAPABILITY \n\n");
-                avdtp_source_get_all_capabilities(media_tracker.avdtp_cid, remote_seps[cur_num_remote_seps].sep.seid);
+                if (avdtp_source_get_all_capabilities(media_tracker.avdtp_cid, remote_seps[cur_num_remote_seps].sep.seid) != ERROR_CODE_SUCCESS) {
+                    printf("[avdtp] capability request failed for seid %u — bounded recovery\n", remote_seps[cur_num_remote_seps].sep.seid);
+                    src_sig_disallowed("capabilities");
+                }
             }else{
                 PLOG("finish scaning CAPABILITIES codecs\n");
                 set_next_capablity_and_start_stream();
@@ -3426,6 +3488,10 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                     printf("Stream released.\n");
                     src_eld_early_start=false;
                     a2dp_demo_timer_stop(&media_tracker);
+                    is_streaming = false;
+                    src_stream_established = false;
+                    finish_scan_avdtp_codec = false;
+                    src_start_accepted_pending = false;
                     break;
                 default:
                     break;
@@ -3509,6 +3575,7 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             led_idle_unless_pairing();
             is_streaming = false;
             src_stream_established = false;
+            src_start_accepted_pending = false;
             break;
         case AVDTP_SUBEVENT_SIGNALING_CONNECTION_RELEASED:
             /* cid check, not owns_cid: the sink handler may already have
@@ -3519,6 +3586,9 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
             src_eld_link_reset();
             a2dp_demo_timer_stop(&media_tracker);
             finish_scan_avdtp_codec = false;
+            is_streaming = false;
+            src_stream_established = false;
+            src_start_accepted_pending = false;
             if (a2dp_is_connected_flag && (read_settings_byte() & USBSET_PAUSEDC)) {
                 usb_hid_consumer(0x00B1);   /* headset gone -> pause the host */
             }
@@ -3571,7 +3641,12 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
     }
 }
 
+/* True only until a host key, AVRCP notification or the AVRCP-connect seed
+   has established the absolute-volume level. */
+static bool src_volume_seed_needed(void) { return !src_volume_known; }
+
 void increase_vol_by_key(){
+    src_volume_known = true;
     if (media_tracker.volume > 117){
          media_tracker.volume = 127;
     } else {
@@ -3583,7 +3658,7 @@ void increase_vol_by_key(){
 
 
 void decrease_vol_by_key(){
-
+    src_volume_known = true;
     if (media_tracker.volume < 10){
         media_tracker.volume = 0;
     } else {
@@ -3602,6 +3677,7 @@ void decrease_vol_by_key(){
    console.c can handle the user-facing tier. */
 void set_bt_volume(int16_t val){
     media_tracker.volume = (val*2 + 100) * 127 / 100;
+    src_volume_known = true;
     src_vol_cmds++;   /* profile switches storm this path — see 'R' report */
     avrcp_controller_set_absolute_volume(media_tracker.avrcp_cid, media_tracker.volume);
 }
@@ -3680,8 +3756,9 @@ bool a2dp_source_console_key(char cmd){
                 } else if (last_reset_kind == 1) {
                     extern uint8_t last_hang_phase, last_hang_irq;
                     printf("[reset] WATCHDOG (loop starved >2s — phase %u [1 usb 2 settings "
-                           "3 relay-decode 4 eld-rebuild 5 tail], irq 0x%02x [10 usb-task "
-                           "20 bootsel 30 pump, xF=exited])\n",
+                           "3 relay-decode 4 eld-rebuild 5 tail], irq 0x%02x [30 tick-in "
+                           "31 tick-out 3A dispatch 3B/3C encode 3F pump-done 40 avdtp "
+                           "42/44/46 avrcp-target/controller 70/72 hci 80 hfp; F=clean])\n",
                            last_hang_phase, last_hang_irq);
                 } else {
                     printf("[reset] clean boot\n");
@@ -3977,6 +4054,12 @@ void avdtp_disconnect_keep_pairing(){
     src_dial_tries = 0;
     btstack_run_loop_remove_timer(&src_dial_retry_timer);
     a2dp_demo_timer_stop(&media_tracker);
+    /* Tear the reported playback state down with the pump: a stale true
+       here would report playing while disconnected and suppress recovery. */
+    is_streaming = false;
+    src_stream_established = false;
+    finish_scan_avdtp_codec = false;
+    src_start_accepted_pending = false;
     a2dp_source_disconnect(media_tracker.avdtp_cid);
     avrcp_disconnect(media_tracker.avrcp_cid);
     aap_disconnect();   /* AAP rides its own L2CAP channel — the AVDTP release
@@ -4010,6 +4093,10 @@ void avdtp_disconnect_and_scan(){
     src_dial_tries = 0;
     btstack_run_loop_remove_timer(&src_dial_retry_timer);
     a2dp_demo_timer_stop(&media_tracker);
+    is_streaming = false;
+    src_stream_established = false;
+    finish_scan_avdtp_codec = false;
+    src_start_accepted_pending = false;
     a2dp_source_disconnect(media_tracker.avdtp_cid);
     avrcp_disconnect(media_tracker.avrcp_cid);
     aap_disconnect();   /* see avdtp_disconnect_keep_pairing */
@@ -4226,6 +4313,9 @@ void set_next_capablity_and_start_stream(){
            suspend -> our auto-restart -> suspend... an infinite pause/start
            ping-pong (HW log, dozens of cycles). */
         finish_scan_avdtp_codec = true;
+        /* A peer START accepted before the scan completed: the accept path
+           could not start the pump then, and no second accept will come. */
+        if (src_pump_start_pending()) src_pump_start();
         return;
     }
 
@@ -4317,9 +4407,12 @@ static void avrcp_packet_handler_inner(uint8_t packet_type, uint16_t channel, ui
 
             printf("Enable Volume Change notification\n");
             avrcp_controller_enable_notification(media_tracker.avrcp_cid, AVRCP_NOTIFICATION_EVENT_VOLUME_CHANGED);
-            // Set initial volume to 50% on first connection
-            if (media_tracker.volume == 0 || media_tracker.volume == 127) {
+            // Seed 50% only on the first connection after boot. A later
+            // reconnect must keep the host/headset level even when it is a
+            // legitimate 0 (mute) or 127 (full).
+            if (src_volume_seed_needed()) {
                 media_tracker.volume = 64;  // ~50% (0-127 range)
+                src_volume_known = true;
                 avrcp_controller_set_absolute_volume(media_tracker.avrcp_cid, media_tracker.volume);
             }
             printf("Enable Battery Status Change notification\n");
@@ -4472,6 +4565,7 @@ static void avrcp_controller_packet_handler_inner(uint8_t packet_type, uint16_t 
     switch (packet[2]){
         case AVRCP_SUBEVENT_NOTIFICATION_VOLUME_CHANGED:
             media_tracker.volume = avrcp_subevent_notification_volume_changed_get_absolute_volume(packet);
+            src_volume_known = true;
             
             _bt_sink_volume_changed = true;
             printf("AVRCP Controller: Notification Absolute Volume %d %%\n", media_tracker.volume * 100 / 127);\
@@ -4523,7 +4617,8 @@ int btstack_main(int argc, const char * argv[]){
     aacp_mic_init();
     memset(sdp_avdtp_source_service_buffer, 0, sizeof(sdp_avdtp_source_service_buffer));
     a2dp_source_create_sdp_record(sdp_avdtp_source_service_buffer, 0x10002, AVDTP_SOURCE_FEATURE_MASK_PLAYER, NULL, NULL);
-    sdp_register_service(sdp_avdtp_source_service_buffer);
+    uint8_t sdp_rc = sdp_register_service(sdp_avdtp_source_service_buffer);
+    if (sdp_rc != ERROR_CODE_SUCCESS) printf("SDP: A2DP source record registration failed status=%u\n", sdp_rc);
 
 
 
@@ -4539,13 +4634,15 @@ int btstack_main(int argc, const char * argv[]){
        anyway because AVRCP rides the already-open channel; only peers doing
        an SDP lookup for our TG capability ever saw the gap. */
     avrcp_target_create_sdp_record(sdp_avrcp_target_service_buffer, 0x10001, supported_features, NULL, NULL);
-    sdp_register_service(sdp_avrcp_target_service_buffer);
+    sdp_rc = sdp_register_service(sdp_avrcp_target_service_buffer);
+    if (sdp_rc != ERROR_CODE_SUCCESS) printf("SDP: AVRCP target record registration failed status=%u\n", sdp_rc);
 
     // Create AVRCP Controller service record and register it with SDP. We send Category 2 commands to the headphone, e.g. volume up/down
     memset(sdp_avrcp_controller_service_buffer, 0, sizeof(sdp_avrcp_controller_service_buffer));
     uint16_t controller_supported_features = AVRCP_FEATURE_MASK_CATEGORY_MONITOR_OR_AMPLIFIER;
     avrcp_controller_create_sdp_record(sdp_avrcp_controller_service_buffer, 0x10003, controller_supported_features, NULL, NULL);
-    sdp_register_service(sdp_avrcp_controller_service_buffer);
+    sdp_rc = sdp_register_service(sdp_avrcp_controller_service_buffer);
+    if (sdp_rc != ERROR_CODE_SUCCESS) printf("SDP: AVRCP controller record registration failed status=%u\n", sdp_rc);
 
     hfp_battery_register_sdp();   /* 0x10005 — record count now 5 of 6 */
 

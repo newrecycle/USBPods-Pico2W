@@ -124,7 +124,7 @@ static struct { uint32_t epoch; int16_t data[FRAME]; } pcm[PCM_SLOTS];
 static _Atomic uint32_t aw, ar, pw, pr;
 static _Atomic uint32_t au_high, pcm_high, au_overflows, pcm_overflows;
 static _Atomic uint32_t au_stale, pcm_stale, au_inactive;
-static _Atomic uint32_t decoded, errors, max_us, last_us, ema_us;
+static _Atomic uint32_t decoded, errors, flush_errors, max_us, last_us, ema_us;
 static _Atomic uint32_t last_rate, last_channels, last_frame;
 static _Atomic bool ready;
 static uint32_t pcm_offset; /* USB consumer only */
@@ -191,10 +191,13 @@ void aacp_mic_audio_work(void) {
             continue;
         }
         processed++;
-        /* Flush history only for the first accepted AU of each generation. */
+        /* Flush history only for the first accepted AU of each generation.
+           A failed flush must not mark the generation done: keep last_epoch
+           behind so the next AU retries, and count the error. */
         if (last_epoch!=epoch) {
-            aacDecoder_DecodeFrame(decoder,scratch,960,AACDEC_CLRHIST|AACDEC_INTR);
-            last_epoch=epoch;
+            AAC_DECODER_ERROR flush=aacDecoder_DecodeFrame(decoder,scratch,960,AACDEC_CLRHIST|AACDEC_INTR);
+            if (flush==AAC_DEC_OK) last_epoch=epoch;
+            else atomic_fetch_add_explicit(&flush_errors,1,memory_order_relaxed);
         }
         UCHAR *input[]={aus[r%AU_SLOTS].data};
         UINT size=aus[r%AU_SLOTS].len, valid=size;
@@ -353,6 +356,11 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
 void aacp_mic_audio_report(void) {
     aacp_mic_audio_stats s;
     aacp_mic_audio_get_stats(&s);
+#ifdef USBPODS_MIC_DECODE
+    unsigned long flush=(unsigned long)atomic_load_explicit(&flush_errors,memory_order_relaxed);
+#else
+    unsigned long flush=0;
+#endif
     printf("[mic-cad] gen=%lu au=%lu intervals=%lu burst=%lu 7p5ms=%lu 10ms=%lu other=%lu gap=%lu arrival_us=%lu/%lu/%lu ts=%lu step=%lu ref=%lu range=%lu..%lu dup=%lu back=%lu changed=%lu gap_candidate=%lu\n",
            (unsigned long)s.generation,(unsigned long)s.au_observed,
            (unsigned long)s.arrival_intervals,(unsigned long)s.arrival_bursts,
@@ -364,14 +372,15 @@ void aacp_mic_audio_report(void) {
            (unsigned long)s.timestamp_step_min,(unsigned long)s.timestamp_step_max,
            (unsigned long)s.timestamp_duplicates,(unsigned long)s.timestamp_backwards,
            (unsigned long)s.timestamp_step_changes,(unsigned long)s.timestamp_gap_candidates);
-    printf("[mic-dec] active=%lu ready=%lu au_q=%lu/%lu drop=%lu stale=%lu inactive=%lu pcm_q=%lu/%lu drop=%lu stale=%lu ok=%lu errors=%lu decode_us=%lu/max%lu/ema%lu fmt=%luHz/%luch/%lu\n",
+    printf("[mic-dec] active=%lu ready=%lu au_q=%lu/%lu drop=%lu stale=%lu inactive=%lu pcm_q=%lu/%lu drop=%lu stale=%lu ok=%lu errors=%lu flush=%lu decode_us=%lu/max%lu/ema%lu fmt=%luHz/%luch/%lu\n",
            (unsigned long)s.capture,(unsigned long)s.decoder_ready,
            (unsigned long)s.au_depth,(unsigned long)s.au_high_water,
            (unsigned long)s.au_overflows,(unsigned long)s.au_stale,
            (unsigned long)s.au_inactive,(unsigned long)s.pcm_depth,
            (unsigned long)s.pcm_high_water,(unsigned long)s.pcm_overflows,
            (unsigned long)s.pcm_stale,(unsigned long)s.decoded,
-           (unsigned long)s.decode_errors,(unsigned long)s.decode_last_us,
+           (unsigned long)s.decode_errors,flush,
+           (unsigned long)s.decode_last_us,
            (unsigned long)s.decode_max_us,(unsigned long)s.decode_ema_us,
            (unsigned long)s.decoded_rate,(unsigned long)s.decoded_channels,
            (unsigned long)s.decoded_frame_samples);

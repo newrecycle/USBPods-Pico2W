@@ -17,6 +17,8 @@
    v1 (256-byte 'PSET') records are migrated on first load. */
 #define REC_SIZE       512
 #define PAGES_PER_SEC  (FLASH_SECTOR_SIZE / REC_SIZE)          /* 8  */
+_Static_assert(PAGES_PER_SEC * REC_SIZE == FLASH_SECTOR_SIZE,
+               "records must exactly fill one flash sector");
 #define REC_MAGIC      0x50535432u                             /* 'PST2' */
 #define REC_MAGIC_V1   0x50534554u                             /* 'PSET' */
 #define V1_REC_SIZE    256
@@ -69,6 +71,11 @@ static bool page_valid(int sector, int page, uint32_t *seq) {
     const uint8_t *p = flash_ptr(page_off(sector, page));
     const rec_hdr_t *h = (const rec_hdr_t *)p;
     if (h->magic != REC_MAGIC) return false;
+    /* No older 'PST2' layout exists (v1 uses the 'PSET' magic and its own
+       migration path). A record written by a newer incompatible firmware
+       must not be mapped onto this struct: keep scanning and load the older
+       record instead. */
+    if (h->version != SETTINGS_VERSION) return false;
     if (h->payload_len > REC_SIZE - sizeof(rec_hdr_t) - 4) return false;
     uint32_t stored;
     memcpy(&stored, p + REC_SIZE - 4, 4);

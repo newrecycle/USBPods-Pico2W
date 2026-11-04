@@ -67,15 +67,26 @@ int main(void) {
  assert(codec_aaceld_retry_configuration() && rate()==256000);
  uint8_t event[27]={0};event[11]=14;memcpy(event+13,sent,14);
  assert(codec_aaceld_on_configuration(event) && codec_aaceld_max_bitrate()==256000 && codec_aaceld_vbr_allowed());
- assert(codec_aaceld_retry_configuration() && rate()==192000);
- unsigned before=offers;assert(!codec_aaceld_retry_configuration() && offers==before);
+ // The accepted 256 kbps transaction is complete: a duplicate/late
+ // SET_CONFIGURATION rejection must not step the accepted ceiling down.
+ unsigned before=offers;
+ assert(!codec_aaceld_retry_configuration() && offers==before && rate()==256000);
+ assert(!codec_aaceld_retry_configuration() && offers==before && codec_aaceld_max_bitrate()==256000);
  assert(created==1); // All ceiling offers reuse one endpoint.
+ // Pre-acceptance rejections still walk 320 -> 256 -> 192 and accept 192.
+ caps(0,true);assert(codec_aaceld_ops.configure()==0 && rate()==320000);
+ assert(codec_aaceld_retry_configuration() && rate()==256000);
+ assert(codec_aaceld_retry_configuration() && rate()==192000);
+ memcpy(event+13,sent,14);assert(codec_aaceld_on_configuration(event) && codec_aaceld_max_bitrate()==192000);
+ before=offers;assert(!codec_aaceld_retry_configuration() && offers==before && rate()==192000);
+ assert(created==1);
  caps(192000,false);assert(codec_aaceld_ops.configure()==0 && rate()==192000 && !(sent[11]&0x80));
  assert(!codec_aaceld_retry_configuration());
  caps(256000,true);assert(codec_aaceld_ops.configure()==0 && rate()==256000);
  assert(codec_aaceld_retry_configuration() && rate()==192000);
  caps(320000,true);send_rc=12;assert(codec_aaceld_ops.configure()==12);
- before=offers;assert(!codec_aaceld_retry_configuration() && offers==before+2);
+ // A failed send leaves no open offer, so a later rejection cannot retry.
+ before=offers;assert(!codec_aaceld_retry_configuration() && offers==before);
  caps(128000,true);send_rc=0;before=offers;assert(codec_aaceld_ops.configure()!=0 && offers==before);
  puts("Production ELD negotiation: peer caps, accepted ceiling, VBR and bounded 320/256/192 retry passed");
 }
