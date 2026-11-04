@@ -48,6 +48,9 @@ static uint32_t mic_core1_stack[4096] __attribute__((aligned(16)));
 static _Atomic bool mic_core1_ready;
 static _Atomic uint32_t mic_core1_passes;
 static void mic_core1_entry(void) {
+    /* The decoder's separate 16 KiB stack must fault on overflow rather than
+     * corrupting a neighboring queue. RP2350 Cortex-M33 supports MSPLIM. */
+    __asm volatile ("msr msplim, %0" :: "r" (&mic_core1_stack[0]));
     /* SDK flash lockout owns the multicore FIFO: never use it for messages. */
     if (!flash_safe_execute_core_init())
         panic("mic core1 flash lockout registration failed");
