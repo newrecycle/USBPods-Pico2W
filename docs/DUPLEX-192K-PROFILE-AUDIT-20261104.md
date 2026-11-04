@@ -114,3 +114,23 @@ separating recovery from steady snapshots and preserving failure evidence.
 Inspect AU arrival, decoded, AU/PCM depth/high-water, AU drop, USB missing,
 RTP packet cadence, encoder and decoder time, capture status, and host callback
 errors. No hardware execution or raw capture is claimed in this audit.
+
+### Profile verifier addendum (pre-code review)
+
+`eldstatus` currently exposes `active_slots` but not `active.jitter`.
+A normal 192 kbps profile and game-standard both have 192 kbps, six slots,
+CBR and core-only SBR disabled. Merely checking the **requested** `game` flag
+would still allow the *old active* six-slot profile to appear correct. Therefore
+add `active_jitter` and `desired_jitter` to the existing, read-only
+`eldstatus` diagnostics and require the expected 150/90/60 millisecond
+profile-policy value. This is an observable active-profile selection, **not**
+peer acknowledgment of the AACP jitter command. No actual jitter is changed.
+
+Since the optional relay check currently uses an arbitrary `gamelevel=2`
+while the restored baseline uses level 1, the relay verifier must derive
+selected rate/game/level from the actual restored baseline; keep the 164 kbps
+relay ceiling and six slots unchanged. This avoids converting a previously
+unchecked preference into a false failure.
+
+This one additive firmware-status field pair requires target compilation and
+heap/memory checks in CI, even though no codec/packet/USB processing changes.
