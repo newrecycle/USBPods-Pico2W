@@ -33,3 +33,31 @@ Maintain all current audio/clock/controller behavior. First run the existing pro
 ## Constraints and remaining uncertainty
 
 No hardware access, Windows endpoints, raw captures, peer ACK for STOP, ear-specific radio state or acoustic validation. Protocol bytes, 48/64-kHz clocks, RTP timestamp policy, game/bitrate profiles, and multicore architecture remain unchanged. Passing tests cannot be called a repair to left-ear silence. Likely integration conflict surface: a separate worker may concurrently edit `uac.c`, `aacp_mic.c` or their test fixtures; this work stays on its own branch and must be cherry-picked deliberately.
+
+## Offline implementation and validation result
+
+**Repair status:** diagnostic isolation, not an acoustic repair. No AACP START/STOP bytes or command ordering, microphone USB intent/generation rules, playback encoder, audio routing, clock, RTP policy, restart, or multicore code changed. The attached changes deliberately enable one discriminating experiment; a peer-side routing diagnosis still requires listening on hardware.
+
+| File | Change | Public interface |
+| --- | --- | --- |
+| `src/tinyusb/uac.c` | In optional `U` stereo PCM summaries, tag measured microphone intent as `mic=open`, `mic=closed`, or `mic=transition`; a window crossing a USB mic state change cannot be misrepresented. The first actual PCM packet establishes the initial capture state even if a 50-ms tap tick initialized the time window while idle. Zero-packet reports include current intent. | Existing CDC text gains `mic=` field; no new callable API |
+| `src/btstack/aacp_mic.c` | On successful AACP START/STOP print measured capture bit, mic generation, and AVDTP streaming status instead of the unconditional and unprovable `playback unchanged` claim. | Existing CDC log line gains `capture=`, `mic_gen=`, `a2dp_streaming=`; no new callable API |
+| `tests/test_mic_close_tap.py` | Compiles actual production PCM tap and timer callback function bodies with deterministic stereo left/right PCM, alternate capture intent, and a timer-before-packet case; verifies source lane peaks and transition-state labels. | New offline test, no firmware interface |
+| `tests/offline-commands.json` and `.github/workflows/pico-firmware.yml` | Register the new source-body regression in local host suite and every firmware CI matrix job. | Build/test configuration only |
+| This document | Preserve evidence provenance, hypotheses, test plan and remaining limits. | Documentation only |
+
+**Before/after local host reproduction:** a manually compiled Linux GCC/ASan/UBSan fixture containing the pinned production `usb_pcm_tap_feed` body showed five 500-ms L/R signal windows, but its old diagnostic lacked microphone state. The state-aware diagnostic produced the expected `open / transition / closed / transition / open` classifications while retaining left-only peak 1200 and right-only peak 1100 in their respective windows. This is a reproducible *observability* before/after, not reproduction or repair of silent left-ear acoustic output. The added regression compiles the production function body directly and includes an idle timer-before-first-packet negative-control case. CI must run this at the final source SHA before a target build is considered validated.
+
+Host replay entry points from repository root:
+
+```sh
+python3 tests/test_mic_close_tap.py
+python3 tests/test_usb_control_boundaries.py
+python3 tests/test_mic_recovery_integration.py
+python3 tests/test_eld_foreground.py
+python3 tools/run_offline_checks.py --build-fdk
+```
+
+The `--build-fdk` run requires native SDK dependencies; without FDK the runner explicitly skips codec-dependent commands, so a partial host suite is not full validation. The GitHub target workflow runs the independent stock0031 transport, rpi0065 transport, and rpi0065 AAC-ELD builds and production host tests. Final CI result and exact branch SHA must be checked from the run itself; historical passes do not establish a new firmware binary's correctness.
+
+**Integration hazards:** `uac.c` is also edited by USB/HID workers and `aacp_mic.c` by AACP workers, so integration should cherry-pick these two small logging hunks against current work and rerun each owner's tests. No other worker branch is touched. The optional `U` tap logs aggregated pre-gain USB samples; it does not inspect the transmitted AAC frame, peer decoder, TWS forwarding, or actual ear output.
