@@ -37,7 +37,9 @@ def observation_status(text, category='quality', expected=None):
                      r' (?:ear|bud|side|channel) only)\b',value):
             return 'FAIL'
         if re.search(r'\b(?:both ears?|both sides?|wrong (?:ear|side|channel)|'
-                     r'neither ear|no (?:audio|sound|playback))\b',value):
+                     r'neither ear|no (?:audio|sound|playback)|nothing happened|did nothing)\b',value):
+            return 'FAIL'
+        if re.search(r'\b'+expected+r'[- ]only.*\b(?:silent|inaudible|missing)\b',value):
             return 'FAIL'
         # Silence in the opposite ear is compatible with a one-sided stimulus.
         return 'UNVERIFIED'
@@ -103,8 +105,10 @@ def await_duplex_ready(link, recorder, profile, label, timeout=20):
                                    'mic_retry_count_at_ready':status.get('mic_retry_count')}
                 return last
         else:
-            if stable_since is not None or status.get('mic_recovery_pending') or status.get('mic_retry_count'):
-                recovery_observed=True
+            # This function runs only after await_profile reported READY.
+            # Returning to a transition here is a startup interruption, not
+            # an uninterrupted clean readiness window.
+            recovery_observed=True
             stable_since=None
         time.sleep(.25)
     raise TimeoutError('Duplex did not settle during '+label+': '+str(last))
@@ -325,6 +329,10 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             status=state.get('status',{});eld=state.get('eldstatus',{})
             if status.get('mic_watchdog_failed') or status.get('fault_hold') or not status.get('connected') or eld.get('transition')=='failed':
                 raise RuntimeError('Playback failed during '+label+': '+str({'status':status,'eldstatus':eld}))
+            if not steady and label.startswith('settle_') and (
+                    not status.get('streaming') or eld.get('transition')!='ready' or
+                    status.get('mic_recovery_pending')):
+                faults.append('Transition observed after profile readiness during startup settle')
             if steady:
                 issues=[]
                 if not status.get('streaming') or status.get('codec')!=4 or eld.get('transition')!='ready' or eld.get('pending'):
@@ -358,11 +366,14 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             if (settings.get('eldrate'),bool(settings['usbset']&128),settings.get('gamelevel'))!=(rate,gaming,level):
                 link.request(f'profile {rate} {int(gaming)} {level}')
             applied=await_profile(link,profile)
-            dwell(2,'settle_'+name)
+            settle_notes=dwell(2,'settle_'+name)
             # A delayed damage refresh can start during the fixed dwell after
             # await_profile returned. Require both live paths to settle before
             # taking the steady interval's starting snapshot, as on reconnect.
             readiness=await_duplex_ready(link,recorder,profile,name+'_ready')
+            if settle_notes:
+                readiness['readiness']['recovery_observed']=True
+                readiness['readiness']['settle_observations']=settle_notes
             seconds=45 if probe_only else args.duration
             audio.set_phase(name);print(f'{name}: {seconds} seconds of concurrent playback/capture. Phone-speaker input for the first 20 seconds is sufficient.',flush=True)
             before=snapshot(link,recorder,name+'_begin');transient_faults=dwell(seconds,name,steady=True)
