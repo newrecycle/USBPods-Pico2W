@@ -185,5 +185,8 @@ microphone START/STOP wire sends now queue source recovery through the existing
 serialized ELD transition owner (START delayed 800 ms, STOP next main poll),
 with stale intent and disconnect cancellation. See
 [LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md) for the exact evidence,
-known left/right and bass failures, and remaining physical checks. Diagnostics
-for this project use USB CDC only.
+the left/right finding and remaining physical checks. The initial bass
+impression was later revised after A/B listening. The
+[fork history review](MIC-ROUTING-REFERENCE-REVIEW.md) records why the automatic
+reset policy still requires verification: the hardware fork operates without
+an explicit mic-triggered transport reset. Diagnostics use USB CDC only.

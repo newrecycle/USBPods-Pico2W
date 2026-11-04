@@ -43,6 +43,13 @@ Reviewed the complete han-um implementation at
 including source playback, microphone decoder/channel, USB descriptors/callbacks,
 main loop and README. This is the fork's current head at review time.
 
+The subsequent [history/discussion review](MIC-ROUTING-REFERENCE-REVIEW.md)
+found a direct one-AirPod-playback report in LibrePods PR 655 and a reply from
+the hardware-fork author stating that its Pico implementation needs no
+mic-triggered transport reset. Our automatic reset is a Linux-derived policy
+whose physical effectiveness remains unverified, not a demonstrated hardware
+requirement. The initial symptom predates our addition of that policy.
+
 | Area | Fork/reference | Decision here |
 | --- | --- | --- |
 | Microphone | Inherited `F8 E6 30 00` ASC; 480-sample mono frames, independent 64 kHz USB clock | Preserve the native-working decoder/clock. LibrePods distinguishes 48 kHz coding from 64 kHz PCM consumption. |
