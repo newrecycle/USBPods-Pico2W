@@ -64,6 +64,15 @@ class Contracts(unittest.TestCase):
         self.assertGreaterEqual(clock.now,3)
         self.assertGreaterEqual(d['start']['tx_packets'],100)
 
+    def test_preflight_rejects_exhausted_mic_watchdog(self):
+        class Link:
+            def request(self,cmd):
+                if cmd=='eldstatus':return dict(transition='ready',pending=0)
+                return dict(connected=1,confirmed=1,streaming=1,codec=4,capture=1,
+                            mic_started=0,mic_watchdog_failed=1,mic_retry_count=3)
+        with self.assertRaisesRegex(RuntimeError,'Firmware failed while settling'):
+            live.connection_preflight(Link(),FakeRecorder(),seconds=1)
+
     def test_control_no_echo_is_unverified_and_stale_value_is_not_readback(self):
         class Link:
             def __init__(self,fresh=False):self.fresh=fresh

@@ -8,7 +8,6 @@
 extern bool a2dp_source_is_playing(void);
 extern void a2dp_source_on_aap_wake(void);
 extern void a2dp_source_apply_eld_rate(void);
-extern void a2dp_source_recover_eld_stream(void);
 extern void a2dp_source_queue_jitter(uint8_t);
 #include "../tinyusb/uac.h"
 #include "pico/cyw43_arch.h"
@@ -31,11 +30,9 @@ static aacp_control controls;
 static bool initialized;
 static bool paused_by_ear;
 static media_input host_media;
-/* Upstream resets A2DP after 0x58 START (+800 ms) and STOP. A successful
- * wire transition replaces the previous request; the main-loop poll submits
- * recovery through the source's serialized SUSPEND/rebuild/START owner. */
-static bool playback_reset_pending;
-static uint32_t playback_reset_due;
+/* The Pico reference keeps A2DP running during capture. Recover microphone
+ * silence on AACP only; do not import the Linux card-profile reset policy. */
+static aacp_mic_watch mic_watch;
 static bool refresh_pending;
 static uint32_t refresh_due;
 static aacp_control_diagnostics wire_controls;
@@ -43,7 +40,7 @@ static uint32_t sdus, units, bytes, malformed, last_timestamp;
 static void handler(uint8_t type,uint16_t channel,uint8_t *packet,uint16_t size);
 static bool expired(uint32_t now,uint32_t when) { return (int32_t)(now-when)>=0; }
 static void release_channel(void) {
- playback_reset_pending=false;refresh_pending=false;media_input_reset(&host_media);
+ aacp_mic_watch_reset(&mic_watch);refresh_pending=false;media_input_reset(&host_media);
  aacp_mic_discontinuity();
  uint16_t old=cid; cid=0; opened=requested=false;
  memset(&session,0,sizeof(session));
@@ -67,10 +64,25 @@ void aacp_mic_init(void) {
  sdp_register_service(device_id);
 }
 static bool wanted(void) { return aacp_mic_capture() && aacp_mic_audio_ready(); }
+static int next_command(uint32_t now) {
+ bool failed=mic_watch.failed;aacp_mic_retry_phase retry=mic_watch.retry;
+ bool target=aacp_mic_watch_target(&mic_watch,wanted(),session.started,aacp_mic_generation(),now);
+ if(!failed && mic_watch.failed)
+   printf("[mic] no audio after %u retries; capture fault held until next capture session\n",mic_watch.retries);
+ else if(retry!=AACP_MIC_RETRY_STOP && mic_watch.retry==AACP_MIC_RETRY_STOP)
+   printf("[mic] audio absent for %u ms; AACP STOP/START retry %u/%u\n",AACP_MIC_SILENCE_MS,mic_watch.retries+1,AACP_MIC_MAX_RETRIES);
+ return aacp_mic_next(&session,target);
+}
 static void au(const uint8_t *data,uint8_t len,uint32_t timestamp,void *ctx) {
  (void)ctx; units++; bytes+=len; last_timestamp=timestamp;
  aacp_mic_audio_note_au(timestamp,time_us_32());
- if (session.started && wanted()) aacp_mic_audio_enqueue(data,len);
+ if (session.started && wanted()) {
+   /* Observe the latest USB generation before attributing this AU to capture. */
+   if(!mic_watch.enabled || mic_watch.generation!=aacp_mic_generation())
+     (void)aacp_mic_watch_target(&mic_watch,wanted(),session.started,aacp_mic_generation(),btstack_run_loop_get_time_ms());
+   aacp_mic_watch_audio(&mic_watch,btstack_run_loop_get_time_ms());
+   if(!mic_watch.failed)aacp_mic_audio_enqueue(data,len);
+ }
 }
 static void control_notification(const uint8_t *p,size_t n,void *context) {
  (void)context;
@@ -147,7 +159,7 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
    if (!opened || l2cap_event_can_send_now_get_local_cid(p)!=cid) break;
    requested=false;
    /* Recompute from current USB intent; never queue a stale START. */
-   int command=aacp_mic_next(&session,wanted());
+   int command=next_command(btstack_run_loop_get_time_ms());
    uint8_t ctl[11]; int slot=-1;
    uint16_t len=11; const uint8_t *data;
    if (command>=0) data=aacp_mic_command(command,&len);
@@ -170,9 +182,14 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
      if(command==2)refresh_pending=false;
      send_errors=0;
      if (command>=3) {
-       playback_reset_pending=true;
-       playback_reset_due=btstack_run_loop_get_time_ms()+(command==3?800u:0u);
-       printf("[mic] %s sent; playback recovery queued\n",command==3?"START":"STOP");
+       aacp_mic_watch_sent(&mic_watch,command,btstack_run_loop_get_time_ms());
+       /* Flush stale AU/PCM history after each successful wire transition.
+          Adopt only our own increment: concurrent USB changes stay visible. */
+       aacp_mic_discontinuity();mic_watch.generation++;
+       /* Keep the selected game/default latency policy without restarting
+          playback. The source defers this control until its stream is stable. */
+       a2dp_source_queue_jitter(aap_get_game()?aap_game_jitter():150);
+       printf("[mic] %s sent; playback unchanged\n",command==3?"START":"STOP");
      }
    } else if (++send_errors>=3) release_channel();
    break;
@@ -193,20 +210,13 @@ void aacp_mic_poll(void) {
    if (status) { cid=0; due=now+3000; }
  }
  if (cid && (!opened || !session.confirmed || requested) && expired(now,deadline)) release_channel();
- if (opened && !requested && (aacp_mic_next(&session,wanted())>=0 || (session.confirmed && (controls.pending || (refresh_pending && expired(now,refresh_due)))))) {
+ int command=opened?next_command(now):-1;
+ if (opened && !requested && (command>=0 || (session.confirmed && (controls.pending || (refresh_pending && expired(now,refresh_due)))))) {
    requested=true;
    if (session.confirmed) deadline=now+3000;
    if (l2cap_request_can_send_now_event(cid)!=ERROR_CODE_SUCCESS) {
      requested=false; if (++send_errors>=3) release_channel();
    }
- }
- /* USB intent may change again before its wire command is sent. Wait for
-    the latest successful state, never recover an obsolete START or STOP. */
- if (playback_reset_pending && opened && session.confirmed &&
-     wanted()==session.started && expired(now,playback_reset_due)) {
-   playback_reset_pending=false;
-   printf("[mic] playback recovery after %s\n",session.started?"START":"STOP");
-   a2dp_source_recover_eld_stream();
  }
  if(!opened || !session.confirmed || !settings()->stem_hid)media_input_reset(&host_media);
  else for(unsigned i=0;i<MEDIA_INPUT_QUEUE;i++) {
@@ -234,7 +244,12 @@ aacp_control_diagnostics aap_control_diagnostics(void) {
  aacp_control_diagnostics out={.allow_off=-1};
  if(!control_lock())return out;
  out=wire_controls;memcpy(out.observed,controls.observed,sizeof out.observed);out.allow_off=controls.allow_off;
- out.mic_started=session.started;out.mic_recovery_pending=playback_reset_pending || (opened && session.confirmed && wanted()!=session.started);
+ out.mic_started=session.started;out.mic_audio_seen=mic_watch.seen;out.mic_watchdog_failed=mic_watch.failed;
+ out.mic_retry_count=mic_watch.retries;out.mic_restarts=mic_watch.restarts;out.mic_watchdog_failures=mic_watch.failures;
+ out.mic_audio_age_ms=mic_watch.seen?btstack_run_loop_get_time_ms()-mic_watch.last_audio:UINT32_MAX;
+ out.mic_recovery_pending=opened && session.confirmed &&
+     ((wanted() && !mic_watch.failed && (!session.started || !mic_watch.seen || mic_watch.retry!=AACP_MIC_RETRY_NONE)) ||
+      (!wanted() && session.started));
  out.media_pending=host_media.count;out.media_suppressed=host_media.suppressed;out.media_dropped=host_media.dropped;
  control_unlock();return out;
 }

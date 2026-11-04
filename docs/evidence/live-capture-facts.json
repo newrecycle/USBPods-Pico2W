@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "hardware": "Windows 11 / Pico 2 W / AirPods Pro 3",
+  "user_confirmed": [
+    "Native mic usable for dictation",
+    "Concurrent playback reported working to best of user knowledge",
+    "Mic disable silences left playback; output reopen gives right only; mic activation restores left",
+    "Better A/B: quality on par; initial bass claim unconfirmed"
+  ],
+  "capture": "USBPods-results-20261103T220546Z(1).zip",
+  "capture_source_commit": "101a970bb921f64a07c023a071fed632e3a90392",
+  "facts": [
+    "CDC pairing/preflight passed",
+    "External USB capture active before runner opened input",
+    "WASAPI shared 48 kHz, two host capture channels produced WAV files",
+    "Mic decoded 7124 frames without decoder errors in snapshot; no AU drops, three PCM drops",
+    "Requested Off received fresh Adaptive readback; preference writes lacking echoes were unverified",
+    "Duplicate effective profile request while game was off caused another restart; START rejected with 263",
+    "Cleanup capture-close timeout obscured the first failure"
+  ],
+  "timeline_utc": [
+    "22:06:19.811 microphone START queued delayed playback recovery",
+    "22:06:20.883 playback started after recovery",
+    "22:07:14.080 rate request revision 3",
+    "22:07:14.082 VBR5/SBR1 rebuild at 256 kbps",
+    "22:07:14.185 inactive game-level write requested revision 4 during START",
+    "22:07:14.690 redundant identical-profile rebuild",
+    "22:07:14.691 START rejected, rc 263; ACL dropped/fault held"
+  ],
+  "redaction": "No raw device addresses, personal device names, pairing keys, raw CDC/HID logs or microphone recordings are included here."
+}

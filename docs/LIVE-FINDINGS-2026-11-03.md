@@ -55,7 +55,12 @@ and [Microsoft device formats](https://learn.microsoft.com/windows/win32/coreaud
 distinguish shared mixer formats from hardware/exclusive formats. This Windows
 fix still needs native execution; Linux host mocks are not a Windows test.
 
-### Microphone transition recovery
+### Historical microphone transition recovery (superseded)
+
+The policy described below was added in 101a970b. The current implementation
+removes unconditional mic-triggered playback resets and adds bounded AACP-only
+received-audio recovery. See [local handoff](LOCAL-CODEX-HANDOFF.md) for the
+current behavior. This historical implementation was not a verified physical fix.
 
 The pinned upstream implementation resets A2DP after microphone START (800 ms
 later) and STOP, explicitly describing corrupted AirPods transport state:

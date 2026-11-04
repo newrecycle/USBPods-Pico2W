@@ -15,3 +15,9 @@ compile_commands.json
 
 # optional vendor add-ons (not part of this repo)
 /private/
+
+# Local verification and private reference inputs
+/audit-output/
+/local-inputs/
+__pycache__/
+*.py[cod]

@@ -1,0 +1,721 @@
+[
+  {
+    "name": "00 test-aacp",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_aacp_mic.c",
+      "src/btstack/aacp_mic_protocol.c",
+      "-o",
+      "{TMP}/test-aacp"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "01 test-aacp",
+    "argv": [
+      "{TMP}/test-aacp"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "02 test-control",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_aacp_control.c",
+      "src/btstack/aacp_control.c",
+      "-o",
+      "{TMP}/test-control"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "03 test-control",
+    "argv": [
+      "{TMP}/test-control"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "04 test-console",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src",
+      "tests/test_control_command.c",
+      "src/control_command.c",
+      "-o",
+      "{TMP}/test-console"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "05 test-console",
+    "argv": [
+      "{TMP}/test-console"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "06 test-transport",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "tests/transport_mocks",
+      "-I",
+      "src/btstack",
+      "tests/test_aacp_transport.c",
+      "src/btstack/aacp_mic.c",
+      "src/btstack/aacp_control.c",
+      "src/btstack/media_input.c",
+      "src/btstack/aacp_mic_protocol.c",
+      "-o",
+      "{TMP}/test-transport"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "07 test-transport",
+    "argv": [
+      "{TMP}/test-transport"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "08 test-mic-audio",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-DUSBPODS_MIC_DECODE=1",
+      "-I",
+      "tests/mic_mocks",
+      "-I",
+      "src/btstack",
+      "tests/test_mic_audio.c",
+      "src/btstack/aacp_mic_audio.c",
+      "src/btstack/mic_clock.c",
+      "-o",
+      "{TMP}/test-mic-audio"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "09 test-mic-audio",
+    "argv": [
+      "{TMP}/test-mic-audio"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "10 test-relay",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_relay_rtp.c",
+      "src/btstack/relay_rtp.c",
+      "-o",
+      "{TMP}/test-relay"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "11 test-relay",
+    "argv": [
+      "{TMP}/test-relay"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "12 test_relay_lifecycle.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_relay_lifecycle.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "13 test-eld-profile",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_eld_profile.c",
+      "src/btstack/eld_profile.c",
+      "-o",
+      "{TMP}/test-eld-profile"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "14 test-eld-profile",
+    "argv": [
+      "{TMP}/test-eld-profile"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "15 test-eld-encoder",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "tests/encoder_mocks",
+      "-I",
+      "src/btstack",
+      "tests/test_eld_encoder.c",
+      "src/btstack/eld_encoder.c",
+      "src/btstack/eld_profile.c",
+      "-o",
+      "{TMP}/test-eld-encoder"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "16 test-eld-encoder",
+    "argv": [
+      "{TMP}/test-eld-encoder"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "17 test-eld-transition",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_eld_transition.c",
+      "src/btstack/eld_transition.c",
+      "-o",
+      "{TMP}/test-eld-transition"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "18 test-eld-transition",
+    "argv": [
+      "{TMP}/test-eld-transition"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "19 test_eld_adapter.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_adapter.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "20 test-mic-telemetry",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_mic_telemetry.c",
+      "src/btstack/aacp_mic_audio.c",
+      "src/btstack/mic_clock.c",
+      "-o",
+      "{TMP}/test-mic-telemetry"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "21 test-mic-telemetry",
+    "argv": [
+      "{TMP}/test-mic-telemetry"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "22 test-usb-input",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/tinyusb",
+      "tests/test_usb_host_input.c",
+      "src/tinyusb/usb_capture_lifecycle.c",
+      "src/tinyusb/usb_hid_media.c",
+      "-o",
+      "{TMP}/test-usb-input"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "23 test-usb-input",
+    "argv": [
+      "{TMP}/test-usb-input"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "24 test_usb_input_wiring.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_usb_input_wiring.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "25 test_live_runner.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_live_runner.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "26 test_source_boundaries.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_source_boundaries.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "27 test_control_records.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_control_records.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "28 test_settings_timing.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_settings_timing.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "29 test_sdk_transport_contract.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_sdk_transport_contract.py",
+      "--source-dir",
+      "{SDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "30 test_relay_sdk_routing.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_relay_sdk_routing.py",
+      "--sdk-source",
+      "{SDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "31 test_codec_setup.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_codec_setup.py",
+      "--sdk-source",
+      "{SDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "32 test_eld_negotiation.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_negotiation.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "33 test-eld-codec-config",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_eld_codec_config.c",
+      "src/btstack/eld_codec_config.c",
+      "-o",
+      "{TMP}/test-eld-codec-config"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "34 test-eld-codec-config",
+    "argv": [
+      "{TMP}/test-eld-codec-config"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "35 test-mic-clock",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_mic_clock.c",
+      "src/btstack/mic_clock.c",
+      "-o",
+      "{TMP}/test-mic-clock"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "36 test-mic-clock",
+    "argv": [
+      "{TMP}/test-mic-clock"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "37 test-usb-hid-threads",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-O1",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-pthread",
+      "-I",
+      "src/tinyusb",
+      "tests/test_usb_hid_threads.c",
+      "src/tinyusb/usb_hid_media.c",
+      "-o",
+      "{TMP}/test-usb-hid-threads"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "38 test-usb-hid-threads",
+    "argv": [
+      "{TMP}/test-usb-hid-threads"
+    ],
+    "timeout": 20,
+    "requires_fdk": false
+  },
+  {
+    "name": "39 test_verify_uf2.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_verify_uf2.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "40 test_button_context.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_button_context.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "41 test_control_status.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_control_status.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "42 test-media-input",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-I",
+      "src/btstack",
+      "tests/test_media_input.c",
+      "src/btstack/media_input.c",
+      "-o",
+      "{TMP}/test-media-input"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "43 test-media-input",
+    "argv": [
+      "{TMP}/test-media-input"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "44 test_live_matrix.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_live_matrix.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "45 test_media_input_wiring.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_media_input_wiring.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "46 test_pcm_packet_path.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_pcm_packet_path.py",
+      "--fdk-lib",
+      "{FDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": true
+  },
+  {
+    "name": "47 test_usb_control_boundaries.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_usb_control_boundaries.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "48 test_uac1_controls.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_uac1_controls.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "49 test_mic_recovery_integration.py",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_mic_recovery_integration.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "compile mic-fdk",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACdec/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACenc/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libSYS/include",
+      "tests/test_mic_fdk.c",
+      "{FDK}",
+      "-lstdc++",
+      "-lm",
+      "-o",
+      "{TMP}/mic-fdk"
+    ],
+    "requires_fdk": true
+  },
+  {
+    "name": "mic-fdk",
+    "argv": [
+      "{TMP}/mic-fdk"
+    ],
+    "requires_fdk": true,
+    "timeout": 90
+  },
+  {
+    "name": "compile eld-duplex",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address",
+      "-DUSBPODS_MIC_DECODE=1",
+      "-I",
+      "tests/time_mocks",
+      "-I",
+      "src/btstack",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACdec/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACenc/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libSYS/include",
+      "tests/test_eld_duplex_fdk.c",
+      "src/btstack/eld_profile.c",
+      "src/btstack/eld_encoder.c",
+      "src/btstack/aacp_mic_audio.c",
+      "src/btstack/mic_clock.c",
+      "src/resamp44.c",
+      "{FDK}",
+      "-lstdc++",
+      "-lm",
+      "-o",
+      "{TMP}/eld-duplex"
+    ],
+    "requires_fdk": true
+  },
+  {
+    "name": "eld-duplex",
+    "argv": [
+      "{TMP}/eld-duplex"
+    ],
+    "requires_fdk": true,
+    "timeout": 90
+  },
+  {
+    "name": "compile eld-frequency",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address",
+      "-I",
+      "src/btstack",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACdec/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACenc/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libSYS/include",
+      "tests/test_eld_frequency.c",
+      "src/btstack/eld_profile.c",
+      "src/btstack/eld_encoder.c",
+      "{FDK}",
+      "-lstdc++",
+      "-lm",
+      "-o",
+      "{TMP}/eld-frequency"
+    ],
+    "requires_fdk": true
+  },
+  {
+    "name": "eld-frequency",
+    "argv": [
+      "{TMP}/eld-frequency"
+    ],
+    "requires_fdk": true,
+    "timeout": 90
+  }
+]

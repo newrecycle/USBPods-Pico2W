@@ -1,0 +1,4002 @@
+{
+  "schema": 1,
+  "content_not_published": true,
+  "full_reference_status": "User-supplied, incomplete suggested reconstruction/disassembly; no mic implementation; not authoritative private source",
+  "latest_live_zip": "USBPods-results-20261103T220546Z(1).zip",
+  "latest_live_library_file_id": "libfile_68ea086e77148191af10ac6e90a070a1",
+  "local_instructions": "Locate the original transfer/capture files already present on the user PC; keep them outside the git worktree, or in ignored local-inputs/. These files are optional for building the independent firmware.",
+  "files": [
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "README-TRANSFER.md",
+      "bytes": 4027,
+      "sha256": "1ea1a43d1ad53895096094ca89bc43574287f6628a3b38b95fc4f28bbc8d65ef"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "README.md",
+      "bytes": 3644,
+      "sha256": "69518bfef7a3d0a0088c03fc804343bcef8789e64aa6a5dd2b1eeb207b8648a7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Lab.ps1",
+      "bytes": 5682,
+      "sha256": "32778763eed9e0ab4ce4e594d7c218b49de9d58a36b5fce4bd3c5ce1febfc02e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/Android.bp",
+      "bytes": 3012,
+      "sha256": "184600801c98de5eb4fe83ccae5ea97a5910c05e55884899f245b40914d41726"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/CMakeLists.txt",
+      "bytes": 18313,
+      "sha256": "c82e22672bbaa36206141ac5b7f4cfdb742b50d8b5c361ea3cf47c29b119541b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/ChangeLog",
+      "bytes": 2091,
+      "sha256": "ca4c2a5a2f8de203fe3d1c091662fb94cf23873d2b656b99949b520473244f81"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/METADATA",
+      "bytes": 317,
+      "sha256": "5ea5ebfaa16256500501441d71efb19ab98daee1d60016902d0b9ef0e55e8cea"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/MODULE_LICENSE_FRAUNHOFER",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/Makefile.am",
+      "bytes": 10203,
+      "sha256": "e8b9c7cb7fee893fa974d73809150aaaadadefa545cae788d07513cfe4e3f6ac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/NOTICE",
+      "bytes": 4539,
+      "sha256": "d393aa0e9ec2360bda9d8afcde85024bc8ae8ab784e1386ffec2c9bf96607c70"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/OWNERS",
+      "bytes": 93,
+      "sha256": "d28121adc044ce34a11b0db783b5259992a8642f9f445f2723566d3a331ee6fe"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/PREUPLOAD.cfg",
+      "bytes": 91,
+      "sha256": "c6270601518c7fb2bbefab0a5f92d49fdd367954119243401928e5c352fa342e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/aac-enc.c",
+      "bytes": 6617,
+      "sha256": "9fbe15c01ff4693e11816d42cf35db39eefa3ea8274dadf03d44098c4a953aaf"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/autogen.sh",
+      "bytes": 28,
+      "sha256": "ca8af2c8b06a50285f6806328c165916e7bd6aa619f1f42f1edf2ff55058a58f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/check-archive.sh",
+      "bytes": 775,
+      "sha256": "208bd948ec3c88eeb0bb27d2ad224d0d4099861de07e4b7c97686540ec182900"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/check-install.sh",
+      "bytes": 3013,
+      "sha256": "3ccea05566a774f63851ba1acdc548e30af7d45ed2c365a1f1257d5b1cd2f196"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/configure.ac",
+      "bytes": 1145,
+      "sha256": "612ae9a85bf2cd16dd2b838eeeda6fff7b5586b2672b1d59e311b58e88da1869"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/documentation/aacDecoder.pdf",
+      "bytes": 492288,
+      "sha256": "06283ad243e1d2dbb49be9c42b4161131f10939fd00eca2fb7e851c9b6753f56"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/documentation/aacEncoder.pdf",
+      "bytes": 443831,
+      "sha256": "4b4d99151132dc11c5e643ef6254ba0f8e0a0f7722b5a5e63cc9f834607bd8ba"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fdk-aac-config.cmake.in",
+      "bytes": 114,
+      "sha256": "16b7b1d36feba5d7d59da6eae65c3211ea5390d579019a83f58f573d22e59452"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fdk-aac.def",
+      "bytes": 432,
+      "sha256": "12dd6e34db7013889461aca0acbe62411c18444aff5cb9f6647d98aa526ebdb7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fdk-aac.pc.in",
+      "bytes": 286,
+      "sha256": "4401ade6fd5522af80e31ae1718767aba3f4f8cc71dee713c61a95e993b33e11"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fdk-aac.sym",
+      "bytes": 351,
+      "sha256": "99f4c691ced94179a8c6a813ac64b57ac1e4b1e9a007fafc5cc1c9e3c6d50706"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fuzzer/Android.bp",
+      "bytes": 2277,
+      "sha256": "3cee7c1d8681b102d2a8a100dca9e9e316a7dc481e02656ee1141c949e29c219"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fuzzer/README.md",
+      "bytes": 9210,
+      "sha256": "d4ca6ed0241d31919e376685ad3da4a366cc6b24bd4ab2dc4ff8139f862733fe"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fuzzer/aac_dec_fuzzer.cpp",
+      "bytes": 4405,
+      "sha256": "d0ad24802210ba4346192248b8d00e38e1696b76312aeb9b7b07ccaa775ce5f5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/fuzzer/aac_enc_fuzzer.cpp",
+      "bytes": 20900,
+      "sha256": "f0900badb985de9a9d6086fd33b565e626efc6c081cba5a9ade0026fcf9958b8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/include/aacdecoder_lib.h",
+      "bytes": 56152,
+      "sha256": "cae6df8f41fe27cfe06b2d650a2f4d15d7fd0f887d5c85df52916b4919818a78"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/FDK_delay.cpp",
+      "bytes": 7301,
+      "sha256": "e8ed0e60718890efb15e3a7c8a6db96e8cebed94221e66b00482072d62acdf5f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/FDK_delay.h",
+      "bytes": 6452,
+      "sha256": "9cbb5502e4db46d44403cbf857d7f47e261095ebeffda461966ef734f6d56f9f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aac_ram.cpp",
+      "bytes": 8160,
+      "sha256": "7e8e7cb09b8390fab2acbca8de33cd00c89da8fdc99e615253e56c0db60060d8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aac_ram.h",
+      "bytes": 5908,
+      "sha256": "00d524f88ac385e76b071650c84be89b568d42d993ad8d187e420f856af9ca61"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aac_rom.cpp",
+      "bytes": 218754,
+      "sha256": "83e6128ce7c2d86f5ee36f97935d727a120c1a04b7fef8fead39c9dd2d826b03"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aac_rom.h",
+      "bytes": 9362,
+      "sha256": "7ed5f45b869d5c36078e1c1aa29e5463566090476b40366ea459aab24d61f057"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_drc.cpp",
+      "bytes": 52087,
+      "sha256": "9405f08d14d4b1b2b8b4bcaa27e3f4a267bc1eb3f29845963a5c9dab8771dd4e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_drc.h",
+      "bytes": 10513,
+      "sha256": "5a065a427299973468c159cc35ef8116ed670ec441a00ef2707cabc989d142e9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_drc_types.h",
+      "bytes": 9261,
+      "sha256": "8e745055af1b29478e373bddef0bf83bda72ff6aea04c2abfe0956263e73beea"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcr.cpp",
+      "bytes": 62415,
+      "sha256": "9f7c528a949cf9c4f9f3bb49c24a66fd5d0d68c609f1460246a76c1192b6b6b0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcr.h",
+      "bytes": 6032,
+      "sha256": "b0ba1117ef562f17128208fa1801bb9bdd7492c5951622f81f1d7c16368e8977"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcr_bit.cpp",
+      "bytes": 7439,
+      "sha256": "db65ba38f522871695e112b3f51064df71081da2794d411a443a0b5f4a4563ca"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcr_bit.h",
+      "bytes": 5357,
+      "sha256": "98ee9a3f989e0c54f97f81591931479fcdc25fb2c201218134f32c09b641494f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcr_types.h",
+      "bytes": 18988,
+      "sha256": "eae750f195563a09d097d9dd0ee71972efa8e8c7ea8d561bb44fc0adf431cadc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcrs.cpp",
+      "bytes": 67595,
+      "sha256": "87841c901f38e3e052a1839b877db86e1b0cd693c96aa89bd667125c9649eaac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_hcrs.h",
+      "bytes": 8522,
+      "sha256": "2495007864cab381cb45fdc45bead123c72887f51743fb169991e3c66ca98c5f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_pns.cpp",
+      "bytes": 13349,
+      "sha256": "65ccd0b7f305a805ee9d5f0295819dee8587039a87d29fa4cc2c4d55e3520c66"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_pns.h",
+      "bytes": 5592,
+      "sha256": "40a1575b826a26e50004b4abc78009c4322d2e2b60240e2955200c679bca2c69"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_tns.cpp",
+      "bytes": 12866,
+      "sha256": "c237fd9bab05eadaed7fae2540f59ef0e96cfac2cfd49f9f8f9ad4e323a9543a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdec_tns.h",
+      "bytes": 6040,
+      "sha256": "91800a68283c441ae0f590314a09c255d8dd4a058e66ec6cc83ad9b692dffae6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdecoder.cpp",
+      "bytes": 127275,
+      "sha256": "f43100959efd2e5a6be38a3a2d9efd37490b7fbf8c7a71867567826df95123a7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdecoder.h",
+      "bytes": 19803,
+      "sha256": "201896f4f2e5e12d42018d15cb82cd07db6c53b55ae9ad3bb12ea8e6a909d2bb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/aacdecoder_lib.cpp",
+      "bytes": 79715,
+      "sha256": "87d865dda1766d6879f8263fb0eeb2920c0b56d237a3278f830645ee2731d658"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/arm/block_arm.cpp",
+      "bytes": 6350,
+      "sha256": "17584a117a8c87d7f856381054d6f79a7fa1d0eb939f7246ecfca05a37b86dda"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/block.cpp",
+      "bytes": 48431,
+      "sha256": "df3aa03e2db586c64e8c4fb5ce9ff406da0fc19e5971aebef3f99483da4af444"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/block.h",
+      "bytes": 13381,
+      "sha256": "fb6206abce5a3dc9ed7ed9625870df60496102d65cc590dedb1160221206286e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/channel.cpp",
+      "bytes": 36250,
+      "sha256": "70461ce84bea45074eec942b3b58b3215cfbcf70f0c43cf39ae86d52f01092c3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/channel.h",
+      "bytes": 7335,
+      "sha256": "faf488043c5becc047369951658a6937ebd515fe32aa21e3a16b6c2fec8afe31"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/channelinfo.cpp",
+      "bytes": 10478,
+      "sha256": "e52e15f1d811b2f93c039fadce5905bb3622e650a0308de254c52fc8704274a2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/channelinfo.h",
+      "bytes": 20651,
+      "sha256": "a369876e83d8012d7774f277bb911626d81be21637bfc240ce53d575a4f27a5b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/conceal.cpp",
+      "bytes": 80543,
+      "sha256": "55d0825a4e9ce7bb3709d4340beff186e4f9f0f2f590757b21b3051bcfdd7e52"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/conceal.h",
+      "bytes": 6939,
+      "sha256": "18ffc15b95e024b4a211b9772911cf15813001be8f7a2c5d9a51bbd553c63dfb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/conceal_types.h",
+      "bytes": 7594,
+      "sha256": "c46b320fec488880a17bf3696ab949ce6d0398c949b18031f5a321beddc4f27e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/ldfiltbank.cpp",
+      "bytes": 10813,
+      "sha256": "ffe8719b6b4afa8d7b8e210f707084fc798c60920ab6d3757131a96316b8f690"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/ldfiltbank.h",
+      "bytes": 5252,
+      "sha256": "aed2c1979458766f8999927a3311c81d596fac893d540b091af2513413fe0655"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/overlapadd.h",
+      "bytes": 5372,
+      "sha256": "030fb5aa58777768f75248e46549eed4871fa87f67b2b9d4d206589b3ffd34ba"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/pulsedata.cpp",
+      "bytes": 6786,
+      "sha256": "54f5074da3d33513de43d43ab01bd9ef9dbf4bc038ca9f1233686b3430dd4e4c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/pulsedata.h",
+      "bytes": 6356,
+      "sha256": "7550f2d3625895960881926868258c77a92e9b83021aa9cadb76827134263785"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlc.cpp",
+      "bytes": 47656,
+      "sha256": "632b515bb82cc39f05b20de58069ba3e893674bbf66a84e9628e1e151f167c38"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlc.h",
+      "bytes": 7009,
+      "sha256": "0c4e65153baf0e0ab5b4c6c3a0b898b4c97bfb3d6890036f758d72aefc03f44d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlc_info.h",
+      "bytes": 8924,
+      "sha256": "9286096caf5653cf3e65af73085bb34b1cdb298756bf69f067cf744da0da59ab"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlcbit.cpp",
+      "bytes": 6347,
+      "sha256": "59c54e13d3ed1619d46d7efea90570a8d819bc3a4e1bccf2bd8f33d7a2046c11"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlcbit.h",
+      "bytes": 5206,
+      "sha256": "15ecc24731a38c65014d48e75915835718dbd6665ca4fc0e973f9dc32046c104"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlcconceal.cpp",
+      "bytes": 34673,
+      "sha256": "6aa7e59c8c1a79481c55bafc9179787cc80b5890beca1d1ce117805ee206d7ee"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/rvlcconceal.h",
+      "bytes": 5601,
+      "sha256": "a2e705d9d3a78ee6e7244517100300c870a6a1d938fbdef8d5fa630df70f1434"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/stereo.cpp",
+      "bytes": 52162,
+      "sha256": "531afbd9091eb407884ae7680aec6050b02aa3a9ea98a797f100ca4d390282ac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/stereo.h",
+      "bytes": 9343,
+      "sha256": "5237497b8a5380a59ce33051157b505aec8cc2716f95261fcc6c60a876ec60ed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_ace_d4t64.cpp",
+      "bytes": 13739,
+      "sha256": "1fb53901a30ef9b5f5b4000618eb19e1c82e26a787ce71d4cb7f7f395978fd44"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_ace_d4t64.h",
+      "bytes": 5361,
+      "sha256": "3813ac37b9bde807e6fe4558e865fb12d3d913fbb6ed6dfaedb8bd8c36ef6c38"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_ace_ltp.cpp",
+      "bytes": 9229,
+      "sha256": "f3ce0559647f64c95cd9a9aed7c28f8066939dc7b947468c4d892672fe0d4690"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_ace_ltp.h",
+      "bytes": 5859,
+      "sha256": "0f7a1d80a772faa53b603ee35529603e5cd6a6fe5e8a9b90f7ea6d030d829f51"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_acelp.cpp",
+      "bytes": 49329,
+      "sha256": "208cdd8e80e6dff3818ebed758469694fc940adfdc47c8781348369c68f1bd29"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_acelp.h",
+      "bytes": 13027,
+      "sha256": "200a28a0f13f4121ac6be3e79680670e3935809cdf7e5419042608ee56164a57"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_const.h",
+      "bytes": 9637,
+      "sha256": "4f8fb92aa63e1f2eeec0c1b6d6283e0d2fa77f5ecfe0b337fc2bae5c45a31732"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_fac.cpp",
+      "bytes": 24599,
+      "sha256": "f0876a01c3a1e0cc098b907aebad464d464117779b1896a48fc685352b29491b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_fac.h",
+      "bytes": 8919,
+      "sha256": "aac3eff8e7346fb0b8ad86b982020ab3edbf57d73d1530628e6b1b52ab29a284"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_lpc.cpp",
+      "bytes": 35931,
+      "sha256": "3d3763043fd436b9ab9e31ed31e01d8499325459a235520b7a9b3e0958e6a6ad"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_lpc.h",
+      "bytes": 8391,
+      "sha256": "a5b3bfcaf2c37bab4238a48eb665bd5ecb5864bfd0fea3a1e5858c12ba1a31e6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_lpd.cpp",
+      "bytes": 73438,
+      "sha256": "bed816a95a1dde3b7ad9e43812413df7585200730c22b4955f38363481fe2b41"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_lpd.h",
+      "bytes": 8920,
+      "sha256": "9e726d9353f6030bd8c634d93d2c8bd1d0054df2508eadcedbec53e2101a5e78"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_rom.cpp",
+      "bytes": 107379,
+      "sha256": "723681075357a8f728bfa994c50797870ee60dea007410f056e678088bb16526"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACdec/src/usacdec_rom.h",
+      "bytes": 6511,
+      "sha256": "88a2618a2e6ed055df6ae0ec7e77af95d1e526770ef63811734f9571073f9c4b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/include/aacenc_lib.h",
+      "bytes": 89700,
+      "sha256": "1e3acb5150d5510bb430cf20be9dc96b8be638b22fc3980706745c92c281ca47"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacEnc_ram.cpp",
+      "bytes": 9117,
+      "sha256": "b77888bd9f5eacb3db3f8cba9ba0243aef7a24cc58f63c142388a1a89f161935"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacEnc_ram.h",
+      "bytes": 9940,
+      "sha256": "377f2ac13eb523b7378d0207d50b63b9569aeac3634109d6f8f9f36de1714ffb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacEnc_rom.cpp",
+      "bytes": 172029,
+      "sha256": "1ab82ab15d2c88e81a7a83fc0b5d7d08c15babe561f5d4cf868d87c17b7b5ebb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacEnc_rom.h",
+      "bytes": 8959,
+      "sha256": "ddab8815f248ebc4fb24bf90eaf2db81c4a2870994a75835b45cf1a58ea20068"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc.cpp",
+      "bytes": 40760,
+      "sha256": "8f529e59dc884de2e6f293ea9a8dbef32e20cd4e85d3a3f6f8285a6ffbc86e82"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc.h",
+      "bytes": 17531,
+      "sha256": "04e26f186ac2e5cb40011caff2c5ac798ca94f844535ea53fc13bfdfe859e358"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc_lib.cpp",
+      "bytes": 91020,
+      "sha256": "b535fd1fe5f20baf54276d2579120e09cedda111f2c3a238011760e7fc49748e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc_pns.cpp",
+      "bytes": 20379,
+      "sha256": "3c1685a822e89d87b3cccebf313f936ea9b096fddf27fa0d5e5f1d91eab77f4e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc_pns.h",
+      "bytes": 5393,
+      "sha256": "1c0f865666386f452a47031fa8dd2685c132185c52451bc42294fcae71576ead"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc_tns.cpp",
+      "bytes": 44719,
+      "sha256": "972380af417f5ecf8648b84a0f57b99d3c050c310febb48124c92d107f86850c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/aacenc_tns.h",
+      "bytes": 8683,
+      "sha256": "f610e3a04d7e0ab968f7b630325a4db5ed71c8af517504db4afde82d683ab317"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/adj_thr.cpp",
+      "bytes": 123138,
+      "sha256": "458c131c83585d0e97c3906827b8e50ac8a06a1644d766abb65e47a95a15125a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/adj_thr.h",
+      "bytes": 7985,
+      "sha256": "76feaf5983525dddaba0915328408a56935a0534d382e2959d4d4a4843994551"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/adj_thr_data.h",
+      "bytes": 6631,
+      "sha256": "54e16ba17823f4c9001646be343aa820c9d5565d858db263350daf78d7c1741c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/band_nrg.cpp",
+      "bytes": 14580,
+      "sha256": "45f672348df2a2d113a68402c5387e4358009412822cce3f3ab0b01ea0877803"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/band_nrg.h",
+      "bytes": 6822,
+      "sha256": "abe1bed2a605f81b10f7bdc7cf556f687b10b61abe9e4ed98c1386169351557d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bandwidth.cpp",
+      "bytes": 13597,
+      "sha256": "f809c60bdfb7f3ec658418a93015b2ade72e02b371752f92c641205c970b7c27"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bandwidth.h",
+      "bytes": 5335,
+      "sha256": "5f7a15d5d6c70e5864fa45389f203f3e9e27e48ec054d974187969970eda4101"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bit_cnt.cpp",
+      "bytes": 30827,
+      "sha256": "54b63601d1fbe0b11a54a1494f26d6e335b5df3619f71e606b616e1fdba532b0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bit_cnt.h",
+      "bytes": 7246,
+      "sha256": "4f6a831f702924fef483ee0a05ec2a0549b654e85302975f08e17b31b1f3463d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bitenc.cpp",
+      "bytes": 45738,
+      "sha256": "3a4edcae85ab35f6e241722c2f9f3447b9b494acd399ab7160b15dd9ef731c9c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/bitenc.h",
+      "bytes": 8363,
+      "sha256": "9f267a7f5dbbcb0f12345d0f6c0db93d57949ddfafbf311a968149263a24df46"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/block_switch.cpp",
+      "bytes": 24972,
+      "sha256": "3eb08c16ade8e53008e801fe85695e6723a9e187481117136588c67a920f211a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/block_switch.h",
+      "bytes": 7160,
+      "sha256": "ffb13368b4d98fb7e7836f7f7bd839c68aed34f4158680a0d9d079d9b885d29d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/channel_map.cpp",
+      "bytes": 28010,
+      "sha256": "7ca08279a2fe2dde235e6dd348592cbf1253116aef26cf0b8dd39738a5060796"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/channel_map.h",
+      "bytes": 6081,
+      "sha256": "e162e933b8e176e385e6c43b634be2a78782a87b1bfee205eb477174e8017130"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/chaosmeasure.cpp",
+      "bytes": 8597,
+      "sha256": "fe9e09d4c2403a81881c17eb38450c48f1c583328ae105dbe883614807efbafb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/chaosmeasure.h",
+      "bytes": 5222,
+      "sha256": "b43d4cb1f640b523296bf8132cca7696c9b96f97a83c93b2651fcf26ce5f4db4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/dyn_bits.cpp",
+      "bytes": 25641,
+      "sha256": "0e94d944d33e77fd8a617a9c9ce58e2638b9ce3daf86fe820155f272664dac44"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/dyn_bits.h",
+      "bytes": 6653,
+      "sha256": "a7a515f3d93842994c6d5659ce5c004e67e900188932af3f57f27291cfd38158"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/grp_data.cpp",
+      "bytes": 10431,
+      "sha256": "cdd0e06eb0147589c86eb73689ce1227671e9330b98e66b78e47d55ceb81ad2e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/grp_data.h",
+      "bytes": 5882,
+      "sha256": "b4b79bedd12cbe22debf25d76adcebd3b2d5fa0338c7811abd4eb365753bf515"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/intensity.cpp",
+      "bytes": 33344,
+      "sha256": "17fba7ac6bb761b4273dbd5dd743ac0076c9a6ed5759e014281f8c24dbc6bf54"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/intensity.h",
+      "bytes": 5731,
+      "sha256": "002014dd3a966f01ee42bb579cf1e90e343e2b973715eab4a60ddc3d6e7fb9ed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/interface.h",
+      "bytes": 6408,
+      "sha256": "c9cb6e3b431829da5b8ace50783a45d82a6edfdbc1562425dce3cbddbf2cf8e9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/line_pe.cpp",
+      "bytes": 10366,
+      "sha256": "42b417f9b058bfda16686fe70f6ca99b7db8fe2214194fc4c5bcc0294d825234"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/line_pe.h",
+      "bytes": 6818,
+      "sha256": "88367f1afd0180f1e47567ee39c7f16d68af2ad330dd5e07fef5b73974af909f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/metadata_compressor.cpp",
+      "bytes": 68346,
+      "sha256": "bc1798a568d6382b23611ca1c88d2566387cb0792082c94457350fd96e6d629f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/metadata_compressor.h",
+      "bytes": 9956,
+      "sha256": "c34d57eee86e9781575af971dec8c17228b11f80a619c0c20197908bb0672308"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/metadata_main.cpp",
+      "bytes": 46788,
+      "sha256": "6888df7739184885201a9d0ae2ab3ee761254b08838cf8cb84ea5e7a47d44471"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/metadata_main.h",
+      "bytes": 9659,
+      "sha256": "6c530075c5a9669e6b52f89d2def1867d05b9bc89cbf5aa276174b2578d31aaa"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/mps_main.cpp",
+      "bytes": 19540,
+      "sha256": "dff658efb97e6d15d91b3c0e63b15eb4af7277bc2b591e2c7d652edac6e1914f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/mps_main.h",
+      "bytes": 11243,
+      "sha256": "779a7cb7bcc4590f7eb211a3845b8f7ba7a26222d72377141def21e61d672b2f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/ms_stereo.cpp",
+      "bytes": 13840,
+      "sha256": "1d6c3197499e88f144318578007f4dc32219c340ec259d1f54d455f5f1f3d178"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/ms_stereo.h",
+      "bytes": 5588,
+      "sha256": "c4c1fd2e3d3d74263b42a5ec598584a079f6ac85c10129e3536f42f8aa215639"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/noisedet.cpp",
+      "bytes": 10133,
+      "sha256": "ff05a961a4388a5aaaa17dcd92afdfc19b16f78044424efce9f6c5023f7d3058"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/noisedet.h",
+      "bytes": 5343,
+      "sha256": "d88a667df748cc027bab25e83197a5cd68d4f5317758cfd948d47ca0c5d8c6d9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/pns_func.h",
+      "bytes": 6617,
+      "sha256": "e431a40a285d531f9531b9dad2c86cb16965eb52f20c29700a1a5ef287c7855b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/pnsparam.cpp",
+      "bytes": 16127,
+      "sha256": "74472606dbfb009dc51a722af47d7232c838a00d9ad9cd67a015b709ba169645"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/pnsparam.h",
+      "bytes": 6277,
+      "sha256": "914ce121976d82b7b142897ffaf848a043138ac54730000fa4361a4d3bc69075"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/pre_echo_control.cpp",
+      "bytes": 7714,
+      "sha256": "03ae0821951e5377abedf942f5d1e76e5e266a7c8d174141b76e7fc5dacd1885"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/pre_echo_control.h",
+      "bytes": 5579,
+      "sha256": "b58877ddda3e2d029f13b676a0773e9f58528c4a700bb0aeb1b37e80ba203841"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_configuration.cpp",
+      "bytes": 24294,
+      "sha256": "665f60d9060b74618ba00431a58df0deb28498469a2eb153fbace5c1281ce584"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_configuration.h",
+      "bytes": 7067,
+      "sha256": "11964afe964ac219110dd367fc847196ccb5d14ada404f404f7babf10c70391a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_const.h",
+      "bytes": 6773,
+      "sha256": "e5f212f5312187471a2f8fb11cb857495aaad92ac432a8826ebacef8124bf0a1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_data.h",
+      "bytes": 7206,
+      "sha256": "9edfc8a6a1c31701d9d5796249e2ba1164117dc7c7bdfd1776c52246e598c4e9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_main.cpp",
+      "bytes": 53363,
+      "sha256": "335d6e0431191d630cef2b47d6ddfeeebca4a98b3bd6f957e2f612543c19e5d1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/psy_main.h",
+      "bytes": 7027,
+      "sha256": "2adfce08cf6ae53123079f51bd8d2f1756c168e41dfa6ce8c08307697b897e36"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/qc_data.h",
+      "bytes": 11482,
+      "sha256": "c30a7ed73ecb73a5e05716eff9933420358a79cf7d8767d46933afe87539bd89"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/qc_main.cpp",
+      "bytes": 58172,
+      "sha256": "e7c2ad5e3a2c8db9887636c8cdac3bc58bca73795fffa75d8b04a0f26b1cc9f6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/qc_main.h",
+      "bytes": 7366,
+      "sha256": "5ac9f5554ce813c454531669873ff03cb5ed01bf166f0fe76e97b69c0157f844"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/quantize.cpp",
+      "bytes": 15430,
+      "sha256": "a3e6961bcc78af160efe76cf5e19d0320a9553e9cc84ad12ec05d7261eb7ef32"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/quantize.h",
+      "bytes": 5899,
+      "sha256": "4569141569ae5aa06b37a6a8efc3b26ac07ddaf04e4326faab97c65da3b72fe5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/sf_estim.cpp",
+      "bytes": 50239,
+      "sha256": "d4d7766ccfc1777415cb404b7d1a9185f978e99ae5a50fe1dd8b21524bb301c4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/sf_estim.h",
+      "bytes": 5632,
+      "sha256": "6b150e7684d4ce8f525c07c282e2d4b5b62e496f5b55c544e5458fe1f353c64d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/spreading.cpp",
+      "bytes": 5682,
+      "sha256": "404f794cefaf5eb8494440357c57225f3f483b97ccb76292cb73b74fffd368f0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/spreading.h",
+      "bytes": 5317,
+      "sha256": "e5835fae42b2d313aa2a48034e6971ccfe556273fc09376adf88a3c6ab38756b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/tns_func.h",
+      "bytes": 6085,
+      "sha256": "9b86aa6985ae2e6a1ebe3e951b06da561b00c617c72df4c4851d00e93b0f0add"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/tonality.cpp",
+      "bytes": 9551,
+      "sha256": "0588ef54e8ad9c0b9e5098c55d3ad7ccf9b7bec78965a956af298e6751655148"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/tonality.h",
+      "bytes": 5433,
+      "sha256": "6f7bb9ee1e3b834234c1394ed730d0633e26da9f4a7265a62f711faab646f867"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/transform.cpp",
+      "bytes": 10810,
+      "sha256": "337a85346366faa7b41326aaf0cafee4046e8c96d9c4df2bda79d3401112508d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libAACenc/src/transform.h",
+      "bytes": 7824,
+      "sha256": "ae9d7de00b9336056a0f2d0e0b49f8194a621e139fcb3a005bc1121f92d3ba22"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libArithCoding/include/ac_arith_coder.h",
+      "bytes": 6320,
+      "sha256": "ac36017a5f1f52c4cd7c78e801a84fb247d446481cb3ada25e30e2b144a749b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libArithCoding/src/ac_arith_coder.cpp",
+      "bytes": 33431,
+      "sha256": "59f921dc32bc781d905967fa1d0a9f020005cc02d9fd2839f4c358ddaa3a6fa4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/include/FDK_drcDecLib.h",
+      "bytes": 12863,
+      "sha256": "35c053cb8f8c66354f384af3577e652b2c8f96f9528a27ed80840c401bb8438b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/FDK_drcDecLib.cpp",
+      "bytes": 33212,
+      "sha256": "c93e25441a0f47171cdc8827b0acebdea7f7232b3d730a04f53b847227ddbe14"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_gainDecoder.cpp",
+      "bytes": 17088,
+      "sha256": "02ddc2f537ee0367bf02b75179b3234a536bf1e14ab87a357de04c65f786707e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_gainDecoder.h",
+      "bytes": 10621,
+      "sha256": "77f8ed6ce3c735ad5c9cf6282311ed4de695055f4b873d457206709a473e678c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_reader.cpp",
+      "bytes": 73126,
+      "sha256": "154a1dba04922327b1234b28535fbde62ff976496a893b5f2013e9cf71a706ed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_reader.h",
+      "bytes": 5844,
+      "sha256": "d969a6f4f16b6b9974d62b7eeb55b2278438a091a9f96f8231fb8702a78ada0a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_rom.cpp",
+      "bytes": 15777,
+      "sha256": "2d62f96f5c81b5b5da7e817029a16dc387ccf728b1571e3f13e2e8506cc51a13"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_rom.h",
+      "bytes": 5517,
+      "sha256": "0373c4d5b39cdfe9b19e4a02d07ed5c99acc7aa6d6696f9c4ed4632ff5132aad"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_selectionProcess.cpp",
+      "bytes": 116363,
+      "sha256": "f283b1345f7b760ff29a0839e7fb8e3ae534c787ecfe0217a863b3d6783f72b1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_selectionProcess.h",
+      "bytes": 8861,
+      "sha256": "e64276d6674f8b11ba372804f93bb23bf0f82125d818cd5270d8b1eefb22f708"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_tools.cpp",
+      "bytes": 13191,
+      "sha256": "52bb97a93be2d21a881c91a9132ea791d8c989adb264d3dcc3e934388e493c44"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_tools.h",
+      "bytes": 6440,
+      "sha256": "68a14f1d68e4c2efd138445bccb0b866ad1613f14600673b50341230454f4654"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDec_types.h",
+      "bytes": 13420,
+      "sha256": "9d538818b1f3c1178585ed61cc728733ee2274713c12fbc54e49de51e37949c9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcDecoder.h",
+      "bytes": 6024,
+      "sha256": "e4a5b0ebf15de0360ba918294ad9d14529dfeffe61771e712b9ef5c82b20d7c2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_init.cpp",
+      "bytes": 12504,
+      "sha256": "1b41764d18a3c193993061520068ec299209f1d8384c2e750e5ae240db8d1413"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_init.h",
+      "bytes": 5371,
+      "sha256": "70da426f5062f6efb79aa2b8fde2ebec18f864f7b93bffc42ebbb3a217e55c8b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_preprocess.cpp",
+      "bytes": 28724,
+      "sha256": "79a765a59f795d44fbb7a3ed1a543bb8b29dad90698e2240203435ca14445b79"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_preprocess.h",
+      "bytes": 5243,
+      "sha256": "d0b1b7c92bd91a3ed1abd599e3382f27461e87e2201194d15b43ac0caab5ead7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_process.cpp",
+      "bytes": 21729,
+      "sha256": "4ed04a0371981547424cc3e16f59f3628316c27382d4a5e2b2d1d252012ce3ac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libDRCdec/src/drcGainDec_process.h",
+      "bytes": 5687,
+      "sha256": "9d334ef485f25150a2a3a09dca8388dbfa14dc002309368ea8044f60a416b9fb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_archdef.h",
+      "bytes": 10131,
+      "sha256": "59374c34d976189b022536b0a1f78cc6c87b6e903ff77f1e13409a782e0d5caf"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_bitbuffer.h",
+      "bytes": 7051,
+      "sha256": "c58caea03c5311e3fa07bf60511c09f9676817e85c1114496d2b0a2391a5b9f3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_bitstream.h",
+      "bytes": 23587,
+      "sha256": "9d91c2b08f21580f14e29c318ca10ba99ff2bf5364f9076556ed51e003f3105f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_core.h",
+      "bytes": 5298,
+      "sha256": "35dfeb005f568cd8184ba11515cb38caf076f80ed7a18f8250a23393916d0fec"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_crc.h",
+      "bytes": 9003,
+      "sha256": "1996aa2824507916815dc5aa79c6711b6a439e653e7ab6d565cc11f446da621d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_decorrelate.h",
+      "bytes": 11993,
+      "sha256": "4932497e44afb161cd0b92ec73bcc2739be2410c96cdcf03bb331467cb507834"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_hybrid.h",
+      "bytes": 10644,
+      "sha256": "23b38037e1006879d2cf671dd74754b6835e73802554f027efd78e2d5ffed6d2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_lpc.h",
+      "bytes": 10165,
+      "sha256": "c1621cf725d6b94ac871bda65617ed5fd79b897296f76c0103cd10af87a2f215"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_matrixCalloc.h",
+      "bytes": 10519,
+      "sha256": "55cc7ff0c7920afb4ac14820564a719807da060cf0babc2bcdbef02ef2d55d22"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_qmf_domain.h",
+      "bytes": 17284,
+      "sha256": "a697968b62a1a73d7b88b282cadf7ac6abd2ab14acce57a296a8f37d464fe69c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_tools_rom.h",
+      "bytes": 15375,
+      "sha256": "63b3ed80cee281558bc81f04df19e6b70b572bfdb44c7986e316ad5a6e8c719d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/FDK_trigFcts.h",
+      "bytes": 9419,
+      "sha256": "b8f12760085e8b8eb50ae5a2589816ebbd5e757e8142cf48143b281baf9a495c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/abs.h",
+      "bytes": 5869,
+      "sha256": "3c2c57f1825854400f6b16f2ad11ff978e1f24fa979d9acf18d60dacc52856eb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/clz_arm.h",
+      "bytes": 6305,
+      "sha256": "047304e5252bea039cb7be8dd95cf5a270f2e6ca7aefb75b3db96bd6eee10cda"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/cplx_mul_arm.h",
+      "bytes": 8439,
+      "sha256": "a9130a5534ba396beb58745d1b7dc56baa329bda469da46fb51b265e244fbf3a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/fixmadd_arm.h",
+      "bytes": 8807,
+      "sha256": "f2a9ec97d371131626e273847916f55187c15a26db52b335b5c4bfbdd54b7f64"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/fixmul_arm.h",
+      "bytes": 7652,
+      "sha256": "c405f2e7505a15106b5e7ff96bb8840ecf9cfc26f266086a9fabac2de6dec5a1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/scale_arm.h",
+      "bytes": 6799,
+      "sha256": "09066358b4118c65a4276926bd9f7bffddc8c8cd5de56f1639ef07f00c6ec584"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/arm/scramble_arm.h",
+      "bytes": 7556,
+      "sha256": "bd4837379e2fa3ce3348c68c974d2e4a13ccec8699678a6c5ae511921cb007bc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/autocorr2nd.h",
+      "bytes": 5853,
+      "sha256": "0bb30aa8ebf848b6623f7187a5186f78719a142710186bb3379be0824a6a2e64"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/clz.h",
+      "bytes": 7250,
+      "sha256": "e5f216d5ad0ab4f7dddad011e1f4f9a392fd4cc192d269654d2a69229d44cbcd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/common_fix.h",
+      "bytes": 18401,
+      "sha256": "214dd7c5d0c11dd5f31b56454778759e1abdbdaf793742daefa6840cfeef2c60"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/cplx_mul.h",
+      "bytes": 10738,
+      "sha256": "afd5e774413b84c417e0c2d4fe7649ffc0eede30b78e7f50dd3e2ada7bb18929"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/dct.h",
+      "bytes": 8034,
+      "sha256": "93194221897d1e6e9f4466d6de87f1faab400f453d4c305eb3353d835a7397a8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fft.h",
+      "bytes": 9163,
+      "sha256": "4cf96991cc16d12deb9b3bc8d8a24fa3c51dc51191c51d5c6aa7e004e766d53f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fft_rad2.h",
+      "bytes": 5546,
+      "sha256": "b9b52106f314889b3d29af51ffe509c565c45ecc276effc7910bad35ada79a20"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fixmadd.h",
+      "bytes": 11691,
+      "sha256": "932801e802ff53969ff506d66628b81b7b16dd9edf7ec5599b923a0696fc6f92"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fixminmax.h",
+      "bytes": 5635,
+      "sha256": "f8a7bdcb41f48f9c4b6a947c2931a620ff2bb437f655f76e11027e15b203e6b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fixmul.h",
+      "bytes": 9600,
+      "sha256": "3617f3a1d4768d454cecdaf7b4e88e870594cc1d7de5ce0602e2adac40d2c0b0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/fixpoint_math.h",
+      "bytes": 30066,
+      "sha256": "36078f8bb046169c1685bffe67eff9cc9daa4cacf8b7288fe31107da9cd3f51c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/huff_nodes.h",
+      "bytes": 7681,
+      "sha256": "789e4f13256366869a98acff122cd25b4ff025a0b42c45e3255a1caea1fc0f0c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mdct.h",
+      "bytes": 10662,
+      "sha256": "ce6e4e081f29fdfe4412c7b72f109df35d1a35d93c5dd4c25066d80808e6e9ce"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/abs_mips.h",
+      "bytes": 5551,
+      "sha256": "648128787950487d0f3d09aa783fecacdd79ecbd8cc16d3fbeeb6d7d1e8b071f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/clz_mips.h",
+      "bytes": 5568,
+      "sha256": "6272e4218bb2fae2f825dddf3dd422eda12847864c34b7440f154f1df2967c53"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/cplx_mul_mips.h",
+      "bytes": 6129,
+      "sha256": "c8cee28b37b24be8df74bd73842511f638a8634352b476e3d83d7178ea823937"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/fixmul_mips.h",
+      "bytes": 5530,
+      "sha256": "af250d53d85505674e82935f8cf88df11a9f57aad8a4070f4563650043802342"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/scale_mips.h",
+      "bytes": 5479,
+      "sha256": "c92cdf7bc582a5ca686909590c64595a6cf76ac71505ef019cf91a091a319330"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/mips/scramble_mips.h",
+      "bytes": 5495,
+      "sha256": "d4e88e3fff860126f3fdd1e57fcf5a492f5dad3481d191304cd2c3315af1e857"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/nlc_dec.h",
+      "bytes": 6393,
+      "sha256": "7bde4be9fdb2ced3e6c9834c697b38b353510766f07f7d145ecfbb38d93c2472"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/ppc/clz_ppc.h",
+      "bytes": 5264,
+      "sha256": "b9188773cce5e2a37519a81a3272a85127d3abcbc101a95182b58cf1bf077eff"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/ppc/fixmul_ppc.h",
+      "bytes": 5659,
+      "sha256": "da5ef3b160f64c546d43dd895b92b01cf1cefaea24e425ed85f14e708d80d389"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/qmf.h",
+      "bytes": 14944,
+      "sha256": "dab69b88f53005b5a0e781f28b5d398911f3ec535b4de4903a65014280143bf3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/qmf_pcm.h",
+      "bytes": 24500,
+      "sha256": "235fc2535fcd8abcbb4dd06ca9c345ef32e1cb47fa7d865bfd170f687b66c8f7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/scale.h",
+      "bytes": 11925,
+      "sha256": "56b425ea04292ef2a70fee0ce583a0f2a16dfddc70d82b6b8f6eca7ee4a6d3a5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/scramble.h",
+      "bytes": 6070,
+      "sha256": "557eb8aa816525c25e8faf812da932cb362d575fdfb002b30e37db39f3e7949d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/x86/abs_x86.h",
+      "bytes": 5371,
+      "sha256": "3863dbf1b48dcf649bfd7cfb0da07a7a0ede0e1fbbb08c36dbb064e2534056b8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/x86/clz_x86.h",
+      "bytes": 6115,
+      "sha256": "29142a4d6b35bd0435e28a37b6da115b969808153eea425cadfb0cf075f4859c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/x86/fixmul_x86.h",
+      "bytes": 6826,
+      "sha256": "1b9b7bbb16b36f17d45780688ccd34903e5f627673d0105b8a77b571f8fb681a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/include/x86/fixpoint_math_x86.h",
+      "bytes": 8076,
+      "sha256": "a764f63a5926ac5318a2fb9ae8a6ac916c0c63421733ca9c1db1b412264a9e28"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_bitbuffer.cpp",
+      "bytes": 18658,
+      "sha256": "ccac1cbea3be99acf44bb17215505d255eeab30c0346958f2043e4e223602433"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_core.cpp",
+      "bytes": 6002,
+      "sha256": "1c1e724f978fd65b9b6f4eabbd06d2048ddf913a0d78c4e0950365be280b246b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_crc.cpp",
+      "bytes": 20545,
+      "sha256": "d0337e5a74b4515153670f55d1500a4d46eb2ca9e8791e52347bfc1afcec0ea9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_decorrelate.cpp",
+      "bytes": 70141,
+      "sha256": "1eade9f8e555b85858f7415be53f29d8e0311bbdcae285576614283c97879011"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_hybrid.cpp",
+      "bytes": 33280,
+      "sha256": "882321fd034d1be891015c6396591ff53720e4e756b882a19b401c6c2c0ff274"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_lpc.cpp",
+      "bytes": 16553,
+      "sha256": "845cb7bdfe00ee9099a36fbfc9b5f8897939427621415557af83abacdeb2665d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_matrixCalloc.cpp",
+      "bytes": 9759,
+      "sha256": "440a61f9e353e010d4640f320d04ed77c9466fa0e1750a1720e7edeaab6a324a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_qmf_domain.cpp",
+      "bytes": 39672,
+      "sha256": "a874cf556ac9e4288bf347dec3b19fad995b1512fa4cc7c8cb074209e2827779"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_tools_rom.cpp",
+      "bytes": 400083,
+      "sha256": "492487a443a6428978f3d077cc46a78fb25905945e570d71b4e9fb5ce1ed5850"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/FDK_trigFcts.cpp",
+      "bytes": 12895,
+      "sha256": "b7b60ec723cf10e4bbc2002524a595ffdbc265ccd7d02cb261ad32d9578f8f09"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/arm/fft_rad2_arm.cpp",
+      "bytes": 10214,
+      "sha256": "4567c1b51d65537b867b1c4d187d92b43c994549ff79706098b1563898c60012"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/arm/scale_arm.cpp",
+      "bytes": 7115,
+      "sha256": "634633a00f658110a7d5b07c22dc3d223d8cde41d47a177e7fb9ee6e72f946f8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/autocorr2nd.cpp",
+      "bytes": 10944,
+      "sha256": "fd2ba2464d737edd997380ac2d04952dba2b1c920e3ccc6a450505f435cdb48e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/dct.cpp",
+      "bytes": 17239,
+      "sha256": "71655da87bb8367c09412e7195b08f5bf43f70cfed56d1643395e6f476afa4ea"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/fft.cpp",
+      "bytes": 59494,
+      "sha256": "26b502b20aeb6f51d5a89b7009bcbe8403c8654aa983ecaa379843ca7528075d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/fft_rad2.cpp",
+      "bytes": 10422,
+      "sha256": "b25a448e6549b0c1bba288bf91a42961f133461aa55e46784f6210c50d1aa279"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/fixpoint_math.cpp",
+      "bytes": 33435,
+      "sha256": "e11c2c8d710df25e41af7947279b47d677163219ef84dacbf18ee9d5f2603b54"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/huff_nodes.cpp",
+      "bytes": 58251,
+      "sha256": "dc2b4e0b787bd8c67d921774b8816818fa6f989b696443b286e3d4f9bf3896f6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/mdct.cpp",
+      "bytes": 27730,
+      "sha256": "d830ee77c38f389a7be977e36c23c3e4553f1123acb9d5cc6ce5c637454736a5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/mips/fft_rad2_mips.cpp",
+      "bytes": 6343,
+      "sha256": "781697b52ba57d178e76506f6794b6325dc1e8447f6d2c60dd18ebdcddfea161"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/mips/mips_fft_twiddles.cpp",
+      "bytes": 66250,
+      "sha256": "536e21dc1c674c058234f4ec84caa3dd7d2032761014a241a6cfbf1dc6dce039"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/mips/scale_mips.cpp",
+      "bytes": 5775,
+      "sha256": "207344f2762bd479ffe03b0cdd9f5664e5fee7a2a8c5620751cfa4175a567afd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/nlc_dec.cpp",
+      "bytes": 30967,
+      "sha256": "6ff27ae498606acbfec66fa712db2a3bc4625a6249f3833a459d780935ccac43"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/qmf.cpp",
+      "bytes": 28814,
+      "sha256": "e2b181673854a61e7f1cd12cf2d59fb1f55aa0f9b75529db8ef5272d51f86f2d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libFDK/src/scale.cpp",
+      "bytes": 23420,
+      "sha256": "a5f16ad272d9bf6015386d260bc9065f7be32f1e31c3d25e2721f10cdb455ea3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/include/tp_data.h",
+      "bytes": 17971,
+      "sha256": "e2bc64ae97c563d93edd72edac99de9ae9aa69b3cd28ff3ddab1fd6e43a2b57b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/include/tpdec_lib.h",
+      "bytes": 29215,
+      "sha256": "df98581a60486a63a9361bf69c2ca5f845ca192f11a2a4e1eec7fd2d6d72c7fb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tp_version.h",
+      "bytes": 5288,
+      "sha256": "bb3a593990aaf3349dc0474de2af8b24f1d42c9729b34f28f251f16c9b6487fd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_adif.cpp",
+      "bytes": 6608,
+      "sha256": "3d74334b9fd57d3711ca44e986f3f2e7201b118c734a25e75303fb2cd3259d28"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_adif.h",
+      "bytes": 5846,
+      "sha256": "c0d6d9c73577a719cde71593c7ab3e1ce2ad13e77a40326ac14ea25106c68998"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_adts.cpp",
+      "bytes": 16331,
+      "sha256": "735b0103fb5db7da0867962099e2fc01d57d87e21042dbebd1de771f3f8f7e21"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_adts.h",
+      "bytes": 9074,
+      "sha256": "6044ab453932f3c1e0ea6b1b4a656b8b4aa07410a2d2d35266823161fbbc7b29"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_asc.cpp",
+      "bytes": 103326,
+      "sha256": "e74b8fed429691c02b0fcd00d2d75bb57f3d38beb8e73601af632aa7d8fb417f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_drm.cpp",
+      "bytes": 6175,
+      "sha256": "a95942db5132ac85af5c9c5458b07b14264fd378057726db675e8258c2064a8d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_drm.h",
+      "bytes": 8404,
+      "sha256": "bd2940695ab180d3bb85909407c53e7565666a8e93bb4590503257324823f4ad"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_latm.cpp",
+      "bytes": 25690,
+      "sha256": "6c3d8efb3500634280556f17eb6bba4d1dc5f0a50cabbacbab0aa0579635a1ed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_latm.h",
+      "bytes": 8102,
+      "sha256": "d4daf3c292752c9cc06222625112dd8ffbf9b047dea44d904440e035eb7f7538"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPDec/src/tpdec_lib.cpp",
+      "bytes": 63801,
+      "sha256": "e832d7f7515750a47c4c9ec2c7a731746be2efcea780492b9a42ff3f243a7c15"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/include/tp_data.h",
+      "bytes": 17971,
+      "sha256": "1ec29c540e18892a57f9a43d3f9ff9a646658e8f21e1b33bea57d9b674c9d6d3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/include/tpenc_lib.h",
+      "bytes": 14987,
+      "sha256": "297e856d61de48dc35db982d68d706ef930c16566a9ea920bf99770154de59fd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tp_version.h",
+      "bytes": 5288,
+      "sha256": "fd2109c2f9909a825c77cd93d218ed60173e2ac8f323ef538d2dc129e101488c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_adif.cpp",
+      "bytes": 7109,
+      "sha256": "d683ccb83e99aa22693522a68cc1083609e4b19bf38dd79bda0c47dcd874d56e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_adif.h",
+      "bytes": 6015,
+      "sha256": "86e53261bf301fb3d153f27e30a9e05a4b61b1708bd822b8087019f6506875bb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_adts.cpp",
+      "bytes": 12006,
+      "sha256": "21d071a1b5fcca5b73f784cc1f2c0fc40c31c17dde9cd982293f604dd64700bb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_adts.h",
+      "bytes": 8416,
+      "sha256": "9d59d0b6cdf4ce22da6f0349f8765bd7e482d5ed8aed9138ca3cce0b537c4527"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_asc.cpp",
+      "bytes": 36920,
+      "sha256": "87095d262d745c514c0bb532cab46b62c2a0f0dee734275b45fef753da4b1c15"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_asc.h",
+      "bytes": 6532,
+      "sha256": "fd8aeedde68182e4dcdbdcd2bca705413db7734ab404d7a7b6ad452cdb7063f2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_latm.cpp",
+      "bytes": 28602,
+      "sha256": "6e01ef445f9e27b39662d20ef795b005162cccbe76be29d955a8fbb109dd85c9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_latm.h",
+      "bytes": 10739,
+      "sha256": "9e41be75eb2268dc3388cfe90634260ea1a5e8dafe0593efddbcdb807d0fc289"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libMpegTPEnc/src/tpenc_lib.cpp",
+      "bytes": 23097,
+      "sha256": "a08a1a219f80b911f96e81422d8cb6fa5a807de1f40bde48b76547f17e8d6431"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/include/limiter.h",
+      "bytes": 13552,
+      "sha256": "94ad86028bdcaa14babc05313b8ea670d29eb0d2b214c3926fdbc62e9f50c7be"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/include/pcm_utils.h",
+      "bytes": 6366,
+      "sha256": "379b5f984819a2fcf8189d2d1215a20f306ae8aa9df2c397bff35851d69ad27c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/include/pcmdmx_lib.h",
+      "bytes": 21129,
+      "sha256": "acfd6770c2ed24a2eb19b5618893f7411a822aa9c4399371e2a7e3cbad1267e3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/src/limiter.cpp",
+      "bytes": 19516,
+      "sha256": "aa5f8f0149b5467fb6c8f1f63935c7cb846cddc153f526a13288fc87b85e74c1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/src/pcm_utils.cpp",
+      "bytes": 7984,
+      "sha256": "00d476ad0fd792963536b0b7955744a62eff30e91e74fb6ac6e571c51002df6f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/src/pcmdmx_lib.cpp",
+      "bytes": 104338,
+      "sha256": "9ea152d5af5a54c3dc8e825cbaae7d48c8984eed324d8f18ef1d7466f9c7670e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libPCMutils/src/version.h",
+      "bytes": 5335,
+      "sha256": "3e1baf82f5ca4931750a7c5f1ebfb0423d7c05a664ce9f57458f04eb090f7a9f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/include/sac_dec_errorcodes.h",
+      "bytes": 6721,
+      "sha256": "3319876052deea9650f3ce38100e6e6eac1ec81c7f3d28de04c3a0fb310665e7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/include/sac_dec_lib.h",
+      "bytes": 21824,
+      "sha256": "b2078a03f24cad06523175937068596385d51809560cb0149a6a8e46dbaf89f9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_bitdec.cpp",
+      "bytes": 72930,
+      "sha256": "5a4e40d9e9d244903db463a37796011d7917ff4d8e287a829d67401b6214b575"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_bitdec.h",
+      "bytes": 6840,
+      "sha256": "0c357da791fb043d2f6ec0d46b8c6cf46f8f65da66d59bb36537411002620fca"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_calcM1andM2.cpp",
+      "bytes": 28982,
+      "sha256": "a2c531b4f0bc2d369b63ccb778561c50ed7ceade5e1c1ee8ba38db731d3028e7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_calcM1andM2.h",
+      "bytes": 6043,
+      "sha256": "38d5e2a1b213c6e8def7028546212417a4c109827d02fc829efc37557de523b1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec.cpp",
+      "bytes": 57959,
+      "sha256": "443b436b93ef51d344586ade0d0a84c308e4ee3955487627036ee674109c6882"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec.h",
+      "bytes": 19439,
+      "sha256": "0ad370d711b3976c7167cb9fcee4f97b9b48873a2f037ab70b5a7b038450b4a8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec_conceal.cpp",
+      "bytes": 13865,
+      "sha256": "afd4cd5cd22daef01a93f975d5087f732645e3c2dcd14b8dcc10078a259962bb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec_conceal.h",
+      "bytes": 8003,
+      "sha256": "c1acb1d6d128144d579e17b15ed689e319bf7a3bbef02c01f550adf5b51d8e58"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec_interface.h",
+      "bytes": 13193,
+      "sha256": "ecf8f41a7dcd27fac4ffb36ac5f080f4b26eb2773fb6f926b8ce2cab6099a2c5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec_lib.cpp",
+      "bytes": 71700,
+      "sha256": "2fd20cc6f052f6d439fc75b12bdda3e89ad762b9511f258ad41e802dcf70078e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_dec_ssc_struct.h",
+      "bytes": 9764,
+      "sha256": "f2b1fb6e0a05a3cbd237fc1c45e4b1a29aa88ae556804beb3a29142add04ed39"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_process.cpp",
+      "bytes": 41871,
+      "sha256": "11e346cb3fabb30e974d23e16920ac6651db7c4fb03ae2a174db7bd3b0aa3a74"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_process.h",
+      "bytes": 13085,
+      "sha256": "63c316dea718c4efeb87b93c1f14c0a0edb6daede6bc1a953c00d0ca8726518e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_qmf.cpp",
+      "bytes": 6567,
+      "sha256": "d9374c4f4fab36e49a4643af7b15eba87b4e3c55fac8715d90eab7401ad85f55"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_qmf.h",
+      "bytes": 6318,
+      "sha256": "6b078134f497d06dcff91136f13b90ddcb0a0501947a3c7d7ef90d9ec22e43b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_reshapeBBEnv.cpp",
+      "bytes": 27677,
+      "sha256": "4d216df01538847f0ff5e1bff4ed2f123245ed3a3fb65598d609c5f5c098a843"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_reshapeBBEnv.h",
+      "bytes": 5269,
+      "sha256": "e68afd39555784f167e83aa0767634684fa967bc2f9be28bf1648e31ee7a8877"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_rom.cpp",
+      "bytes": 215881,
+      "sha256": "21f0a324c3f8d4fcc4b40760241a55f81f8d893afb088945cbd3d6d1a79026e1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_rom.h",
+      "bytes": 8951,
+      "sha256": "1b60516a0b9d899b0171b7f16087a20f0ae5d9fe64a944716a703b0147f36e45"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_smoothing.cpp",
+      "bytes": 11383,
+      "sha256": "8b5464b5750d5d5b904e9b44273938baad3dc0b66bc563500ec3ca4d8ac09e76"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_smoothing.h",
+      "bytes": 5297,
+      "sha256": "7619223a598ed943bee222c1982f5e0e6a96f3b4f633179479909ecca5e150a5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_stp.cpp",
+      "bytes": 22886,
+      "sha256": "5cf7ca7744d0fed19aec01a898168a4e817e500ff1895fcf82a0ddecdb0b0d8b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_stp.h",
+      "bytes": 5246,
+      "sha256": "a0472178b2366feee5ff8c5ef841495bb348b7a32ba22c2cbd45ec10e5286746"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_tsd.cpp",
+      "bytes": 12270,
+      "sha256": "2fb0baa36a2c40767894fe8c04fa6745b0daf9677e5fe9fec12f09c06a91138e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACdec/src/sac_tsd.h",
+      "bytes": 7610,
+      "sha256": "89064d09eacc670656a1a7c07ff38e496aef87c91eb16064c3d62deb30ef6dc8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/include/sacenc_lib.h",
+      "bytes": 15403,
+      "sha256": "e13bac8e2ff5a41f4194f347edaafe7323df048f812a530cef51f22d07125414"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_bitstream.cpp",
+      "bytes": 29700,
+      "sha256": "acd0c974543a54d2cc066ce2cfac72b03fef8be230bad2c5460a3c17444746dc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_bitstream.h",
+      "bytes": 10062,
+      "sha256": "4b1a376db06b09a82ad67c48bd4f2ee1d1bc81c6e0d5148d592c5f693444c639"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_const.h",
+      "bytes": 5730,
+      "sha256": "4d26ce1fcf1758a7819941a700a8bed7fffc9e4a7062b062cdb22745cd18d3d6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_delay.cpp",
+      "bytes": 18746,
+      "sha256": "a318d541edf28a07d8448bd22440c5f38b3dfd009c2f34133cf9ae03caa17d38"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_delay.h",
+      "bytes": 7910,
+      "sha256": "7eb97d754bb8566c9f761d8b6d9276afd19fd4dca1ed41a601c24b2168bdc25e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_dmx_tdom_enh.cpp",
+      "bytes": 24911,
+      "sha256": "3403d639b8d3341933d2eee3513f91d9bb56b50cfd8f56c92a680b108b531398"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_dmx_tdom_enh.h",
+      "bytes": 6326,
+      "sha256": "c0e9d3de293d37933da226a7b273e42e75d26812ceac495528a7af9c8e5c4551"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_filter.cpp",
+      "bytes": 8051,
+      "sha256": "1b975032ba4ce28abfcb7d3dfa335fa83187757807d211c8e89d2aadb66d3db1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_filter.h",
+      "bytes": 6202,
+      "sha256": "c00a03d27fb3a77f05d3eca9854b288151a118c7b8876ce2e1447b281176f5a1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_framewindowing.cpp",
+      "bytes": 20671,
+      "sha256": "452c789529780bc1ea3b6c74797598c7814d8ff12549c3fcaba0bad2f61f181f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_framewindowing.h",
+      "bytes": 7285,
+      "sha256": "091a65630bcac8655b2902fface4ccc9ee42ddbc05781d620b141d0cc2a6c2c2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_huff_tab.cpp",
+      "bytes": 57970,
+      "sha256": "295505a99ccbf6b790b11fef4e72016052497f5e5c9e13e817da2b2298bc15dc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_huff_tab.h",
+      "bytes": 7841,
+      "sha256": "12ab3bf03c1a18d334ba0598b91ee2a96adbd7ffc2da360cf36aa740cee40466"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_lib.cpp",
+      "bytes": 72291,
+      "sha256": "8c44efd2ec6be2f88d53c068d39e122c24c95ed02c0a579e5c3c3b234c8675dc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_nlc_enc.cpp",
+      "bytes": 43690,
+      "sha256": "dbd7b68537e88c2719b38bf5781c29d243cc23797276012721ccb92e4b6dbea5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_nlc_enc.h",
+      "bytes": 6563,
+      "sha256": "862bd2f0e116126744beb0796e2bf42bb7dc7a06d1c205d43aca7576c039146c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_onsetdetect.cpp",
+      "bytes": 14684,
+      "sha256": "f9f21ba8d3778e2911b93a312b1a6c6bc7ae936bf595c176c9d492ba84517a5d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_onsetdetect.h",
+      "bytes": 7000,
+      "sha256": "96a0eb2a5a2dd7cbb275cb39c1c7e1f119b1e860f5ee3a6975db187e9466fbd9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_paramextract.cpp",
+      "bytes": 30258,
+      "sha256": "0ffd4e6ac67f1334c336d09895d1300cc2208e255932c46ab69d7bd000b6945a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_paramextract.h",
+      "bytes": 8673,
+      "sha256": "d62bbb1432361dbb22c186bb149a1a29b4b485b2bec8ddbbe40f048ffa83c4cb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_staticgain.cpp",
+      "bytes": 16807,
+      "sha256": "ce454b13c7593d20a3a67da402e75cef3314aa8af35f853c249d7f7325be9dbe"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_staticgain.h",
+      "bytes": 7819,
+      "sha256": "1680119e67f915c28f8fe67771e162d4ffccb5d3e7a3ed56ed8736ffbae2a0ba"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_tree.cpp",
+      "bytes": 16869,
+      "sha256": "693c9421d431fa09500adc8864d16c54cf7b378f4e4d82c4c1d547d0fe543442"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_tree.h",
+      "bytes": 7107,
+      "sha256": "f241c8a85137af1651234eff03e8ae5acdf78e020b7879cd9c8971af46a59866"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_vectorfunctions.cpp",
+      "bytes": 16073,
+      "sha256": "8c588dc90d2d5516b776d9a88aa0f0d8492bb3bacafeca1995a265c0632dccf6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSACenc/src/sacenc_vectorfunctions.h",
+      "bytes": 18299,
+      "sha256": "44dd86291451659f7259e75b205373324a0329caddd66ea2f7bac38d7f551cc7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/include/sbrdecoder.h",
+      "bytes": 17721,
+      "sha256": "96fb2b7b20d73cf7f20c716902363b4bb20f8f85132358c2105b1d6c2f153990"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/HFgen_preFlat.cpp",
+      "bytes": 38301,
+      "sha256": "0270fcc3d1c66a24a72d2eae37f314da0d767944c6a880bb4d11db6c1886652c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/HFgen_preFlat.h",
+      "bytes": 6328,
+      "sha256": "51e1b619cb83ae95cb49420456d85d22fd5ca5bac2de3610768d9a6d608ca5f9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_calc.cpp",
+      "bytes": 123504,
+      "sha256": "95d7c2332f196f3e0d94e6e0be2bd58066050b2b239c4f1494d7a565f85409e7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_calc.h",
+      "bytes": 8212,
+      "sha256": "5450faaafb98e68d428be128cf76cc5fbe481f9b47b690a854b818fd74184632"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_dec.cpp",
+      "bytes": 33573,
+      "sha256": "b68b4f3104f4df74cbfd0ff79c44882c5690516c34e513d87ce5f356c33c93ef"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_dec.h",
+      "bytes": 5353,
+      "sha256": "a758495c4a0c21057ab548c58e85ce059980f60daada251d1eee1c7fcc287199"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_extr.cpp",
+      "bytes": 59784,
+      "sha256": "80872ecb46fd2321fca2ba62172eba1185eb02992e38ead24a29c7f3c7140aeb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/env_extr.h",
+      "bytes": 18629,
+      "sha256": "8a1b379a5f40f6cb13344a1744c55ffd89ba71d392f7c75a35134518d67fe0ed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/hbe.cpp",
+      "bytes": 100684,
+      "sha256": "59fad7e231f7a2a208e893ecc0171ddc52c125c5741e4e129306b55973b96a6f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/hbe.h",
+      "bytes": 8142,
+      "sha256": "476f33e88c418b9d015f939f36036de2e8871e0d5edcd0890dce1901f6e77a84"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/huff_dec.cpp",
+      "bytes": 5755,
+      "sha256": "fade4f9431ced86c889999efc9e1b587287e56fc4bbfb1abd906518e548c33d4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/huff_dec.h",
+      "bytes": 5160,
+      "sha256": "b142974e2f0d97a0d0c3c0697e9bc152bd6de9af7b70a1111b3c883003ed1d47"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/lpp_tran.cpp",
+      "bytes": 54245,
+      "sha256": "d6f5a48ae773f4e63c10ce61c6055c80f645869d4fc592873f6d0850faa7fd1c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/lpp_tran.h",
+      "bytes": 11433,
+      "sha256": "a757ac349801d90c8875ed34766f2f229ae42ec39bded85d478c81c1cc40a0be"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psbitdec.cpp",
+      "bytes": 22026,
+      "sha256": "1511ee509c892c3001702f7c78eabdb457549ec91ad11c70f616f45df1e60f58"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psbitdec.h",
+      "bytes": 5246,
+      "sha256": "99c0ed74015e12110e622c41c36347520dc9f88ac283ea61059620899671e9b1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psdec.cpp",
+      "bytes": 28085,
+      "sha256": "80570a8d79053b8885f16ebc8da394895501f9dac13dd6e2cecff93029a81bc9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psdec.h",
+      "bytes": 14361,
+      "sha256": "b8ec43a870bb936103d0a262fe659a30b1c176fe1857cc2bbcc2ec659f2e1e66"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psdec_drm.cpp",
+      "bytes": 5014,
+      "sha256": "ac066f34b172ab9e1d44e82fe9b79562e70852cf0dbfe769ed37241a1d2dccef"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psdec_drm.h",
+      "bytes": 5086,
+      "sha256": "6b1a083ff0c8c400ae65b13e4b3beccb988a1bcaff516f8303c38d4826aebdc6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/psdecrom_drm.cpp",
+      "bytes": 5007,
+      "sha256": "0bbffd7bec1073ad91a3ed01f7b0bfee7b472f4989d5e9fa657a22acb0ae301a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/pvc_dec.cpp",
+      "bytes": 31424,
+      "sha256": "16e7da1b91153aed9fc801ed6cf6d48cd46f1d8e8be0b33a8404b42c2a8dfcc0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/pvc_dec.h",
+      "bytes": 11590,
+      "sha256": "ceb4dfb9a042bd3c88bfc132eadb7d5d1e7d561159079ca27238f92a2133122f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_deb.cpp",
+      "bytes": 4990,
+      "sha256": "399aa38c909185cc5b95008059b5ffb5858c9fae9859d6ad7e2f1feb791b2e42"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_deb.h",
+      "bytes": 5028,
+      "sha256": "808178bfc5684ab0de50b99f96b315a4892d565f48337f8144418d77248ab253"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_dec.cpp",
+      "bytes": 60315,
+      "sha256": "f16ed6a8b0cce5389a27c972de8369346fbeacac8a5d44eff6257a9f73c8829b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_dec.h",
+      "bytes": 7902,
+      "sha256": "6a74aac7d07e034677abe83b37663ecb62ad354bc557cbc18869972a7e3874bb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_ram.cpp",
+      "bytes": 7623,
+      "sha256": "6640d322d8bc64db62f8770c0c168e97605c1ed05985f62cbb43168cad091dc6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_ram.h",
+      "bytes": 7841,
+      "sha256": "8761cadfb45638c2006d7dcc0d0f9187ef954c72e6fc192d73b479e216f1d6ba"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_rom.cpp",
+      "bytes": 73754,
+      "sha256": "a00bd8b476946f77f8ef35d490664be7470b31507e2cbb2951ac1fb02868157c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbr_rom.h",
+      "bytes": 9375,
+      "sha256": "7e14f31e4c3c2a19ffde1570d8acf40c9a778096fc43d5bbe377e57fcd20154b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbrdec_drc.cpp",
+      "bytes": 18730,
+      "sha256": "06080e31cfd48a32f9287aa75659302e334f1add98b67eea1403480b928e929e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbrdec_drc.h",
+      "bytes": 6289,
+      "sha256": "bf3c3924228cd5718befbfeea10a899ba2d6fe91026d2ba03ea9d67c5e06dd13"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbrdec_freq_sca.cpp",
+      "bytes": 26774,
+      "sha256": "62a2c69525e9caf1cc680501a53ce49feacf87cec78fc9bc415c6bc5648b0148"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbrdec_freq_sca.h",
+      "bytes": 5534,
+      "sha256": "2df026a2e1355ada584d15ef4762ec2e6c7a83034c92d06bec30527d29b2747c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/sbrdecoder.cpp",
+      "bytes": 67981,
+      "sha256": "29d613afdd09e09fc99e26eca6703c5070a5a6a4e5fb7c348efc3925d3447a4a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRdec/src/transcendent.h",
+      "bytes": 14074,
+      "sha256": "ef02bd9e0ed864178ff3612a5b3109ffa5884f72f1506a0cfd625a212eed33f9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/include/sbr_encoder.h",
+      "bytes": 19689,
+      "sha256": "2120f33a16f571f443b677a5ae1fe0dea245cba36a240256bd0e2e7df368c399"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/bit_sbr.cpp",
+      "bytes": 41690,
+      "sha256": "5157872e7f952d2a02b881cf43a7c3d915487fc90f07834e0fe79f782287c3cb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/bit_sbr.h",
+      "bytes": 9579,
+      "sha256": "d74ca616f64752442349e51ce12f5b438578abb43fb7903999254d9f4971848e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/cmondata.h",
+      "bytes": 5791,
+      "sha256": "debc0912f90ebf15fa0607f937d58d3e8f8ebae92916542210e90abec92126b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/code_env.cpp",
+      "bytes": 23994,
+      "sha256": "6520a3577d0b762999cc01153e0faee0e10285afd15192834e0ab6c1f6a59713"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/code_env.h",
+      "bytes": 6653,
+      "sha256": "41fc7532ba983eda9bb94bfb2d63f11243f6cafc5035207ff26e3038bee11858"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/env_bit.cpp",
+      "bytes": 9184,
+      "sha256": "251516c8b169e4024baa0d70de2beee45345cc48468a779fd30c754fa7b3df77"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/env_bit.h",
+      "bytes": 5833,
+      "sha256": "11d9735b9d3cab812d252590ff133c3bf1461c146b3c85eb0f112a5f521082f9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/env_est.cpp",
+      "bytes": 76259,
+      "sha256": "22e2172490599cfc1b93ed95fad7b4030fdd7870756707fdf55ad6d158c363c1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/env_est.h",
+      "bytes": 8961,
+      "sha256": "72dde91b6f47a07f6b32644512363ffe811e58a88a9082807f3c279f0116c0d6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/fram_gen.cpp",
+      "bytes": 71752,
+      "sha256": "83c3654b433eebb5b6d17ad72ec9582f0cbbc4a1fb128be3bda709354fa0af5b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/fram_gen.h",
+      "bytes": 15764,
+      "sha256": "0f02990fe26e339ee1bc77b54a7f899cd676c13bad3eb7f8952b0985d7696abe"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/invf_est.cpp",
+      "bytes": 24347,
+      "sha256": "d652414c7f6ce587c89d6317a581f58ca6b1c964130953c97fb66c622ca8ae09"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/invf_est.h",
+      "bytes": 7333,
+      "sha256": "6e30c208a19ac5131c72981656153eadede44fb3ede9f979a251f3ecbf458060"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/mh_det.cpp",
+      "bytes": 52446,
+      "sha256": "f260f4251c0381deb57b1ba837e797b260e843e18749865a50d5f20842076566"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/mh_det.h",
+      "bytes": 8871,
+      "sha256": "faf901349eb15c1211ffb9ba7ca6837f804d8a5a2ecfe6ad25792d48f8ff838d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/nf_est.cpp",
+      "bytes": 23405,
+      "sha256": "825fe72cf9e1becd96514fb62de7997b83f8c04e4a258196972b8dd9f636fe9b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/nf_est.h",
+      "bytes": 8713,
+      "sha256": "10cb37efcc27e66ce0625fa675bd493bab65514db18e1606f3bc170559b07ba4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_bitenc.cpp",
+      "bytes": 23424,
+      "sha256": "18fb7e5f1aa17bff54f606eeab17f218ff575a9549729c319e27ff15eb18b9d7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_bitenc.h",
+      "bytes": 7015,
+      "sha256": "f49e535416b99b893d969f448e7b2754d639d0d25e842523cb562488c0094290"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_const.h",
+      "bytes": 6229,
+      "sha256": "6b9bc0a620e255d5114e4e805288fcc02b36b088cbf0916618c946c9e830cbd1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_encode.cpp",
+      "bytes": 37647,
+      "sha256": "184de7e0f42fbefe9fc467745ee896b5093f3a037f440acd5351dd499a742a02"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_encode.h",
+      "bytes": 7351,
+      "sha256": "c8818890765adab0774ff0446cc0f1707ca556e6572f326382806a7cde18fe54"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_main.cpp",
+      "bytes": 23501,
+      "sha256": "972e2b7d10e2ca6f5a4655b05efd568750ef142a4e44f5fe450ff510cca689a7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ps_main.h",
+      "bytes": 10703,
+      "sha256": "b6bd704c6541462f41f397863371a0e710aa8d41102c48fcaf2429743eeb8ce4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/resampler.cpp",
+      "bytes": 17538,
+      "sha256": "13f9fc15955cd24c36fd07398f9c5599be89330deec451d6bb882f8c3eae668c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/resampler.h",
+      "bytes": 7142,
+      "sha256": "3ea6daea6b44419f717412f449ef6d6828ce169ae41e3ca10b9150855242c4e1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbr.h",
+      "bytes": 7922,
+      "sha256": "59e95da2f5f44e8165146e7c90e9311ad34ae3c75a0617eeaced79bd512da96f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbr_def.h",
+      "bytes": 9688,
+      "sha256": "32f1cd3f03e7f4b442f3e725963188080b8ab19355fe8881b8645b5eeeca03b5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbr_encoder.cpp",
+      "bytes": 95215,
+      "sha256": "4ce16274ea138bacd56934963d0ff9cede42f626c9fd4654bedea2a73159828c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbr_misc.cpp",
+      "bytes": 9464,
+      "sha256": "ea1952b6664b72c252bda32e175ec42d466a83c8959a063609012bf1e481e681"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbr_misc.h",
+      "bytes": 5693,
+      "sha256": "96ad4f39f7daaf1350e213dbc33942d9484cc667987dd858251b54e958a94283"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_freq_sca.cpp",
+      "bytes": 23081,
+      "sha256": "1746ed99f8eeb409c4c68023f783cdc35766e6b7d7087febe29fcc42c9b20e88"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_freq_sca.h",
+      "bytes": 5970,
+      "sha256": "2e6385239ff7088af51e584e325ef2322f85528d7e3e2d9adf79c3497bcdc373"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_ram.cpp",
+      "bytes": 9833,
+      "sha256": "23272906f12bbd3a6745f75d4345dd97f19eed4da113db8f9a47a70e966abfe5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_ram.h",
+      "bytes": 8080,
+      "sha256": "edb3cc2093d4b63f37be4a0f339ec3bee44e11120ab34fedfa0c6ed737d56d67"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_rom.cpp",
+      "bytes": 43243,
+      "sha256": "412428b24a12b88e4629a0e60e032e597f26bbdae9acab740af260a32378500c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/sbrenc_rom.h",
+      "bytes": 6229,
+      "sha256": "421999717dc3b2d5d00faf37d5aa79903bd705e5ec2e1d9a7cc348393f884ad8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ton_corr.cpp",
+      "bytes": 33993,
+      "sha256": "fab32a242d59c525aec5fa172b6da50ca34deeb17813fcf637583859a144e1eb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/ton_corr.h",
+      "bytes": 12734,
+      "sha256": "27ee2f4f4cba9996cb02d4b4aca8e135cc74823c739209d176ae6abe32ed91be"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/tran_det.cpp",
+      "bytes": 42850,
+      "sha256": "fe7d9e3e626440f1efa952d19390c6c2d7c79b61053d8d164aab440b33242101"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSBRenc/src/tran_det.h",
+      "bytes": 8217,
+      "sha256": "10acdd43fab8ad277e0e35a252fda93e5f82c923fcb28985c88914ee70d1f3f1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/include/FDK_audio.h",
+      "bytes": 34698,
+      "sha256": "cf72c0ccaf8ff14d6f339e8f453c3e654a46e58977f7c533500454db0304709d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/include/genericStds.h",
+      "bytes": 26004,
+      "sha256": "1d9ce3d0183ca3dbf6b60e38d066d9edd80ea291bacc9a7c174088d40bb4e9f6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/include/machine_type.h",
+      "bytes": 14534,
+      "sha256": "bc62f70b1bb657118c2ba37c1ff45adfda932ed62993db2b5ae9fdb3a0560899"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/include/syslib_channelMapDescr.h",
+      "bytes": 8615,
+      "sha256": "6d5777f8fb870eea8006282c60b3b90981b97267db63d9ff7b1a12829cc9efed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/src/genericStds.cpp",
+      "bytes": 14216,
+      "sha256": "109cb16997bbc173cf3131c35e788d7bcdfbc54183f2def17a0b6870b69bdd33"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/libSYS/src/syslib_channelMapDescr.cpp",
+      "bytes": 12224,
+      "sha256": "c166dd1d7f94ef1ba59f7ee4938a1db6571d9824522138fa98a2bf0ceec0855e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/sha1.c",
+      "bytes": 12195,
+      "sha256": "e461dfe1ea7232f859a6726d5fdd419d1c59d174e9966433533de52d9e99f49e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/sha1.h",
+      "bytes": 2971,
+      "sha256": "b4bdae9fd13faa2a755e8c470e67e4df3e810a8d739cc706fd7be14b8dc8c54a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/test/ref-mono.txt",
+      "bytes": 110,
+      "sha256": "a27da93d78efc2b65f9799755324a367127223c2eaca9b7f33bb2356d09840f0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/test/ref-stereo.txt",
+      "bytes": 110,
+      "sha256": "a0485723ace6dce757b461268106e64d50768a195e3079b1d5becc828380c637"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/test/run-test.sh",
+      "bytes": 813,
+      "sha256": "857ae798f400ddf2efaede24ad35a7a10b7a10bc727ec0a5239ac3a51ce73729"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/test-encode-decode.c",
+      "bytes": 12121,
+      "sha256": "dcf62a51e3ec8a663ed321532c05673761f6dac2381217985044299ae7d6f9ca"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacDecBenchmark/AacDecBenchmark.cpp",
+      "bytes": 14044,
+      "sha256": "216c5d2a1a8bcb013df659d33a9e480d8cba4dbae2726df0bbef2a3b886804b1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacDecBenchmark/Android.bp",
+      "bytes": 1095,
+      "sha256": "4a73b5459163e4fa05d9bd9cffa669612bbe4c47d99d75bc6d440baa75f5081a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacDecBenchmark/AndroidTest.xml",
+      "bytes": 2220,
+      "sha256": "357dd555c4909711d15250d42819af4ec3333c25c84193a6b073e93ce438b6e4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacDecBenchmark/DynamicConfig.xml",
+      "bytes": 859,
+      "sha256": "b12c87b030793ae855cb0ea8c57a699846c0341bd8be4cff66d2a5928a4882dc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacDecBenchmark/README.md",
+      "bytes": 4190,
+      "sha256": "dca8149771a1e955a0aa27e5ba5be8dc0100968dd75d39b4c6180252277aff98"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacEncBenchmark/AacEncBenchmark.cpp",
+      "bytes": 14623,
+      "sha256": "9e19992260dbf355d11f90e4828d46e4396e4e4c3b6a8c7e9e39bd1ed8b771c1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacEncBenchmark/Android.bp",
+      "bytes": 1095,
+      "sha256": "8c8cb7796dfa8caeda8667af99ca4d2162936b4f6d300e92934f29bb32ddfb3f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacEncBenchmark/AndroidTest.xml",
+      "bytes": 2220,
+      "sha256": "cc50ea848a2c8fa1ee43bf98628388ed04e000d87566e71a7b5c915031b36fc5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacEncBenchmark/DynamicConfig.xml",
+      "bytes": 859,
+      "sha256": "0063887a94ac174cd56c52e233b6b42e46f475ce04a05249a12548af9fd7f0eb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/tests/AacEncBenchmark/README.md",
+      "bytes": 4274,
+      "sha256": "29bc630833217ec94438a4f591415b75847fbe06ba76ec4cc1514a8e61078179"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/wavreader.c",
+      "bytes": 4999,
+      "sha256": "021b30a6c7d9d03515f5f408c210a5456a67f581617c470d722b1c4d667b20c5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/wavreader.h",
+      "bytes": 1175,
+      "sha256": "dfdc5dbc644c9c0aa937e9769a576f11891e592c585e0b8b6610ba8b41fc8f45"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/fdk-aac/win32/getopt.h",
+      "bytes": 29754,
+      "sha256": "54c2391db1a54e791c62995f1007e8e21d3bf355ecbdb06154a47a61d88983eb"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/CMakeLists.txt",
+      "bytes": 1868,
+      "sha256": "731bf67845af65ab77049115904cc2819dcbb493423fdabe7f8edf34c557ba60"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/LICENSE",
+      "bytes": 11558,
+      "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/README.md",
+      "bytes": 2456,
+      "sha256": "f54e2fff72fbfc3a924ded8ae5f6230bc760f516de2fb8c4d5946cfd358741ec"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/Android.bp",
+      "bytes": 898,
+      "sha256": "90c992cbd2dcfda05b8cd4811d93917e85342c9103f29730e453f1b97a8aad73"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/LICENSE",
+      "bytes": 11558,
+      "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/MODULE_LICENSE_APACHE2",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/NOTICE",
+      "bytes": 247,
+      "sha256": "b25eaeeb60914f05b14e04bfe3a180a17bcf6d7a5fffdc8e58fa7051cee90e90"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/abr/inc/ldacBT_abr.h",
+      "bytes": 7480,
+      "sha256": "873e2361f863f29c6e281c50c2c851986ad1e77980b9153bae8b7c1458fb295e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/abr/src/ldacBT_abr.c",
+      "bytes": 14197,
+      "sha256": "d06b7b3cbf88c65bb7ded41db08b88161b46265a96ef9a4851a904b810759fc4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/inc/ldacBT.h",
+      "bytes": 23494,
+      "sha256": "3ed5b68473241bb35b705179a4f8c03db036a6d5fe061b157dab7c4d3e6438e2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/bitalloc_ldac.c",
+      "bytes": 23386,
+      "sha256": "e98519c3390403c9656b65a1f5d034018d657900f79eb8bf8760a0655d162896"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/bitalloc_sub_ldac.c",
+      "bytes": 10748,
+      "sha256": "8701d24dd9f7dab9a90fda1baef7a551dcc33e3ff828e6262406611cab79f3cd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/encode_ldac.c",
+      "bytes": 7056,
+      "sha256": "57bf4e9f9b1fb4f03fe7f80f017cccce81a9a0f8152226f299d5f3086d744f90"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/fixp_ldac.h",
+      "bytes": 2352,
+      "sha256": "0d6cef2f335f8aae61748df503b2a738797b26a746c8e34b0585760cf2158265"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/func_fixp_ldac.c",
+      "bytes": 2231,
+      "sha256": "5eb3e9153f3258806f70909d1250da0f74ecbd8dfab43e766be061323d072aed"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldac.h",
+      "bytes": 8234,
+      "sha256": "01391453252af526edd002c236fc23aacb5817bc297906c684e946bbf8485401"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldacBT.c",
+      "bytes": 709,
+      "sha256": "6b9e9920be3968fd7ebdd1ce1ed3676532cfcfb6128f8d4ba4a28d29deaa31c8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldacBT_api.c",
+      "bytes": 23098,
+      "sha256": "48c79f1b1d28c075f6923d61a02b5f6569857d1ae9757233828d0858be03cc3d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldacBT_ex.h",
+      "bytes": 1041,
+      "sha256": "dcf24cefad571495ea2c6be47952abf0efc73e12deaee03431b68b0a0cad6fb0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldacBT_internal.c",
+      "bytes": 18559,
+      "sha256": "062596ce7d9ff2d9112b88b55aecd3c9de08892204bb2bed39b67595c765d321"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldacBT_internal.h",
+      "bytes": 7263,
+      "sha256": "14fafb987930aefc2537f291ab6ee11c703e76bc1099931398c134cd4f71d34c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldaclib.c",
+      "bytes": 1397,
+      "sha256": "61837723b01712d035d2521f8fc2c6469f2f294f377a4cb9760aa995ee62c604"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldaclib.h",
+      "bytes": 6947,
+      "sha256": "066a84876055d83e064bf45c1f877ff47371b906da081dbccf106fe45bb32c70"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/ldaclib_api.c",
+      "bytes": 24832,
+      "sha256": "cd322c4c9061f4437f292bce3e9c7fdc8c7f3e4959725d9ec602a41abc6bf5e9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/mdct_fixp_ldac.c",
+      "bytes": 4883,
+      "sha256": "c2343524397cfdf084aabb3e7c4ad2aaca64788572df373f767ed73bdc87bce6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/mdct_ldac.c",
+      "bytes": 3492,
+      "sha256": "b7108c3353858373f933fb0223fd2c0e9c4a751b186cdd3893a30226ee5991fd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/memory_ldac.c",
+      "bytes": 1648,
+      "sha256": "a382d9046d0f13f93e9a8f92d2c77091002256d5650f25e106433cbf137a824f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/pack_ldac.c",
+      "bytes": 15206,
+      "sha256": "013b3c9e814e85722afef3b2a1878b42adc4f5c5760a92f1e68731ef67420065"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/proto_ldac.h",
+      "bytes": 2243,
+      "sha256": "6bf302cc5b117a265dacc87463d097be5bb452e67c0fe7efde4c65824bac7e6a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/quant_fixp_ldac.c",
+      "bytes": 5620,
+      "sha256": "6b3badf0974e34f0b746f70a76ae0f290ed7de1f77a14b3ed08e730943884df1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/quant_ldac.c",
+      "bytes": 5251,
+      "sha256": "8138b5f8700fac655ffb5074db6f63a4349abdbd1693572671c04c3598514818"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/setpcm_fixp_ldac.c",
+      "bytes": 4145,
+      "sha256": "0294c3712e8f191473eaeaa2961b9ffd310a47ff3aef9b9bfbdc572519868616"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/setpcm_ldac.c",
+      "bytes": 5137,
+      "sha256": "a3345a96aaa5715feded2e0e76c14b9750b9060467f7de342ee85e18d08ce973"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/sigana_fixp_ldac.c",
+      "bytes": 11296,
+      "sha256": "d5a47fd932241b061accca7e6f6b96128dc85a6abb839550d95b94a671f501ce"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/sigana_ldac.c",
+      "bytes": 5286,
+      "sha256": "936910436e1fbe71dd18d5a688a9abb303fe83ea66c3fb01ebfbe4c14a280a0f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/struct_ldac.h",
+      "bytes": 3134,
+      "sha256": "9be6701ef6c522a3d503fe9a5c6680f98e4c2e5b3864cc232922444a8f1d1798"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/tables_ldac.c",
+      "bytes": 21840,
+      "sha256": "39c6977be7f76985892face51a1bcf7c45bf7a8870851d3954c1e7328d209d99"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/tables_sigproc_fixp_ldac.c",
+      "bytes": 21249,
+      "sha256": "88544b93e9f876e03f562d64091d5a9fd0b5f3cfe0ba1c717c54bb5f644e40c8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/libldac/src/tables_sigproc_ldac.c",
+      "bytes": 36684,
+      "sha256": "bc85f80fafb79bf9a2a0d6d43be0949e543d58d8a8f82cd4ae153e95b067e909"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/pkgconfig/CMakeLists.txt",
+      "bytes": 568,
+      "sha256": "c97a624488459b48bdb0d38b37c31c84bb0c8365d069c8a35c863d34ce91527d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/pkgconfig/ldacBT-abr.pc.in",
+      "bytes": 267,
+      "sha256": "a92143325e9c93a289ac8e3fe8e07c16d1d5ae0b9e2bced4fe7e7873637b3e09"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/ldacBT/pkgconfig/ldacBT-enc.pc.in",
+      "bytes": 254,
+      "sha256": "738dbb075f97dca789fde2ced469fdfa9930c93ad6f02e98e3424b3998203430"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/Android.bp",
+      "bytes": 1240,
+      "sha256": "b9b1905d53b60ba2156bf20992c3d73bdb70648b23ce9089146dca943e6f92b3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/Cargo.lock",
+      "bytes": 2843,
+      "sha256": "2f557c9894796cde697a6bacdc07cf3e5e159d50e1b73a51111f4baf113387c7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/Cargo.toml",
+      "bytes": 1435,
+      "sha256": "603bcba398b86b86065db9d3dcf9633bdbacec5eec47d6b13b5bb6adc2541f3f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/generate.bash",
+      "bytes": 195,
+      "sha256": "49e877326b2356a3cd95b86a84b485f38459373e644d2082f0c01c69dda11a93"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/include/lhdcv5BT.h",
+      "bytes": 1906,
+      "sha256": "c49c03f8c67b01c5ec127497f3697b6c09f5c28b8d03ae08b48ed3a4636e94d9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/include/lhdcv5_api.h",
+      "bytes": 6455,
+      "sha256": "f3c593e7c364b617349353d821e891e49578ecd18a34e5ffea0cb9ffa5e1d713"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/include/log/log.h",
+      "bytes": 504,
+      "sha256": "bf442541b5403cf8206184c5585641d881a317dd7a5cf5563c0bb8d33142104f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/arith/ring_buf.rs",
+      "bytes": 1670,
+      "sha256": "bd0c3856349dc70d012901d4e6596d63ba304a0fcf9f3b32c1bc9cc73fc24b23"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/arith.rs",
+      "bytes": 7278,
+      "sha256": "ae88ed0efb33c4f2aea186f20f23a1084b7a6fc86a7a6aa3c9b61df3074a9aa0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/bits/mod.rs",
+      "bytes": 17,
+      "sha256": "53ed5b15d3d4da8640c0088c462edecfd178e88fd59f4e5d0e7b3904b0aebd6c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/bits/output.rs",
+      "bytes": 4998,
+      "sha256": "5269026ce9e8921f11f225fc469d3a7110bf70e9226fbec3845904e2aa54cd2f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/common/lhdc_level.rs",
+      "bytes": 4792,
+      "sha256": "e87a47e09179e9ace138e093282d211a8341c8e3cd8d7e8f26ba5bed8a0f4217"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/enc/context.rs",
+      "bytes": 4253,
+      "sha256": "2ea9ce03c9703f161fbce91901696f92479f803250d64db06131af44c164a058"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/enc/mod.rs",
+      "bytes": 36,
+      "sha256": "7e1a0c762674a38e3f99cef5b2f7eb89af6755be1d2c327382cb5e7778f7239a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/enc/process/tables.rs",
+      "bytes": 5160,
+      "sha256": "8be16b62a5d80c3b2eed0a915c75b4be8bdd47490352cd569277a68d30866bdd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/enc/process.rs",
+      "bytes": 54767,
+      "sha256": "e00d20aa35e4429832b5dbee51cd4c57849a85bb0d18002f3cb64f4d8fa1a81e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/ffi.rs",
+      "bytes": 10428,
+      "sha256": "cd461fc5277418af679acce8a6619228eb4161bd4b5bfc19f891ccb9025cb69d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/kiss_fft.rs",
+      "bytes": 22483,
+      "sha256": "6baca72ae97d83d69ee3bbbbe3177d7522fb8063e49579db935e14f96c5c214d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_api/cirbuf.rs",
+      "bytes": 3527,
+      "sha256": "5c125f1ce75e926b045e0ed8a576337b7e414be2cb5056edd3e0cc29fe58c7d9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_api/lhdc_api_internal.rs",
+      "bytes": 31684,
+      "sha256": "cf663e003df0a67ff281acf1617a3665ec28556e5d1360c449f923483dc97216"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_api.rs",
+      "bytes": 13461,
+      "sha256": "7457bbf6bbd677ef9380970eb6302c563304f6b2d953da10b0df95f9c5b47fab"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_enc/lhdc_enc_freq_process.rs",
+      "bytes": 12047,
+      "sha256": "6d8e56fe42e346a03a9adba2f9dc53fd73ff9f098841c33cd13689c268e00f14"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_enc/lhdc_enc_header.rs",
+      "bytes": 11304,
+      "sha256": "86f339cc6c6394e3f0f26fc7b1e3138e39f177b397238a892c36a8c1e4bd9eb8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdc_enc/lhdc_enc_workspace.rs",
+      "bytes": 8780,
+      "sha256": "2e574952d63ed594bbeb9ef29013c482fc4d5fe1ce749948e5a4122bf5d882fc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lhdcv5BT_enc.c",
+      "bytes": 29244,
+      "sha256": "4586093937cb69357ad3b38e963e49a77488d2edeeba5ea94eac240bfc633f57"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/lib.rs",
+      "bytes": 1322,
+      "sha256": "6b0d5f04e57ddd03f291deaae417f0d652339fb85967aee2f7b987e3380f0a68"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/math.rs",
+      "bytes": 3413,
+      "sha256": "fde35c41625c31255a1ac6ef05f883ee347055e452dc7815dfaba80a8db3a22c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/3rd-party/lhdcv5/src/rt.rs",
+      "bytes": 1453,
+      "sha256": "1070443145ef730a2da3d6f6ae0a3519e7fa4884752f1303a9a06305b31aed2a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/CMakeLists.txt",
+      "bytes": 13577,
+      "sha256": "492c0f8a714d35dfc97545c7e5ff68b5fb6ce65af2123d6caeafb9808c4f4b3c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/CONTRIBUTING.md",
+      "bytes": 841,
+      "sha256": "34d2ea1dde591d2f263d3e0a5622b30f8ffa2dd3b7240fd62430224cf5e6c798"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/LICENSE-EXCEPTIONS.md",
+      "bytes": 1574,
+      "sha256": "cb243e38a11a9b6104d3923607b417c2194c613b303fef977e77bc2e1be21244"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/LICENSE.txt",
+      "bytes": 35823,
+      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/README.md",
+      "bytes": 10656,
+      "sha256": "d1fdc961525df1e1ed118a5f38df2be19f391560db6146fade2a9b037c34bb38"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/aac-eld-apple.md",
+      "bytes": 13860,
+      "sha256": "88f5ecc3515c9bea63da589de8189dc80ef10a9b6bf0d301bb9bd6c9f3b14f8a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/__pycache__/extract_uf2.cpython-314.pyc",
+      "bytes": 3086,
+      "sha256": "77644c92f1fbebc15030b501e7a228ddbd9df3e2595ea3ec3768d7129094b8bc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/dev/ghidra-functions.tsv",
+      "bytes": 131737,
+      "sha256": "6558e1ece78eba585fff2d49c1dbc7f2088f7ee889a49d7bb05a2230317879ee"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/dev/ghidra-strings.tsv",
+      "bytes": 134509,
+      "sha256": "d6c5d4453bcbc4d0a36b843598c6bd42f031e66406507241a0caf80b06c64c23"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/dev/key-decompilations.c",
+      "bytes": 35845,
+      "sha256": "91b34a5afe437996c7e4b3e83c5a13defa5956fb546bdf05f08cf70f2ce4ec0c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/prod/ghidra-functions.tsv",
+      "bytes": 131737,
+      "sha256": "6558e1ece78eba585fff2d49c1dbc7f2088f7ee889a49d7bb05a2230317879ee"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/prod/ghidra-strings.tsv",
+      "bytes": 134437,
+      "sha256": "62d253dcd67c8cc91029c0dee2ea46f2f2477e9d8154a9ae65903c9eddb8eb68"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/bl616/prod/key-decompilations.c",
+      "bytes": 35845,
+      "sha256": "3a1325211ab93ae00cd32a9b4dda8547b2697b3581c3e7971626f1ea2d4119f8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/extract_uf2.py",
+      "bytes": 1415,
+      "sha256": "fd1d3e86d248809659583ca78b85758a2dea94eb513efc781acdae58503b6e47"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/ghidra/ExportBl616Report.java",
+      "bytes": 3707,
+      "sha256": "453739faf24a5c9bed7c1c711fe9a5fafe344a1f130e94756fae1cd6cae67122"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/ghidra/ExportPicoReport.java",
+      "bytes": 3997,
+      "sha256": "8f836ce5dd7c5fa46bbed0565512a9c7c3c35406b8429dc474bc691e7f5d7996"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-dev/ghidra-functions.tsv",
+      "bytes": 56677,
+      "sha256": "5a1bc5274b6eb3ec2f1c1050804359e52a7036fb5fe4d5632965a8d82af204c0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-dev/ghidra-report.txt",
+      "bytes": 203777,
+      "sha256": "93b96c12a6e6fb29e36ba73ddc9408917061bd5ec8d2c0e90a4cc5ced427ca0c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-dev/ghidra-strings.tsv",
+      "bytes": 85056,
+      "sha256": "13572b40f5341699c5ef55ff1705556950f7b266e1dab2906461a651b86888e7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-dev/key-decompilations.c",
+      "bytes": 40944,
+      "sha256": "526eac954ed534c2aa9150713f28ceeddca8d4e73e0d7570d7477125ecfcfce1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-prod/ghidra-functions.tsv",
+      "bytes": 56699,
+      "sha256": "af7623fe51bb5fe2a7dbe07567ca77faa5c19c7455eddea112d6423ea24ac434"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-prod/ghidra-report.txt",
+      "bytes": 203833,
+      "sha256": "0b49b32afdb9464dea2c62320f5d3614a881b82cebb9e7227b654b262630746c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-prod/ghidra-strings.tsv",
+      "bytes": 85081,
+      "sha256": "6746ac25042f788c276ce6f7c9c47422643a6090569f38f324ebf2b5142fd283"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/analysis/pico2w/full-prod/key-decompilations.c",
+      "bytes": 40944,
+      "sha256": "322c72c4f81df7606d1e64491abcb42cb35d4072c590d91e20135ea64f715825"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/btstack_config.h",
+      "bytes": 4641,
+      "sha256": "a8d069bc3da57a50fffb52ecae19f30a13cec48c27830d5b94e963f352adf017"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/docs/AACP_PROTOCOL_AUDIT.md",
+      "bytes": 5613,
+      "sha256": "f14fd04e8b9cdda4af5922244404c6b954738aea8ec1fc8b2d1704fc5f4806cc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/docs/PICO2W_ANALYSIS.md",
+      "bytes": 7666,
+      "sha256": "102fb8de69d6c31d9fe778fd5c601b5d0fec272908e9f471cdf86ec027209155"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/docs/REVIEW.md",
+      "bytes": 4766,
+      "sha256": "a49b93084677d8ca1a208d901033f27e8d68c1a450248fbda8bd0e84eac2452f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/docs/SESSION_HANDOFF.md",
+      "bytes": 14201,
+      "sha256": "20f945128ce0ac1742aa5b38028118474687a0ff0770a3b218db922996226b99"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/logo.jpg",
+      "bytes": 491906,
+      "sha256": "006e988e795d960765f2acfe4d72cdfebc129fa5b6206c09a10f61f507d63f84"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/pico_sdk_import.cmake",
+      "bytes": 6143,
+      "sha256": "e6194a1eaee7ecbf801e5b961c6565390224e03e23f1717f7fc17445d4967370"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/README.md",
+      "bytes": 2937,
+      "sha256": "a65f2753133a291b7643668ef0c4276132a51c32b3cf3368ac9de37724258b56"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/btstack/btstack_aap.c",
+      "bytes": 16899,
+      "sha256": "fdfa57067bf368cd2de26fc7bc1cc029e206af9b27ddb215adc5ba46a5a339d3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/btstack/btstack_sink_relay.c",
+      "bytes": 21701,
+      "sha256": "6b41cfcf8ef661db3b781203c15170d9e39ac92530e942cb027f1b9b5a0e16fd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/full.cmake",
+      "bytes": 763,
+      "sha256": "041a44956a55a440e3d2cb7ba1a289136902e2ef03a0b262d1fec9f6807315b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/license.c",
+      "bytes": 1943,
+      "sha256": "7a690916fadfb4c07ca7751ac5de919e81794631e8d40d2227236bc7ceec4a50"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/license.h",
+      "bytes": 1873,
+      "sha256": "6c77306796465d723f425944fcbebde62901e492aed0ddbfe35c2a88a884d1ad"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/private/webhid_cmd.c",
+      "bytes": 23189,
+      "sha256": "3db42d384aab718568a28ba378dcd9529f227e6e7d2932078d8c55f4434667b4"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/sdk-patches/README.md",
+      "bytes": 3072,
+      "sha256": "8f5dc34744bbb8b154e55b88fa315d3950f3e70cbc36f9f93bf7c5dca346569e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/sdk-patches/btstack-usbpods.patch",
+      "bytes": 11249,
+      "sha256": "f8ffd578da37da2e23b446684749ad4faf71202ccfed4b01f45de2955d9f78de"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/sdk-patches/tinyusb-usbpods.patch",
+      "bytes": 783,
+      "sha256": "154759bf790e2cd0ff6b8b364d3c59f63b868a8b1343695fe45c46686146481a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/boards/usbpods_universal.h",
+      "bytes": 2754,
+      "sha256": "4ef1513d90336114bd283bb52f4f884487798c99efab6c2cc3e4217b9bf42408"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/boards/waveshare_rp2350b_plus_w.h",
+      "bytes": 4395,
+      "sha256": "5b69ff0da54ea3771bc873c7a92c5457d2796fc7ec6262903497cc124c9df74a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/LICENSE.txt",
+      "bytes": 1759,
+      "sha256": "8f056ee4b0bbcf0a47775a5c754b5a9c7b0fe2dd65f06de2d52cc0847f3aa9ce"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/a2dp_engine.h",
+      "bytes": 4951,
+      "sha256": "0026e9bbc7da9f38d3c9c161f08e9596c33dc941701cb79de7e7bb1d09a56639"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/aosp/a2dp_vendor_ldac_constants.h",
+      "bytes": 2243,
+      "sha256": "5c66ac37abf746dbbf411282dccfb4b59e488cac8a8f4626d303b3fe1411e49d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_aap.h",
+      "bytes": 1917,
+      "sha256": "129f43bf12903b8fe82a65f763a6a5da6e88d9dea9770a16a0ca76c1de375669"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_avdtp_source.c",
+      "bytes": 231517,
+      "sha256": "72b8a87ded33ac950d9f665c84c90fc2b0b04c81ef52913a81125a0b92da6352"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_avdtp_source.h",
+      "bytes": 5475,
+      "sha256": "1c477cc84ed31d6ce18969a8919a33ad122149c3048487992ae0ca763498d39a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_hci.c",
+      "bytes": 30868,
+      "sha256": "6815fcec0e8e48a0fa95e60d8c2307ef54df840db787d925f0d89e8b6b4d673f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_hci.h",
+      "bytes": 831,
+      "sha256": "6da5f2f8e96a4b84f4dcf753c83a544a46efee776d29252035535258b424375f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_hfp_battery.c",
+      "bytes": 21381,
+      "sha256": "fbbe8216985f7e576965be0005ff34d139e41bee937fca78aeaaa85dfbe44891"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_hfp_battery.h",
+      "bytes": 1370,
+      "sha256": "846d7b4941d67e2de35e27bdd07c1542580871dd2bf25fb0e8849192e6d3af54"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/btstack_sink_relay.h",
+      "bytes": 2546,
+      "sha256": "453f68ad9b35d923a36506efc27473ecc96d052f9267470592f4b3db6fd931bf"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec.h",
+      "bytes": 5054,
+      "sha256": "7256f75a890c8f2cf7965084f777744b297ea1d8b234c35625cdbacfac4853f9"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_aac.c",
+      "bytes": 21893,
+      "sha256": "4640b9dc2ab47688ae7f15bf17305930e859b96ad875b5cfd87dd47853fc3aac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_aaceld.c",
+      "bytes": 6583,
+      "sha256": "359096418d104f345e57249a8dee5f72169221a33c9345f32c1aba4b6c2867b0"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_fdk.h",
+      "bytes": 713,
+      "sha256": "be6e9d6f440b816d641539c4b09a2be6ffbb9b2b4f2f98a5a528a2e247e51961"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_ldac.c",
+      "bytes": 14870,
+      "sha256": "d8ac90c566e904c9ae9270f5f815278ee21d97a6d07036f2c5499651ff1d952f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_lhdc.c",
+      "bytes": 15804,
+      "sha256": "03499377a9ded7c376e5585cb2ba7c1ad7477747b3624157b028fd395fc74466"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_registry.c",
+      "bytes": 1267,
+      "sha256": "3051dbbc8df2aa6963219eaca16fa6d25707659ffef0ba211a000b951250f4d2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/btstack/codec/codec_sbc.c",
+      "bytes": 15239,
+      "sha256": "c0ea4f766ebf773bbb6695af21d166a9e0e5138d85d8970e7fc2b9ae4809d165"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/console.c",
+      "bytes": 20338,
+      "sha256": "5f344e52eaa05b3de914a6359b084f31147c2acfbd5e2a79a8bfe2bb71dc7be5"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/console.h",
+      "bytes": 666,
+      "sha256": "871c6202a824ea6dd587c0de5e3a8c782be6c5a7221dd624a390878ab51a5192"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/lite_stubs.c",
+      "bytes": 4209,
+      "sha256": "ce7d5c44ac4ca25633d2ad18cbb472d7262bd190a3f6ffda5714823db3bbb39b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/main.c",
+      "bytes": 32704,
+      "sha256": "f322434c87857884eb9169aa9b06a3e71d85bdbab1d5dfceca79fc15725569ba"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/memmap_bigstack.ld",
+      "bytes": 9692,
+      "sha256": "e17d9d005a12b45b99f6f70fe10f011be71a78f6795e3fabb2a555652f2b7a6d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/pico_w_led.c",
+      "bytes": 4394,
+      "sha256": "88422babef1c5839e2276b037ca7968732e36b0439ce6185ee273cee4427b536"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/pico_w_led.h",
+      "bytes": 1274,
+      "sha256": "e057691960bd2fbc3b257bb1d5dddcbc7560959aa1beab7221254b0c543a2e73"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/resamp44.c",
+      "bytes": 1664,
+      "sha256": "bffd5b69813f86df97cfe8058ad4b3a5346050535c393818607b65632e9c1765"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/resamp44.h",
+      "bytes": 1595,
+      "sha256": "77caf30d2f8dcd7c5d2e04774722bcbbfc9cf50e3e316b4a06aaa7df3101cde1"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/resamp44_taps.h",
+      "bytes": 13408,
+      "sha256": "0782dc6e90ee744890f36b84cd21fbca1cbe2eab32101f5056541c766df2b78e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/settings.c",
+      "bytes": 15063,
+      "sha256": "754a2df4319ff44fee19e3a7291be9f7332de45e78c8761d48d751073f1ef0a2"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/settings.h",
+      "bytes": 11480,
+      "sha256": "2cd7112524a6d922619d75d5a891066e5e981e2ce586f4dac359fa0b62a2a02f"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/uac.c",
+      "bytes": 42083,
+      "sha256": "acaf4ddb82fbaa3984f41173254d84920f9769d2edd24173318ad251e61055b6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/uac.h",
+      "bytes": 1075,
+      "sha256": "df1e7e03fad54baf858dff1564c40409e174be983961fe05c8de5c2227dce46e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/uac1_descriptors.h",
+      "bytes": 3930,
+      "sha256": "2c42df5517bddc9b598738ae4ed9c53b836eba3353e4002ff94a1fe750e027fc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/uac1_device.c",
+      "bytes": 14056,
+      "sha256": "5ad2bf7893beb0f49a07914a85839a39aabee1515e20a0e29eb4ca91a789b1db"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/usb_descriptors.c",
+      "bytes": 22593,
+      "sha256": "3540670aa5b31a623e48cd5b149bfcbb6441abb0ee22cdebae46afc5a02c501a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/usb_descriptors.h",
+      "bytes": 6323,
+      "sha256": "d8db2e09b39ec1fcb4e93bfdbf597de41ab22f25d76128b507c5477b1f7daabd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/tinyusb/usb_serial.c",
+      "bytes": 6968,
+      "sha256": "9a4d1ea3047123eae8c760e884375ff456ab22e91d0d35ab1c81cdb9b856517b"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/src/version.h",
+      "bytes": 966,
+      "sha256": "7f1d4b7d208ab3798f3ede3fc513fd80b0e69939ce21c39b115b2ce31e5296ac"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "USBPods-Pico2W/tusb_config.h",
+      "bytes": 9602,
+      "sha256": "82867efee43209a360236528c48e8eb55c671069cdac0e917906b29cf970134e"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "artifacts/USBPods_Pico2W_Full_final.uf2",
+      "bytes": 3616256,
+      "sha256": "268fd8a03e0fb74c2690bda5a3588bff64df279fbdc7f47adc0e9bf064de5dbe"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "artifacts/USBPods_Pico2W_Full_safety.uf2",
+      "bytes": 3615232,
+      "sha256": "ed433541c2c569a207bfd479b1a413fd6ba57e7664c90bf1713301e990802cfd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "docs/ARTIFACT_INVENTORY.md",
+      "bytes": 6246,
+      "sha256": "76d32347a255bed9c51a95d955d456b744a7748756a3621ec1bc0c4f3bd320c3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "docs/FINDINGS.md",
+      "bytes": 4175,
+      "sha256": "4513745ce0c6174b9f7326e6b0f99fa72b42d0273582b6724eb3eab44048badc"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "docs/HANDOFF.md",
+      "bytes": 21471,
+      "sha256": "b3f9adddd751e0aa75d3068283555166cdeddbffd52727de67ddadd77a326ce8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "docs/TRANSFER_BUNDLE.md",
+      "bytes": 4027,
+      "sha256": "1ea1a43d1ad53895096094ca89bc43574287f6628a3b38b95fc4f28bbc8d65ef"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/MANIFEST.sha256",
+      "bytes": 1582,
+      "sha256": "e3b0e474ad4354b66ae9f03b7c54eef41766e7aca7a281c3035111cb5336314d"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-dev/USBPods_BL616.bin",
+      "bytes": 1904048,
+      "sha256": "0625e2e416cf347cbd45e582e0d640da496e1572c665046688e93f2dff3d72d8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-dev/boot2.bin",
+      "bytes": 52576,
+      "sha256": "92a329c660e23f1b488a21779cebb6d5fe0ae61fd25dc00d3df7e4334192ace6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-dev/latest.json",
+      "bytes": 26,
+      "sha256": "01d3257490007e44c89760b74ac8b1c38ea521d2fae76d62bd908de8f8fda731"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-dev/partition.bin",
+      "bytes": 308,
+      "sha256": "b35581bd80a9c64cc02aa13417f11e05d7c93d53bc45c22749e6e4da3587b7e8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-dev.bin",
+      "bytes": 1904048,
+      "sha256": "0625e2e416cf347cbd45e582e0d640da496e1572c665046688e93f2dff3d72d8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-latest/USBPods_BL616.bin",
+      "bytes": 1904064,
+      "sha256": "ce1c351cbdb147f7a642eb1ea9460482577b8acfff7fb6dd5854d3e1136fce6a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-latest/boot2.bin",
+      "bytes": 52576,
+      "sha256": "92a329c660e23f1b488a21779cebb6d5fe0ae61fd25dc00d3df7e4334192ace6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-latest/latest.json",
+      "bytes": 26,
+      "sha256": "01d3257490007e44c89760b74ac8b1c38ea521d2fae76d62bd908de8f8fda731"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-latest/partition.bin",
+      "bytes": 308,
+      "sha256": "b35581bd80a9c64cc02aa13417f11e05d7c93d53bc45c22749e6e4da3587b7e8"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/bl616-prod.bin",
+      "bytes": 1904064,
+      "sha256": "ce1c351cbdb147f7a642eb1ea9460482577b8acfff7fb6dd5854d3e1136fce6a"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/lab-rootswap.uf2",
+      "bytes": 8388608,
+      "sha256": "ea6c9262e3ac3d9265542973068c1a10132ad6502fc6d72115fc3bd0c4c4dd53"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/lite-1.0.2.img",
+      "bytes": 1175552,
+      "sha256": "4091a573a4912dddf09a8ecb4234fdbded969c770deea0827990fa4491def633"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-dev/USBPods_Pico2W.bin",
+      "bytes": 1843200,
+      "sha256": "1a1eecc766770f8ecb73be56ad3784d7d026b0d2abebdd74bb24b0f11702af7c"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-dev/USBPods_Pico2W.uf2",
+      "bytes": 3686400,
+      "sha256": "d9eb58bf2e1be98ee1f2bd0ae4c152675d21d79d0f7b24d1b7a9abb9efddb851"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-dev/latest.json",
+      "bytes": 26,
+      "sha256": "01d3257490007e44c89760b74ac8b1c38ea521d2fae76d62bd908de8f8fda731"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-latest/USBPods_Pico2W.bin",
+      "bytes": 1843200,
+      "sha256": "b5dd43b8394e4a00671576d19b5db1e6d256abf8ede203917614418beb6fedf6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-latest/USBPods_Pico2W.uf2",
+      "bytes": 3686400,
+      "sha256": "503218b796c41a76134e310597d0d0bace15cf5e261ce9442d884b7146f31699"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/pico2w-latest/latest.json",
+      "bytes": 26,
+      "sha256": "01d3257490007e44c89760b74ac8b1c38ea521d2fae76d62bd908de8f8fda731"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/published-prod.uf2",
+      "bytes": 3686400,
+      "sha256": "503218b796c41a76134e310597d0d0bace15cf5e261ce9442d884b7146f31699"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "firmware/stock-factory-dump.bin",
+      "bytes": 4194304,
+      "sha256": "4f0631c7ca2ebdfa2188c606ac91954f8d995410474aff9671eaca693bc044bd"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "recon/public/bl616-isp.js",
+      "bytes": 19708,
+      "sha256": "0adefcadf7aca8753bde409e97b8ad16b2b94f0fd15b4f68af6c91897db5e515"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "recon/public/index.html",
+      "bytes": 199136,
+      "sha256": "7151b3d825f5d7ff49452809ace44a6a275ce9914c0c80a29035d1f6da921a78"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "recon/public/license.html",
+      "bytes": 31289,
+      "sha256": "7904ae734ce9a296c93f4fa2ceb8fc04ebbdecf09e0390fa06bf0d59f57e9093"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "recon/public/serial.js",
+      "bytes": 6176,
+      "sha256": "c07597dad4135353df5a96f1b383190f019e3b4b29178c03f201dcd5230a3dec"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "recon/server.mjs",
+      "bytes": 3945,
+      "sha256": "10898c3fc85a671c7b3d4facadf48b0eef843fd5214ab922b65ebb7a3a6e40b3"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/dev_login_probe.py",
+      "bytes": 3137,
+      "sha256": "3c342623ebf2a78f04c02460d8d3313f8ce7b66885554dbfc366730f6cc08f27"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/fake_dongle.js",
+      "bytes": 3799,
+      "sha256": "7b9b646a5e27d22ae371b05ad6a4ed859eee80392af1bdfae7bafd4038097259"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/hid_reports.py",
+      "bytes": 450,
+      "sha256": "777aec5f5460dc0726757838304267d8a7a7d105c87af1f68c4ed5a476c0f695"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/login_probe.py",
+      "bytes": 2371,
+      "sha256": "111aa76945cd3cf57073ae5a568070ee4353000b7c752b154bc9a403a7017586"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/runtime_probe.py",
+      "bytes": 2677,
+      "sha256": "01073e7d74973656787ea87aca0f4ae04ac619a1c960e3fa28839fe7664952e6"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/usbpods_hid.py",
+      "bytes": 7631,
+      "sha256": "b82f854a6069f9f37041f289344463b267045587d99055e7fbf289528abbb5f7"
+    },
+    {
+      "category": "suggested_full_transfer",
+      "relative_path": "tools/verify_page_logic.cjs",
+      "bytes": 3631,
+      "sha256": "c1f66f24e32336b9521ebdffcb9cc5789b9cec41b0ae46b5e9d7a24ea9cffe87"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "USBPods-results-20261103T220546Z(1).zip",
+      "bytes": 601477,
+      "sha256": "d1697bbe66f059458c109bec81778d710bcda6b08a4efcd988ecc9dcbb86ba19"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/audio-devices.json",
+      "bytes": 8057,
+      "sha256": "0b209cd392e8296c7f8780af58a26e34f1d68c77c9884ee7b85d1b4f8e941a47"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/audio-exception.txt",
+      "bytes": 1183,
+      "sha256": "f6ac8a694c283edac659a36608678c2ee62b805571b3c6be0a80e95cd09fce8a"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/audio-format.json",
+      "bytes": 106,
+      "sha256": "c5439a3829237c95777e2b25cd0099916ef44abd086ee61d19c2340a08f8f124"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/audio-metrics.json",
+      "bytes": 624,
+      "sha256": "65eb856cbc175b38e7ad9c60490a0ac1e544a9620a26b90979ea32a77ce9aa4e"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/candidate.json",
+      "bytes": 2064,
+      "sha256": "db48052dbad6e5717515302baf1cb47a038d3e45495ebea5d28e2fbcec18ef07"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/capture_open.wav",
+      "bytes": 698924,
+      "sha256": "299fc61bbe894d04ab58a5833d18cdf843e83878269232a45f75477d15fbc7df"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/cdc.jsonl",
+      "bytes": 234596,
+      "sha256": "ac6ddbb4e61bb14e8a456fd1f7916de3061d6b0dcc3d8f69663d8810df04f62b"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/commands.jsonl",
+      "bytes": 168157,
+      "sha256": "4bab9e7adf181d18b04af1f2233ba8d8d5a51407f4e0fee41805d07d9285e111"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/connection-preflight.jsonl",
+      "bytes": 12491,
+      "sha256": "346f0f6a5a6c19e4230319a9a5e0dbafb795dd533fd97ce4ca8c9fecddee7fd0"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/dependencies.json",
+      "bytes": 96,
+      "sha256": "032b69e4f8cf9f3bcd28808932a4425755c086cef4176259388e29b55bdaf44a"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/exception.txt",
+      "bytes": 886,
+      "sha256": "1a203bc30494830c10b80b83cdbbf837f7e322c3ce08242ec40da748ae2d2b42"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/failure-state.json",
+      "bytes": 7611,
+      "sha256": "060b7f066a94533f32974977f39c62fd64fd8d3b803fe32098635efa43c75766"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/hid-devices.jsonl",
+      "bytes": 535,
+      "sha256": "b2de9ea2bbb98f95c2a78cdaffd0f748e5ff02d162c07fa0dc9a4c3371126254"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/phases.jsonl",
+      "bytes": 107,
+      "sha256": "958f589db7e3b0d206954658f16fe1f2fb5c0ee739b5d171a9db5d2d3c2aa267"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/ports.json",
+      "bytes": 157,
+      "sha256": "5e798244427a212c2fc9541c7973ed4dc5aff824255fdbff8d9dceb9f0693e40"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/scan.json",
+      "bytes": 124,
+      "sha256": "0358383c8d96ae45365a53951378bd3fafcf6becea45f2188ed4a66aef1d9bf1"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/snapshots.jsonl",
+      "bytes": 3450,
+      "sha256": "3510698cec32f8f8422fd67d86e610ba36ec3e6e049e5461d10643ba3e5aaa64"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/summary.json",
+      "bytes": 12614,
+      "sha256": "31218d10f1409180eb7eea3d5537a1e55dbc01d2ae2b7574adaf31ae8a0768db"
+    },
+    {
+      "category": "live_input",
+      "relative_path": "latest/transition_eld256.wav",
+      "bytes": 2304044,
+      "sha256": "cdbae9274fd6863238136f7fed1e6a49206d19bbcf89f6ca9aba5b972586cd86"
+    },
+    {
+      "category": "derived_full_binary",
+      "relative_path": "USBPods_Pico2W_Full_final.bin",
+      "bytes": 1808128,
+      "sha256": "1a3c01178b8178c5363899143ab1abeb9afec2ff41713a35dca660cad78c4fc5"
+    },
+    {
+      "category": "derived_full_binary",
+      "relative_path": "USBPods_Pico2W_Full_safety.bin",
+      "bytes": 1807616,
+      "sha256": "9d52a7af12d38ab4a62f7c9dc39db7634ec7e929f528f0e072a8aef804805537"
+    }
+  ],
+  "earlier_live_run_directories": [
+    {
+      "directory": "live-results-20261103T192956Z",
+      "files": 9,
+      "candidate.json_sha256": "3584270906620e969dbd89af700932f6feea9f46b80329117a73a3ab5e2892e9",
+      "summary.json_sha256": "614e25d8aa7e96472756aceeaf49469e43f18daf35b38b4865820b4993b1177f"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+> Reconstruction work: start with [the local Codex handoff](docs/LOCAL-CODEX-HANDOFF.md) and [resume prompt](docs/LOCAL-CODEX-RESUME-PROMPT.md). Current validation and physical limits are recorded there; the upstream README below is historical context.
+
 # USBPods — Pico 2 W USB to Bluetooth Audio
 
 <p align="center">

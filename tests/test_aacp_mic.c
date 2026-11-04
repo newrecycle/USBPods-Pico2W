@@ -58,6 +58,34 @@ int main(void) {
  static const uint16_t lengths[]={16,14,10,19,12};
  for (int i=0;i<5;i++) { uint16_t n; assert(aacp_mic_command(i,&n) && n==lengths[i]); }
  uint16_t n; assert(!aacp_mic_command(5,&n) && !n);
+ // Missing first audio and subsequent silence use bounded STOP -> START.
+ aacp_mic_watch w={0};
+ assert(aacp_mic_watch_target(&w,true,false,1,100));
+ aacp_mic_watch_sent(&w,3,100);
+ assert(aacp_mic_watch_target(&w,true,true,1,2099));
+ assert(!aacp_mic_watch_target(&w,true,true,1,2100));
+ assert(w.retry==AACP_MIC_RETRY_STOP && !w.retries);
+ assert(!aacp_mic_watch_target(&w,true,true,1,2200) && !w.retries); // failed STOP.
+ aacp_mic_watch_sent(&w,4,2200);assert(w.retries==1 && w.restarts==1);
+ assert(aacp_mic_watch_target(&w,true,false,1,2300));
+ aacp_mic_watch_sent(&w,3,2300);aacp_mic_watch_audio(&w,2400);
+ assert(w.seen && aacp_mic_watch_target(&w,true,true,1,4399));
+ assert(!aacp_mic_watch_target(&w,true,true,1,4400));
+ // A late valid frame cancels an unsent retry without consuming its budget.
+ aacp_mic_watch_audio(&w,4401);assert(w.seen && w.retry==AACP_MIC_RETRY_NONE && w.retries==1);
+ for(unsigned i=1;i<3;i++) {
+   uint32_t t=w.due;assert(!aacp_mic_watch_target(&w,true,true,1,t));
+   aacp_mic_watch_sent(&w,4,t);aacp_mic_watch_sent(&w,3,t+1);
+ }
+ assert(w.retries==3 && !aacp_mic_watch_target(&w,true,true,1,w.due));
+ assert(w.failed && w.failures==1);aacp_mic_watch_sent(&w,4,w.due);
+ assert(!aacp_mic_watch_target(&w,true,false,1,w.due+10000) && w.failures==1);
+ assert(aacp_mic_watch_target(&w,true,false,2,100) && !w.failed && !w.retries); // new capture.
+ aacp_mic_watch_sent(&w,3,UINT32_MAX-999);
+ assert(aacp_mic_watch_target(&w,true,true,2,999));
+ assert(!aacp_mic_watch_target(&w,true,true,2,1000)); // tick wrap.
+ assert(!aacp_mic_watch_target(&w,false,true,3,1001) && w.retry==AACP_MIC_RETRY_NONE);
+ aacp_mic_watch_reset(&w);assert(!w.enabled && !w.restarts && !w.failures);
  puts("AACP transactional parser and session tests passed");
 }
 

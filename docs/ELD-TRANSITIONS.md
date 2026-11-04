@@ -37,8 +37,8 @@ therefore cannot trigger a second SUSPEND/rebuild/START. `:profile RATE GAME
 LEVEL` applies all three settings atomically, including runner restoration.
 The source API `a2dp_source_apply_eld_rate()` is idempotent;
 `a2dp_source_recover_eld_stream()` explicitly forces recovery when the profile
-is unchanged. Microphone START/STOP recovery and manual/self-heal actions use
-the forced API. The captured repeated-profile failure is replayed in the
+is unchanged. Manual/self-heal actions use the forced API. Ordinary microphone
+START/STOP and its bounded silence retries do not call it. The captured repeated-profile failure is replayed in the
 production adapter fixture.
 
 Each managed phase has a three-second deadline. Coalesced requests do not move

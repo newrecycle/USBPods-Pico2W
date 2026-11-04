@@ -54,6 +54,7 @@ def health(before, after):
     errors=[]
     for item in (before,after):
         s=item.get('status',{});e=item.get('eldstatus',{})
+        if s.get('mic_watchdog_failed'):errors.append('Microphone received-audio watchdog exhausted its retry budget')
         if not s.get('streaming') or s.get('codec')!=4 or e.get('transition')!='ready':
             errors.append('Playback was not in a ready AAC-ELD stream')
     if not delta(before.get('status',{}),after.get('status',{}),'tx_packets'):
@@ -222,7 +223,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             time.sleep(min(5,max(0,end-time.monotonic())))
             state=snapshot(link,recorder,label)
             status=state.get('status',{});eld=state.get('eldstatus',{})
-            if status.get('fault_hold') or not status.get('connected') or eld.get('transition')=='failed':
+            if status.get('mic_watchdog_failed') or status.get('fault_hold') or not status.get('connected') or eld.get('transition')=='failed':
                 raise RuntimeError('Playback failed during '+label+': '+str({'status':status,'eldstatus':eld}))
             if audio.stop.is_set():raise RuntimeError('Audio collector stopped: '+str(audio.errors))
     external_capture=bool(link.request('status').get('capture'))

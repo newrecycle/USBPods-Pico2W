@@ -97,7 +97,7 @@ reproduced and fixed with bounded parsing rather than copied wholesale.
 
 ## Continued audit: coupled recovery and USB controls
 
-The follow-up couples the production USB capture lifecycle, complete AACP
+The earlier follow-up coupled the production USB capture lifecycle, complete AACP
 channel and production ELD adapter/controller in one process. SDK events, peer
 responses and encoder allocation are simulated; the source state machine and
 wire command decisions are executed together. Cases cover delayed START,
@@ -121,6 +121,32 @@ They do not show that Windows sent these invalid inputs in the user's run, or
 that these bounds defects caused the observed audible left/right issue.
 All 50 local host compile/test commands passed after this follow-up. The three
 new fixtures run in CI before target builds. Hardware packaging remains paused.
+
+## Reference-aligned lifecycle change in the local handoff
+
+The source review established that the hardware fork does not require an
+explicit mic-triggered playback reset. The current candidate removes that
+unconditional policy, retaining independent manual/source fault recovery.
+Received-audio liveness now drives AACP STOP/START retries: two seconds without
+framed audio, at most three retries per capture generation, successful wire
+sends required at each step. Exhaustion sends a final STOP and reports a held
+capture fault while playback remains running. A new capture session gets a
+fresh budget. Jitter preference is reapplied through the existing stable-stream
+control scheduler rather than by rebuilding playback.
+
+A focused fixture compiled against the previous channel fails to retry an
+ignored initial START; the current channel passes. The complete coupled fixture
+covers first-audio and later silence, healthy reception, wrong-CID/malformed
+packets, failed STOP/START sends, late-frame cancellation, bounded exhaustion,
+USB generation bounce, profile/SUSPEND/START races, deferred setup and teardown.
+Pure state tests cover clock wrap. USB status distinguishes sent START, framed
+reception and held failure; runner replay preserves the first mic fault before
+cleanup with playback still streaming. The portable suite passed 56 compile/test
+commands, including real FDK mic/duplex/frequency and production PCM packet tests.
+These are offline results. The physical channel symptom predates the automatic
+reset policy and remains unverified by this candidate. See the exact source and
+CI record in `evidence/current-validation.json` and the complete
+[local handoff](LOCAL-CODEX-HANDOFF.md).
 
 ## Remaining limits
 

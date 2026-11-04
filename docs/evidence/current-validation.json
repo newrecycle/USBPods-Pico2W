@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "handoff_source_commit": "pending publication",
+  "host": {
+    "passed": 56,
+    "failed": 0,
+    "skipped": 0,
+    "hardware_run": false,
+    "results": "offline-host-results.json"
+  },
+  "target_ci": {
+    "status": "pending",
+    "baseline_code_commit": "b683ef44a17f5cc8ad037a50b2e5beea1e1dc12b",
+    "baseline_run": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41741937531",
+    "baseline_conclusion": "success"
+  },
+  "live_packaging_paused": true,
+  "physical_left_right_fix_verified": false,
+  "received_audio_watchdog": "implemented; bounded 3 retries after 2 s without framed audio; AACP only",
+  "unresolved": [
+    "Physical left/right routing",
+    "Actual stem gesture semantics",
+    "Live RF and clock drift",
+    "Hardware effectiveness of the new lifecycle policy"
+  ],
+  "ci_source_note": "A later documentation-only commit may have a different SHA from the verified firmware source."
+}

@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "snapshots": [
+    {
+      "path": "references/han-um/src/btstack/btstack_aacp.c",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/btstack/btstack_aacp.c",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/btstack/btstack_aacp.c",
+      "reference_only": true,
+      "materialized_sha256": "b59432197c6f691589e6e07362406dc0168c15e760a777029be385e0fd433621",
+      "bytes": 17510
+    },
+    {
+      "path": "references/han-um/src/btstack/btstack_avdtp_source.c",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/btstack/btstack_avdtp_source.c",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/btstack/btstack_avdtp_source.c",
+      "reference_only": true,
+      "materialized_sha256": "8a75826b2012deb937fda059094e5ef5778e23fd93fc9a101c8b34a40e731efa",
+      "bytes": 116990
+    },
+    {
+      "path": "references/han-um/src/tinyusb/uac.c",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/tinyusb/uac.c",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/tinyusb/uac.c",
+      "reference_only": true,
+      "materialized_sha256": "6ed6abd2bbf4a17e1aca8958dffda014196b7c220cba9ddf91c94187e8305810",
+      "bytes": 20611
+    },
+    {
+      "path": "references/han-um/aac-eld-apple.md",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "aac-eld-apple.md",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/aac-eld-apple.md",
+      "reference_only": true,
+      "materialized_sha256": "eb7e3b3734a019864c165b6cf9bf20e6c61a3a5fd2bab0631bf68d6c78bd6fe0",
+      "bytes": 8138
+    },
+    {
+      "path": "references/han-um/README.md",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "README.md",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/README.md",
+      "reference_only": true,
+      "materialized_sha256": "1df98345488106cd96aa22cb95737051d67808a06eff55ddf392efe5268e5954",
+      "bytes": 12565
+    },
+    {
+      "path": "references/han-um/LICENSE",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "LICENSE",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/LICENSE",
+      "reference_only": true,
+      "materialized_sha256": "e57f1c320b8cf8798a7d2ff83a6f9e06a33a03585f6e065fea97f1d86db84052",
+      "bytes": 35150
+    },
+    {
+      "path": "references/han-um/src/main.c",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/main.c",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/main.c",
+      "reference_only": true,
+      "materialized_sha256": "0b5753cfe4f6c59bca2cf1c3d7ce4b082e20b2d195bdcc008ef895b8f90ca705",
+      "bytes": 10582
+    },
+    {
+      "path": "references/han-um/src/btstack/aacp_mic_dec.c",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/btstack/aacp_mic_dec.c",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/btstack/aacp_mic_dec.c",
+      "reference_only": true,
+      "materialized_sha256": "e937a879d1a41a71d4a26784addc0e4936d51b23c02016bc86fe6819298e7467",
+      "bytes": 8231
+    },
+    {
+      "path": "references/han-um/src/tinyusb/usb_descriptors.h",
+      "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+      "commit": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+      "source_path": "src/tinyusb/usb_descriptors.h",
+      "source_url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/blob/d18d083bc52de3143d8d922c4abaae865cc0dc28/src/tinyusb/usb_descriptors.h",
+      "reference_only": true,
+      "materialized_sha256": "6d706de089a3a5d34ae7dcb1fdd212fd02b3abd69639c979130ad96c87c2fd38",
+      "bytes": 9116
+    },
+    {
+      "path": "references/librepods/linux-rust/src/audio/hires_mic.rs",
+      "repository": "librepods-org/librepods",
+      "commit": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+      "source_path": "linux-rust/src/audio/hires_mic.rs",
+      "source_url": "https://github.com/librepods-org/librepods/blob/99b0e580a93f2a26647f89816895ca1e5f70a3ec/linux-rust/src/audio/hires_mic.rs",
+      "reference_only": true,
+      "materialized_sha256": "02edd3caaf1810f42ae2fd762cb0564daf869e1463ce38e0cd24fff464a3c551",
+      "bytes": 11061
+    },
+    {
+      "path": "references/librepods/linux-rust/src/audio/output.rs",
+      "repository": "librepods-org/librepods",
+      "commit": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+      "source_path": "linux-rust/src/audio/output.rs",
+      "source_url": "https://github.com/librepods-org/librepods/blob/99b0e580a93f2a26647f89816895ca1e5f70a3ec/linux-rust/src/audio/output.rs",
+      "reference_only": true,
+      "materialized_sha256": "2791049aca3114f4b57015584c399fffcd7b62ace62f3978130e286dd50a546e",
+      "bytes": 11538
+    },
+    {
+      "path": "references/librepods/linux-rust/src/audio/eld.rs",
+      "repository": "librepods-org/librepods",
+      "commit": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+      "source_path": "linux-rust/src/audio/eld.rs",
+      "source_url": "https://github.com/librepods-org/librepods/blob/99b0e580a93f2a26647f89816895ca1e5f70a3ec/linux-rust/src/audio/eld.rs",
+      "reference_only": true,
+      "materialized_sha256": "3fb2546b1ca36e5eeef4c22fc382b1f919650645a44e68798000d459308b66ef",
+      "bytes": 5552
+    },
+    {
+      "path": "references/librepods/linux-rust/src/bluetooth/aacp_audio.rs",
+      "repository": "librepods-org/librepods",
+      "commit": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+      "source_path": "linux-rust/src/bluetooth/aacp_audio.rs",
+      "source_url": "https://github.com/librepods-org/librepods/blob/99b0e580a93f2a26647f89816895ca1e5f70a3ec/linux-rust/src/bluetooth/aacp_audio.rs",
+      "reference_only": true,
+      "materialized_sha256": "ea099333b04e64597e9b4173d44e98ece71f7d7b990ef11417bf941f9edd0a07",
+      "bytes": 1130
+    },
+    {
+      "path": "references/librepods/LICENSE",
+      "repository": "librepods-org/librepods",
+      "commit": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+      "source_path": "LICENSE",
+      "source_url": "https://github.com/librepods-org/librepods/blob/99b0e580a93f2a26647f89816895ca1e5f70a3ec/LICENSE",
+      "reference_only": true,
+      "materialized_sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+      "bytes": 34523
+    },
+    {
+      "path": "references/btstack/avdtp.c",
+      "repository": "bluekitchen/btstack",
+      "commit": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "source_path": "src/classic/avdtp.c",
+      "source_url": "https://github.com/bluekitchen/btstack/blob/501e6d2b86e6c92bfb9c390bcf55709938e25ac1/src/classic/avdtp.c",
+      "reference_only": true,
+      "materialized_sha256": "60e251bdc3afdc6be3f715c3ffacd8df46e399f74b3fb51de9a8c4d7bb6902f0",
+      "bytes": 78918
+    },
+    {
+      "path": "references/btstack/avdtp_initiator.c",
+      "repository": "bluekitchen/btstack",
+      "commit": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "source_path": "src/classic/avdtp_initiator.c",
+      "source_url": "https://github.com/bluekitchen/btstack/blob/501e6d2b86e6c92bfb9c390bcf55709938e25ac1/src/classic/avdtp_initiator.c",
+      "reference_only": true,
+      "materialized_sha256": "b7e3f88f922ebb814b4e9b2e651c4aa9c2feb44b3afc6b4fa20c91ba42aa78df",
+      "bytes": 27852
+    },
+    {
+      "path": "references/btstack/a2dp.c",
+      "repository": "bluekitchen/btstack",
+      "commit": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "source_path": "src/classic/a2dp.c",
+      "source_url": "https://github.com/bluekitchen/btstack/blob/501e6d2b86e6c92bfb9c390bcf55709938e25ac1/src/classic/a2dp.c",
+      "reference_only": true,
+      "materialized_sha256": "bf851cba077dcd88a0244fec59a5cac288bf8297f90d67ea2faf62070d2d2b12",
+      "bytes": 53165
+    },
+    {
+      "path": "references/btstack/sdk-bluetooth.h",
+      "repository": "bluekitchen/btstack",
+      "commit": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "source_path": "src/bluetooth.h",
+      "source_url": "https://github.com/bluekitchen/btstack/blob/501e6d2b86e6c92bfb9c390bcf55709938e25ac1/src/bluetooth.h",
+      "reference_only": true,
+      "materialized_sha256": "f59e5855690ebe47845897e8934d813bac991019d70f4366edcb59f91eedf253",
+      "bytes": 40556
+    },
+    {
+      "path": "references/btstack/LICENSE",
+      "repository": "bluekitchen/btstack",
+      "commit": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "source_path": "LICENSE",
+      "source_url": "https://github.com/bluekitchen/btstack/blob/501e6d2b86e6c92bfb9c390bcf55709938e25ac1/LICENSE",
+      "reference_only": true,
+      "materialized_sha256": "76d622b4322b4135d57e41fbb19a0f8515aaa5a9289bf22ea29118777a5125e0",
+      "bytes": 1722
+    }
+  ]
+}

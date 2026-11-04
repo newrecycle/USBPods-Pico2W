@@ -51,7 +51,11 @@ git -C $PICO_SDK_PATH/lib/tinyusb diff > sdk-patches/tinyusb-usbpods.patch
   for it is worse than tolerating the re-prime.
 
 ### cyw43-driver
-No patch — the BT firmware blob must be **stock 2.1.1** (`0031`). A newer blob
-(`0065`, from pico-sdk 2.3.0) was swapped in during the 4ae498d investigation
-and has been reverted; that A/B is superseded by the PB mis-marking finding
-anyway (`review-4ae498d-findings.md`).
+
+No driver source patch. Select and verify the controller image with
+`tools/btfw.py`: current builds default to pinned `rpi0065`, with `stock0031`
+retained in the compatibility matrix. CMake and `tools/verify_build.py` verify
+the selected linked image; do not manually replace an SDK header with an
+unidentified binary. The older stock-only note was historical and is superseded
+by the explicit image-selection workflow. Neither image selection nor build
+success proves an HFP/SCO fix. See `docs/LOCAL-CODEX-HANDOFF.md`.

@@ -1,0 +1,571 @@
+{
+  "schema": 1,
+  "hardware_fork": {
+    "repository": "han-um/USBPods-Pico2W-2-way-audio-implement",
+    "head": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+    "branches": [
+      "main",
+      "hires-mic"
+    ],
+    "commits": [
+      {
+        "sha": "d18d083bc52de3143d8d922c4abaae865cc0dc28",
+        "date": "2026-07-15T11:03:40Z",
+        "title": "README: attribute the upstream-bug diagnoses to AI-assisted debugging",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/d18d083bc52de3143d8d922c4abaae865cc0dc28"
+      },
+      {
+        "sha": "1c9a96e721f5f69a4133923fc2f2e23d0ae1ae5d",
+        "date": "2026-07-15T10:55:14Z",
+        "title": "README: iOS-only framing, credits moved up front, thank the librepods community",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/1c9a96e721f5f69a4133923fc2f2e23d0ae1ae5d"
+      },
+      {
+        "sha": "b4c50b2f6694e4d519650a4c531719da6298d667",
+        "date": "2026-07-15T10:45:26Z",
+        "title": "Prepare for public release: strip debug scaffolding, relicense, rewrite README",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/b4c50b2f6694e4d519650a4c531719da6298d667"
+      },
+      {
+        "sha": "52e04c3959d1569475702f67e5f6738365b83422",
+        "date": "2026-07-11T06:28:32Z",
+        "title": "Fix mic never starting after fresh boot: retry START that was never answered",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/52e04c3959d1569475702f67e5f6738365b83422"
+      },
+      {
+        "sha": "104132a7b9fad9265fdaca39bf94f354aa9785e3",
+        "date": "2026-07-11T06:21:21Z",
+        "title": "Phase 4: USB microphone path — VERIFIED on hardware (end-to-end mic works)",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/104132a7b9fad9265fdaca39bf94f354aa9785e3"
+      },
+      {
+        "sha": "9185bd86838189d024f0f474287f9bd5abc7c75a",
+        "date": "2026-07-11T06:02:01Z",
+        "title": "Phase 3: AAC-ELD mic decoder — VERIFIED on hardware (decode + A2DP coexist)",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/9185bd86838189d024f0f474287f9bd5abc7c75a"
+      },
+      {
+        "sha": "70008f3cf12311c27d8cb5a0e1c14e723c4cbef2",
+        "date": "2026-07-11T05:18:19Z",
+        "title": "Phase 2: mic START/STOP + type-0x58 demux + per-second RX statistics",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/70008f3cf12311c27d8cb5a0e1c14e723c4cbef2"
+      },
+      {
+        "sha": "fbe93e77b9ad5f9d3ff83f963a076f25db6a6a10",
+        "date": "2026-07-11T05:10:12Z",
+        "title": "Remove blocking UART stdout — CDC ring becomes the only printf path",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/fbe93e77b9ad5f9d3ff83f963a076f25db6a6a10"
+      },
+      {
+        "sha": "90d583f5c30d9ed4cd541a3f68d4f45dcc79bcf7",
+        "date": "2026-07-11T04:55:28Z",
+        "title": "Gate AACP RX logging behind FORENSICS_DISABLED — fixes ~30s audio stall",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/90d583f5c30d9ed4cd541a3f68d4f45dcc79bcf7"
+      },
+      {
+        "sha": "964a13d1f637ae978c2e468c9d69ce1e4b8e7087",
+        "date": "2026-07-11T04:48:58Z",
+        "title": "Fix streaming crash (TinyUSB 0.18 panic) + stutter (IRQ printf); add isolation flags",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/964a13d1f637ae978c2e468c9d69ce1e4b8e7087"
+      },
+      {
+        "sha": "2bbd177079542437e58cc45e0e73c75ed5dbdffe",
+        "date": "2026-07-10T18:31:50Z",
+        "title": "Fix three latent upstream bugs: timer catch-up spiral, IRQ-context BTstack calls, flash collision",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/2bbd177079542437e58cc45e0e73c75ed5dbdffe"
+      },
+      {
+        "sha": "7406ae4057dd8ea2404df535e80eef9f3d27ec50",
+        "date": "2026-07-10T18:10:36Z",
+        "title": "Phase 1 VERIFIED on hardware + stability forensics/instrumentation",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/7406ae4057dd8ea2404df535e80eef9f3d27ec50"
+      },
+      {
+        "sha": "cde2e31e19a03c84bca39f9ff54cd84994b8552a",
+        "date": "2026-07-10T15:16:59Z",
+        "title": "Phase 1 review fixes: AACP retry/logging, CDC log retention, SDP fixes",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/cde2e31e19a03c84bca39f9ff54cd84994b8552a"
+      },
+      {
+        "sha": "362f64133488c7e71aeaccfe5c569a192aa5826b",
+        "date": "2026-07-10T15:00:48Z",
+        "title": "Add USB CDC debug console for on-device logging",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/362f64133488c7e71aeaccfe5c569a192aa5826b"
+      },
+      {
+        "sha": "47984ddecadee16cab6fc965161d8692aebf484f",
+        "date": "2026-07-10T14:51:23Z",
+        "title": "Phase 1: AACP channel setup (PSM 0x1001) + Apple DID SDP record",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/47984ddecadee16cab6fc965161d8692aebf484f"
+      },
+      {
+        "sha": "7fdb1bf26e10018412ca448a5d22e95d1a9b124b",
+        "date": "2026-04-09T10:21:04Z",
+        "title": "Update aac-eld-apple.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/7fdb1bf26e10018412ca448a5d22e95d1a9b124b"
+      },
+      {
+        "sha": "1c90ed0d4507d7d58ac6956f411a387d26c411c4",
+        "date": "2026-04-09T10:20:30Z",
+        "title": "Update aac-eld-apple.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/1c90ed0d4507d7d58ac6956f411a387d26c411c4"
+      },
+      {
+        "sha": "815ef7d4048821b30e7401345ab8547950363479",
+        "date": "2026-04-09T10:08:56Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/815ef7d4048821b30e7401345ab8547950363479"
+      },
+      {
+        "sha": "f686501911f65410309fa501d28632d1d92ff174",
+        "date": "2026-04-08T20:47:14Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/f686501911f65410309fa501d28632d1d92ff174"
+      },
+      {
+        "sha": "f586b20ab2e748d83f1535417c7b15ebc786d5ab",
+        "date": "2026-04-08T20:20:18Z",
+        "title": "update doc",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/f586b20ab2e748d83f1535417c7b15ebc786d5ab"
+      },
+      {
+        "sha": "bd1e4df6adedd88536876ba17af1616010ec38bc",
+        "date": "2026-04-08T20:17:07Z",
+        "title": "added apple aac-eld support; replace ring buf with queue; update aac-fdk; use 48000hz",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/bd1e4df6adedd88536876ba17af1616010ec38bc"
+      },
+      {
+        "sha": "f94ff14bcecc33e5a4a3bbe9b60416a433ccf26b",
+        "date": "2025-07-26T09:13:02Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/f94ff14bcecc33e5a4a3bbe9b60416a433ccf26b"
+      },
+      {
+        "sha": "c5876a2dc66f9b3dac18935059f3c6994b1d15be",
+        "date": "2025-07-26T09:06:23Z",
+        "title": "add adjust volume by key",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/c5876a2dc66f9b3dac18935059f3c6994b1d15be"
+      },
+      {
+        "sha": "8926a7c9c85248dbec1f524a27c82732b3dd4f21",
+        "date": "2025-06-10T10:53:54Z",
+        "title": "Update btstack_avdtp_source.c",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/8926a7c9c85248dbec1f524a27c82732b3dd4f21"
+      },
+      {
+        "sha": "05cff5b9f744e4a9fe36e3b1fd1fd0071c40d3ae",
+        "date": "2025-06-08T11:59:24Z",
+        "title": "adjusted aac config; fixed led light",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/05cff5b9f744e4a9fe36e3b1fd1fd0071c40d3ae"
+      },
+      {
+        "sha": "51b284a271760f1bf18490956a6d0756199d8f44",
+        "date": "2025-06-07T19:59:43Z",
+        "title": "Fixed LDAC and AAC config error",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/51b284a271760f1bf18490956a6d0756199d8f44"
+      },
+      {
+        "sha": "bad7d7dd5167a2ae9c7b830cbd1d532c3079aeea",
+        "date": "2025-05-03T00:40:36Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/bad7d7dd5167a2ae9c7b830cbd1d532c3079aeea"
+      },
+      {
+        "sha": "ce3c5620f1dc619753054639a0e0e497a02cad5a",
+        "date": "2025-05-02T09:39:00Z",
+        "title": "write buf using usb irq",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/ce3c5620f1dc619753054639a0e0e497a02cad5a"
+      },
+      {
+        "sha": "6fd28dc02b34eeee17a5d997f21b70cf901eb5b4",
+        "date": "2025-05-01T09:39:51Z",
+        "title": "Update readme",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/6fd28dc02b34eeee17a5d997f21b70cf901eb5b4"
+      },
+      {
+        "sha": "aac4f5383d7fb1af6323c2e990de8c4b31ddceff",
+        "date": "2025-05-01T05:05:15Z",
+        "title": "AAC + LDAC + 2 devices",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/aac4f5383d7fb1af6323c2e990de8c4b31ddceff"
+      },
+      {
+        "sha": "16c4c247b212ea0f76b771f50e6522000a083e11",
+        "date": "2025-04-29T09:17:40Z",
+        "title": "ready to use",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/16c4c247b212ea0f76b771f50e6522000a083e11"
+      },
+      {
+        "sha": "f1e975958035b86b3f00e605416d7c76d9e1c883",
+        "date": "2025-04-29T06:08:46Z",
+        "title": "init working",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/f1e975958035b86b3f00e605416d7c76d9e1c883"
+      },
+      {
+        "sha": "226d144a304a32b6738a329b5860507441a6afe2",
+        "date": "2025-04-28T06:06:27Z",
+        "title": "init",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/226d144a304a32b6738a329b5860507441a6afe2"
+      },
+      {
+        "sha": "7e5e2526991866c0c0582b9040f197a9f2bc15b4",
+        "date": "2025-04-26T08:45:23Z",
+        "title": "Update CMakeLists.txt",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/7e5e2526991866c0c0582b9040f197a9f2bc15b4"
+      },
+      {
+        "sha": "a72dd8cbda841fdeeb5783e081350019df8032d0",
+        "date": "2025-04-26T07:54:02Z",
+        "title": "Fixed Windows issues",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/a72dd8cbda841fdeeb5783e081350019df8032d0"
+      },
+      {
+        "sha": "bd4b9d765620407f7f13702aad895f8b9d1b2dc6",
+        "date": "2025-04-25T04:01:57Z",
+        "title": "host and control bt headset's volume.",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/bd4b9d765620407f7f13702aad895f8b9d1b2dc6"
+      },
+      {
+        "sha": "e550e43d385dd18284c577b5618d744dde2a1612",
+        "date": "2025-04-23T07:53:00Z",
+        "title": "Update main.c",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/e550e43d385dd18284c577b5618d744dde2a1612"
+      },
+      {
+        "sha": "59e6ceefc2b6f1631a52b5ebeaecc32b616cea0d",
+        "date": "2025-04-23T07:52:35Z",
+        "title": "submit ldac",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/59e6ceefc2b6f1631a52b5ebeaecc32b616cea0d"
+      },
+      {
+        "sha": "1d350889c776992fc136b39b41f9979a9e712448",
+        "date": "2025-04-22T09:40:24Z",
+        "title": "update doc for tinyusb",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/1d350889c776992fc136b39b41f9979a9e712448"
+      },
+      {
+        "sha": "4e7a5b20762fe2ace60a630380fb4b08f63a0757",
+        "date": "2025-04-22T09:37:16Z",
+        "title": "use tinyusb stack",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/4e7a5b20762fe2ace60a630380fb4b08f63a0757"
+      },
+      {
+        "sha": "badf46c2ff3f60f1a65d9df96bffefa80f1e52c3",
+        "date": "2025-04-20T03:49:50Z",
+        "title": "Use Pico Visual Studio Code extension and add Pico 2 W support",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/badf46c2ff3f60f1a65d9df96bffefa80f1e52c3"
+      },
+      {
+        "sha": "cf1e1af08b3cba32bead782e4c68e4712a66eb6a",
+        "date": "2025-04-16T07:26:27Z",
+        "title": "Add files via upload",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/cf1e1af08b3cba32bead782e4c68e4712a66eb6a"
+      },
+      {
+        "sha": "c1b0ea04c3ac1c775b0e0592ed2db902f266761f",
+        "date": "2023-07-31T01:05:20Z",
+        "title": "Merge branch 'main' of https://github.com/wasdwasd0105/PicoW-usb2bt-audio",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/c1b0ea04c3ac1c775b0e0592ed2db902f266761f"
+      },
+      {
+        "sha": "c33224db4e2a4cef6fdf17e8cf96ff9a7bb1842d",
+        "date": "2023-07-31T01:05:18Z",
+        "title": "apply new resync method that be friendly to tws headphones",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/c33224db4e2a4cef6fdf17e8cf96ff9a7bb1842d"
+      },
+      {
+        "sha": "a3944dfef20adda3cec3a9090cb8c476c418038c",
+        "date": "2023-07-28T08:44:12Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/a3944dfef20adda3cec3a9090cb8c476c418038c"
+      },
+      {
+        "sha": "05db0d7360c45a2e0f7df30adf5aa9c015295267",
+        "date": "2023-07-28T08:36:02Z",
+        "title": "Merge branch 'main' of https://github.com/wasdwasd0105/PicoW-usb2bt-audio",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/05db0d7360c45a2e0f7df30adf5aa9c015295267"
+      },
+      {
+        "sha": "9ca8d6ae73bfdad493e7b4f16f23ab5b86885316",
+        "date": "2023-07-28T08:35:59Z",
+        "title": "fixed many bugs, new light & key",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/9ca8d6ae73bfdad493e7b4f16f23ab5b86885316"
+      },
+      {
+        "sha": "9a6746e7e5e16e50011bb96b305dd68de2493ce3",
+        "date": "2023-07-26T09:08:48Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/9a6746e7e5e16e50011bb96b305dd68de2493ce3"
+      },
+      {
+        "sha": "e2f0410bed280807bcfd5f63b6530dc9cea5e0e3",
+        "date": "2023-07-26T09:07:31Z",
+        "title": "remove i2s; will not have noise",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/e2f0410bed280807bcfd5f63b6530dc9cea5e0e3"
+      },
+      {
+        "sha": "30e0a76d9095233896612bf95e2f4e222a468332",
+        "date": "2023-07-15T08:48:12Z",
+        "title": "v0.2.0: can save paired device and reconnect",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/30e0a76d9095233896612bf95e2f4e222a468332"
+      },
+      {
+        "sha": "c098bd8817b4fbc0a14e547d5717de5171f1de5a",
+        "date": "2023-07-14T22:03:01Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/c098bd8817b4fbc0a14e547d5717de5171f1de5a"
+      },
+      {
+        "sha": "1cb2b43e0b0bdd6711d695d861d8bdbca60d5339",
+        "date": "2023-07-14T21:48:56Z",
+        "title": "Merge branch 'main' of https://github.com/wasdwasd0105/PicoW-usb2bt-audio",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/1cb2b43e0b0bdd6711d695d861d8bdbca60d5339"
+      },
+      {
+        "sha": "164b910df6c0f405326faf924a968465d05d707f",
+        "date": "2023-07-14T21:48:54Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/164b910df6c0f405326faf924a968465d05d707f"
+      },
+      {
+        "sha": "07ce8ad22adad18a3e788c63257a6384c7f606d0",
+        "date": "2023-07-14T11:08:06Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/07ce8ad22adad18a3e788c63257a6384c7f606d0"
+      },
+      {
+        "sha": "27e4ef2d67e31dc5fdc69de4d4a817f788660f1c",
+        "date": "2023-07-14T11:05:30Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/27e4ef2d67e31dc5fdc69de4d4a817f788660f1c"
+      },
+      {
+        "sha": "353b8df9400e2f4c12e9d665218bd7fc71e780f3",
+        "date": "2023-07-14T11:04:53Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/353b8df9400e2f4c12e9d665218bd7fc71e780f3"
+      },
+      {
+        "sha": "56500d7e85a056f665afe6f52ebe99561405b83a",
+        "date": "2023-07-14T09:38:50Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/56500d7e85a056f665afe6f52ebe99561405b83a"
+      },
+      {
+        "sha": "a71176a459c31f3e053be946879cdd73f2c3cf01",
+        "date": "2023-07-14T09:37:27Z",
+        "title": "Merge branch 'main' of https://github.com/wasdwasd0105/PicoW-usb2bt-audio",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/a71176a459c31f3e053be946879cdd73f2c3cf01"
+      },
+      {
+        "sha": "ea01f915352331515358c15861d773fa3206f014",
+        "date": "2023-07-14T09:36:27Z",
+        "title": "update readme",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/ea01f915352331515358c15861d773fa3206f014"
+      },
+      {
+        "sha": "098d1bfa73f166fdbf51ae25f54b43c5334e710d",
+        "date": "2023-07-11T21:41:05Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/098d1bfa73f166fdbf51ae25f54b43c5334e710d"
+      },
+      {
+        "sha": "d761f141be0cd4751748947587d602ecde7be72b",
+        "date": "2023-07-10T21:50:18Z",
+        "title": "V0.15: can reconnect device after disconnected.",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/d761f141be0cd4751748947587d602ecde7be72b"
+      },
+      {
+        "sha": "e2e2b03e9d4b9d19a930fda4604355a41c0b97d3",
+        "date": "2023-07-09T05:49:58Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/e2e2b03e9d4b9d19a930fda4604355a41c0b97d3"
+      },
+      {
+        "sha": "a97ba081d1be387193b8173ea92a7ffa68b2acd4",
+        "date": "2023-07-09T05:47:04Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/a97ba081d1be387193b8173ea92a7ffa68b2acd4"
+      },
+      {
+        "sha": "faf2c92e10d1e27765fc2e297897152f85ee0f99",
+        "date": "2023-07-09T05:42:38Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/faf2c92e10d1e27765fc2e297897152f85ee0f99"
+      },
+      {
+        "sha": "83603e063cc9c4c9d0b5bb9b133c01d4c0a2de50",
+        "date": "2023-07-09T05:42:23Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/83603e063cc9c4c9d0b5bb9b133c01d4c0a2de50"
+      },
+      {
+        "sha": "3c54129c13b469e8c593b00f6e1371bdcc41b8c5",
+        "date": "2023-07-09T05:40:59Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/3c54129c13b469e8c593b00f6e1371bdcc41b8c5"
+      },
+      {
+        "sha": "62584eadec3448b005790664b3f710ea92b5812e",
+        "date": "2023-07-01T06:35:04Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/62584eadec3448b005790664b3f710ea92b5812e"
+      },
+      {
+        "sha": "c6ceb5fcecf47d77c50b91fd083b549fc375fbdc",
+        "date": "2023-07-01T06:34:22Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/c6ceb5fcecf47d77c50b91fd083b549fc375fbdc"
+      },
+      {
+        "sha": "b25f7ba3fff99f8a7d57a34ab8b4ef2bc8f471c8",
+        "date": "2023-07-01T06:32:22Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/b25f7ba3fff99f8a7d57a34ab8b4ef2bc8f471c8"
+      },
+      {
+        "sha": "2946ae490734dcf79fe9874635d56038705709b6",
+        "date": "2023-07-01T04:57:31Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/2946ae490734dcf79fe9874635d56038705709b6"
+      },
+      {
+        "sha": "0714b98731e4c604f266511a50da68fb583e3002",
+        "date": "2023-07-01T04:55:30Z",
+        "title": "Update README.md",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/0714b98731e4c604f266511a50da68fb583e3002"
+      },
+      {
+        "sha": "cb08423f715261b4d413cb71c6983a030893ec97",
+        "date": "2023-07-01T04:53:41Z",
+        "title": "push v0.1",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/cb08423f715261b4d413cb71c6983a030893ec97"
+      },
+      {
+        "sha": "052f315941caa1ba014b6ce4f302591a0e232669",
+        "date": "2023-07-01T04:39:08Z",
+        "title": "Initial commit",
+        "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/052f315941caa1ba014b6ce4f302591a0e232669"
+      }
+    ]
+  },
+  "librepods": {
+    "pull_request": "https://github.com/librepods-org/librepods/pull/655",
+    "head": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+    "commits": [
+      {
+        "sha": "7838e06e2a65fec591b007181d85aa779a81367e",
+        "title": "Register connected AirPods and handle tray errors.",
+        "url": "https://github.com/librepods-org/librepods/commit/7838e06e2a65fec591b007181d85aa779a81367e"
+      },
+      {
+        "sha": "00ea90ae6dcc62045ab3906c3b69979e70c2fecc",
+        "title": "Implement Hi-Res Microphone support for AirPods.",
+        "url": "https://github.com/librepods-org/librepods/commit/00ea90ae6dcc62045ab3906c3b69979e70c2fecc"
+      },
+      {
+        "sha": "220d20dd9897280ad8e32207b75ab22cd5b7e1cf",
+        "title": "Add audio level meter (UI change) for Hi-Res microphone",
+        "url": "https://github.com/librepods-org/librepods/commit/220d20dd9897280ad8e32207b75ab22cd5b7e1cf"
+      },
+      {
+        "sha": "e9bfac4c86859db0a04a7754e2d6ff5e660ac580",
+        "title": "Added ffmpeg headers to ci-linux-rust workflow",
+        "url": "https://github.com/librepods-org/librepods/commit/e9bfac4c86859db0a04a7754e2d6ff5e660ac580"
+      },
+      {
+        "sha": "a7aa069585aa2e36c9bc5adfb129305f2a23e396",
+        "title": "Implement activity monitor for hi-res mic",
+        "url": "https://github.com/librepods-org/librepods/commit/a7aa069585aa2e36c9bc5adfb129305f2a23e396"
+      },
+      {
+        "sha": "eb6b73f926c8529277538e8423af0d1cf712284d",
+        "title": "Refactor settings management and made the HighResMic setting persistent.",
+        "url": "https://github.com/librepods-org/librepods/commit/eb6b73f926c8529277538e8423af0d1cf712284d"
+      },
+      {
+        "sha": "697ed3ebf091c5305042cf3f0830e4210d0e260b",
+        "title": "Added the option to disable a2dp resetting.",
+        "url": "https://github.com/librepods-org/librepods/commit/697ed3ebf091c5305042cf3f0830e4210d0e260b"
+      },
+      {
+        "sha": "7c072a2e71d92a541c11a40ef18c91fa358ea731",
+        "title": "Added AGC toggle and watchdog pattern for capturing SDU stalling.",
+        "url": "https://github.com/librepods-org/librepods/commit/7c072a2e71d92a541c11a40ef18c91fa358ea731"
+      },
+      {
+        "sha": "25f44d76ae5502c966685d15b72ccb10a1b7469c",
+        "title": "Fix hi-res mic latency",
+        "url": "https://github.com/librepods-org/librepods/commit/25f44d76ae5502c966685d15b72ccb10a1b7469c"
+      },
+      {
+        "sha": "ddc05810623d3fe2936e0dfa2c61afaf1535a731",
+        "title": "Fixed issue where using the tray to exit during active mic stream would",
+        "url": "https://github.com/librepods-org/librepods/commit/ddc05810623d3fe2936e0dfa2c61afaf1535a731"
+      },
+      {
+        "sha": "d9da50b3d1713b1a49ed29eddc300be318b01d08",
+        "title": "Pause conversation awareness during mic capture",
+        "url": "https://github.com/librepods-org/librepods/commit/d9da50b3d1713b1a49ed29eddc300be318b01d08"
+      },
+      {
+        "sha": "00cbdafedbcad56d8e6324211aea242a5b4f979c",
+        "title": "Fixed Airpods getting put in HFP when the high res mic is disabled mid",
+        "url": "https://github.com/librepods-org/librepods/commit/00cbdafedbcad56d8e6324211aea242a5b4f979c"
+      },
+      {
+        "sha": "1f8948d5dd9fb8679968c51b3a296810cadffa53",
+        "title": "Update A2DP reset to use card profiles and resume MPRIS players.",
+        "url": "https://github.com/librepods-org/librepods/commit/1f8948d5dd9fb8679968c51b3a296810cadffa53"
+      },
+      {
+        "sha": "99b0e580a93f2a26647f89816895ca1e5f70a3ec",
+        "title": "Moved from a null sink to a fifo file for inserting raw PCMs into the",
+        "url": "https://github.com/librepods-org/librepods/commit/99b0e580a93f2a26647f89816895ca1e5f70a3ec"
+      }
+    ],
+    "discussion": [
+      {
+        "url": "https://github.com/librepods-org/librepods/pull/655#issuecomment-4854732405",
+        "author": "kavishdevar",
+        "finding": "Reports one-AirPod playback with Linux sink suspension; recommends card-profile off/restore and capture-time Conversation Awareness control."
+      },
+      {
+        "url": "https://github.com/librepods-org/librepods/pull/655#issuecomment-4980170555",
+        "author": "han-um",
+        "finding": "Reports Windows 11/Pico 2 W/AirPods Pro 3 concurrent AAC-ELD and mic operation without an explicit transport reset."
+      }
+    ]
+  },
+  "command_equality": [
+    {
+      "name": "aacp_handshake",
+      "size": 16,
+      "identical": true
+    },
+    {
+      "name": "aacp_set_feature_flags",
+      "size": 14,
+      "identical": true
+    },
+    {
+      "name": "aacp_request_notifications",
+      "size": 10,
+      "identical": true
+    },
+    {
+      "name": "aacp_mic_start_bytes",
+      "size": 19,
+      "identical": true
+    },
+    {
+      "name": "aacp_mic_stop_bytes",
+      "size": 12,
+      "identical": true
+    }
+  ],
+  "limits": [
+    "Source and author reports are evidence, not physical verification of our implementation.",
+    "Original left/right symptom predates our automatic reset policy.",
+    "Only public snapshots are vendored; non-public supplied input is indexed separately."
+  ]
+}

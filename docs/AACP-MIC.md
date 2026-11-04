@@ -177,16 +177,29 @@ Host mocks now exercise bursts, raw timestamp discontinuities, generation
 restarts, overflow/high-water, stale AU/PCM discard and simulated decode
 duration. They do not demonstrate real-device timing or acoustic quality.
 
-### Physical follow-up and transition recovery
+### Current capture lifecycle and bounded silence recovery
 
-Native Windows microphone use and concurrent playback were reported functional.
-The runner's forced WASAPI capture format was a separate host issue. Successful
-microphone START/STOP wire sends now queue source recovery through the existing
-serialized ELD transition owner (START delayed 800 ms, STOP next main poll),
-with stale intent and disconnect cancellation. See
-[LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md) for the exact evidence,
-the left/right finding and remaining physical checks. The initial bass
-impression was later revised after A/B listening. The
-[fork history review](MIC-ROUTING-REFERENCE-REVIEW.md) records why the automatic
-reset policy still requires verification: the hardware fork operates without
-an explicit mic-triggered transport reset. Diagnostics use USB CDC only.
+Native Windows mic use and concurrent playback were reported functional, with
+physical left/right behavior still unresolved. The hardware fork does not
+explicitly reset A2DP for capture. Normal START/STOP now leaves playback
+running; explicit/manual source recovery remains separate. Selected jitter
+policy is reapplied using the source's delayed control path, without a rebuild.
+
+After a successful START wire send, two seconds without a fully framed AU from
+the active channel requests AACP STOP then START. Three retries are allowed per
+capture generation. Successful sends alone commit a retry. Closing capture or
+teardown cancels obsolete work; a late frame can cancel an unsent retry. After
+exhaustion a final STOP is sent and a visible fault is held until a new capture
+session. The playback connection is not dropped for microphone silence.
+
+`:status` distinguishes `mic_started` (local submission), `mic_audio_seen`
+(framed reception), retry count/restarts, audio age and exhausted retry state.
+Framed reception does not establish successful decoding; decoded/error and USB
+PCM telemetry must also be checked. AU/PCM history is invalidated on successful
+wire transitions, with concurrent USB generations kept visible. The runner
+preserves exhaustion before cleanup while playback can remain active.
+
+See [routing evidence](MIC-ROUTING-REFERENCE-REVIEW.md) and
+[local continuation](LOCAL-CODEX-HANDOFF.md). The initial bass impression was
+revised after better A/B listening. Diagnostics use USB CDC only. No physical
+left/right fix or new live package is claimed by these offline changes.

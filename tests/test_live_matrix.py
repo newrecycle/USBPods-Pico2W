@@ -19,7 +19,7 @@ import live_audio
 
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy required')
 class MatrixReplay(unittest.TestCase):
-    def run_case(self,external=False,reject=False):
+    def run_case(self,external=False,reject=False,mic_fault=False):
         import numpy as np
         events=[];results={};streams=[]
         class Recorder:
@@ -74,7 +74,8 @@ class MatrixReplay(unittest.TestCase):
                 if cmd=='connect':self.connected=True;return {}
                 if cmd=='status':return dict(connected=self.connected,confirmed=int(self.connected),streaming=int(self.connected),
                     capture=int(capture_active()),codec=4 if self.connected else 0,fault_hold=int(self.failed),
-                    peer='fixture',tx_packets=int(clock.now*50)+1,send_failures=0)
+                    peer='fixture',tx_packets=int(clock.now*50)+1,send_failures=0,
+                    mic_watchdog_failed=int(mic_fault and clock.now>=3),mic_retry_count=3 if mic_fault else 0)
                 if cmd=='eldstatus':
                     p=self.profile
                     return dict(ready=int(self.connected),pending=0,transition='off' if self.failed else 'ready',
@@ -101,13 +102,17 @@ class MatrixReplay(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
             with mock.patch.dict(sys.modules,{'sounddevice':sd}),mock.patch.object(live_audio,'time',clock):
-                if reject:
-                    with self.assertRaisesRegex(RuntimeError,'Firmware transition failed'):
+                if reject or mic_fault:
+                    with self.assertRaisesRegex(RuntimeError,'Playback failed during' if mic_fault else 'Firmware transition failed'):
                         live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,lambda message:'','fixture')
                     fault=json.loads((root/'audio-failure-state.json').read_text())
                     self.assertTrue(fault['before_stream_cleanup'])
                     self.assertTrue(fault['status']['capture'])
-                    self.assertEqual(fault['eldstatus']['last_error'],263)
+                    if mic_fault:
+                        self.assertTrue(fault['status']['mic_watchdog_failed'])
+                        self.assertTrue(fault['status']['streaming'])
+                        self.assertEqual(fault['status']['mic_retry_count'],3)
+                    else:self.assertEqual(fault['eldstatus']['last_error'],263)
                     self.assertLess(clock.now,10) # No 15-second convergence timeout after a known failure.
                 else:
                     live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,lambda message:'','fixture')
@@ -125,4 +130,5 @@ class MatrixReplay(unittest.TestCase):
     def test_complete_owned_capture_matrix(self):self.run_case()
     def test_external_capture_is_not_a_usb_close_failure(self):self.run_case(external=True)
     def test_recorded_start_rejection_preserved_before_cleanup(self):self.run_case(reject=True)
+    def test_mic_watchdog_failure_preserved_while_playback_continues(self):self.run_case(mic_fault=True)
 if __name__=='__main__':unittest.main()

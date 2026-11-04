@@ -63,10 +63,10 @@ Other significant differences remain:
 
 | Area | Hardware fork | Current reconstruction |
 | --- | --- | --- |
-| Mic-triggered playback reset | None explicitly requested | Successful START queues a reset after 800 ms; STOP queues one immediately. This follows the LibrePods Linux lifecycle, not a hardware requirement established by the fork. |
+| Mic-triggered playback reset | None explicitly requested | The prior Linux-derived automatic reset has been removed. Capture and AACP retries do not rebuild playback; explicit source recovery remains separate. |
 | ELD RTP timestamps | Sample-count increments, frames × 480 | Millisecond wall-clock stamps inherited from the suggested Full source. The source comment attributes this to a macOS capture, which this review has not independently validated. |
 | Playback encoder | 265 kbps CBR, SBR off | Negotiated bitrate ceiling, multiple rate/game profiles, including a VBR/SBR profile. Do not exceed the peer's accepted ceiling just to copy the fork. |
-| No first microphone audio | STOP/START watchdog retry | No corresponding received-audio watchdog in the current channel state machine. |
+| No first microphone audio | STOP/START watchdog retry | Now implemented with two-second silence detection and a three-retry budget per capture generation; exhaustion is observable over USB. |
 | Conversation Awareness | No explicit capture-time policy in this fork | No automatic capture-time disable/restore policy. The upstream Linux discussion recommends one; our peer notification reliability is still unverified. |
 
 ## Chronology and next decisions
@@ -85,6 +85,8 @@ ordinary capture intent, and compare reset behavior without changing clocks,
 encoder parameters and routing simultaneously. Do not infer success from a
 locally accepted START command or from a build result.
 
-No firmware behavior was changed for this research result. Existing coupled
-tests verify our selected policy's implementation; they do not validate that
-policy inside the AirPods. Hardware packaging remains paused.
+The initial research result changed documentation only. The subsequent handoff
+implementation removes unconditional playback reset and adds bounded AACP-only
+liveness recovery. A before/after probe reproduces the ignored-START gap; coupled
+tests verify capture isolation and profile races. They do not prove the physical
+left/right issue resolved. Hardware packaging remains paused.

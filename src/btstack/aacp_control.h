@@ -26,7 +26,9 @@ bool aacp_control_submit(uint8_t id,uint8_t value);
 typedef struct {
  uint32_t transmitted, observed[5],batches,framing_errors;
  int allow_off;
- bool mic_started,mic_recovery_pending;
+ bool mic_started,mic_recovery_pending,mic_audio_seen,mic_watchdog_failed;
+ uint8_t mic_retry_count;
+ uint32_t mic_restarts,mic_watchdog_failures,mic_audio_age_ms;
  uint32_t media_suppressed,media_dropped;
  uint8_t media_pending,last_id,last_value;
 } aacp_control_diagnostics;

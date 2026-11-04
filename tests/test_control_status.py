@@ -11,7 +11,9 @@ fixture=r'''
 #include <stdio.h>
 #include "aacp_control.h"
 static aacp_control_diagnostics aap_control_diagnostics_fixture(void) {
- return (aacp_control_diagnostics){.transmitted=0xffffffffu,.last_id=0x28,.last_value=2,.mic_started=true,.observed={1,2,3,4,0xffffffffu}};
+ return (aacp_control_diagnostics){.transmitted=0xffffffffu,.last_id=0x28,.last_value=2,.mic_started=true,
+   .mic_audio_seen=true,.mic_retry_count=2,.mic_restarts=0xffffffffu,.mic_watchdog_failures=1,.mic_audio_age_ms=123,
+   .observed={1,2,3,4,0xffffffffu}};
 }
 #define aap_control_diagnostics aap_control_diagnostics_fixture
 static void aap_get_battery(uint8_t *b){b[0]=50;b[1]=60;b[2]=70;}
@@ -42,4 +44,6 @@ with tempfile.TemporaryDirectory() as temp:
  assert d['control_tx']==0xffffffff and d['control_rx_seq']==[1,2,3,4,0xffffffff]
  assert d['control_last_id']==0x28 and d['control_last_value']==2
  assert d['connected'] and d['capture'] and d['codec']==4 and d['mic_started'] and not d['mic_recovery_pending']
+ assert d['mic_audio_seen'] and not d['mic_watchdog_failed'] and d['mic_retry_count']==2
+ assert d['mic_restarts']==0xffffffff and d['mic_watchdog_failures']==1 and d['mic_audio_age_ms']==123
  print('Production status serializer: wire submission and per-control freshness passed')

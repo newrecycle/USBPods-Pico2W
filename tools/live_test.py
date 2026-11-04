@@ -62,7 +62,7 @@ def connection_preflight(link,recorder,seconds=5):
     while True:
         start=link.request('status');encoder=link.request('eldstatus')
         recorder.log('connection-preflight.jsonl',{'phase':'settle','status':start,'encoder':encoder})
-        if start.get('fault_hold') or not start.get('connected') or encoder.get('transition')=='failed':
+        if start.get('mic_watchdog_failed') or start.get('fault_hold') or not start.get('connected') or encoder.get('transition')=='failed':
             raise RuntimeError('Firmware failed while settling initial microphone/playback: '+str({'status':start,'encoder':encoder}))
         if (start.get('confirmed') and start.get('streaming') and start.get('codec')==4 and
             encoder.get('transition')=='ready' and not encoder.get('pending') and
@@ -75,7 +75,7 @@ def connection_preflight(link,recorder,seconds=5):
         recorder.log('connection-preflight.jsonl',{'status':state,'encoder':encoder})
         if not all(state.get(k) for k in ('connected','confirmed','streaming')) or state.get('codec')!=4:
             raise RuntimeError('Headset/AACP/playback did not remain connected: '+str(state))
-        if encoder.get('transition')!='ready' or encoder.get('pending') or state.get('mic_recovery_pending') or state.get('fault_hold'):
+        if encoder.get('transition')!='ready' or encoder.get('pending') or state.get('mic_recovery_pending') or state.get('fault_hold') or state.get('mic_watchdog_failed'):
             raise RuntimeError('Firmware setup/recovery failed: '+str(encoder))
         time.sleep(.25)
     end=link.request('status')

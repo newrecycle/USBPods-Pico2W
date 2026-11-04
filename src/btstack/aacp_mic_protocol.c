@@ -25,6 +25,36 @@ void aacp_mic_sent(aacp_mic_session *s, int c) {
  if (c == 3) s->started=true;
  if (c == 4) s->started=false;
 }
+void aacp_mic_watch_reset(aacp_mic_watch *w){memset(w,0,sizeof(*w));}
+bool aacp_mic_watch_target(aacp_mic_watch *w,bool want,bool started,uint32_t generation,uint32_t now) {
+ if(w->enabled!=want || w->generation!=generation) {
+   uint32_t restarts=w->restarts,failures=w->failures;
+   *w=(aacp_mic_watch){.enabled=want,.generation=generation,.armed=want&&started,
+       .due=now+AACP_MIC_SILENCE_MS,.restarts=restarts,.failures=failures};
+ }
+ if(w->enabled && w->armed && started && !w->failed &&
+    w->retry==AACP_MIC_RETRY_NONE && (int32_t)(now-w->due)>=0) {
+   if(w->retries==AACP_MIC_MAX_RETRIES){w->failed=true;w->failures++;}
+   else w->retry=AACP_MIC_RETRY_STOP;
+ }
+ return want && !w->failed && w->retry!=AACP_MIC_RETRY_STOP;
+}
+void aacp_mic_watch_sent(aacp_mic_watch *w,int command,uint32_t now) {
+ if(command==3) {
+   w->armed=true;w->seen=false;w->due=now+AACP_MIC_SILENCE_MS;
+   w->retry=AACP_MIC_RETRY_NONE;
+ }else if(command==4) {
+   w->armed=false;w->seen=false;
+   if(w->retry==AACP_MIC_RETRY_STOP && !w->failed) {
+     w->retries++;w->restarts++;w->retry=AACP_MIC_RETRY_START;
+   }else w->retry=AACP_MIC_RETRY_NONE;
+ }
+}
+void aacp_mic_watch_audio(aacp_mic_watch *w,uint32_t now) {
+ if(!w->enabled || !w->armed || w->failed)return;
+ w->seen=true;w->last_audio=now;w->due=now+AACP_MIC_SILENCE_MS;
+ if(w->retry==AACP_MIC_RETRY_STOP)w->retry=AACP_MIC_RETRY_NONE;
+}
 int aacp_mic_parse(const uint8_t *p, size_t n, aacp_mic_au_cb cb, void *ctx) {
  if (n < 8 || p[4] != 0x58 || p[5] || p[6] != 1 || p[7]) return 0;
  if (memcmp(p, "\x04\x00\x04\x00",4) || n < 28) return -1;
@@ -40,3 +70,4 @@ int aacp_mic_parse(const uint8_t *p, size_t n, aacp_mic_au_cb cb, void *ctx) {
  }
  return frames;
 }
+

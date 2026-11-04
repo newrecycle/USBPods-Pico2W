@@ -38,6 +38,7 @@ void *cyw43_arch_async_context(void){return NULL;}
 void async_context_acquire_lock_blocking(void*p){(void)p;locks++;}
 void async_context_release_lock(void*p){(void)p;assert(locks>0);locks--;}
 bool aacp_mic_capture(void){return capture;}
+uint32_t aacp_mic_generation(void){return epochs;}
 bool aacp_mic_audio_ready(void){return true;}
 void aacp_mic_discontinuity(void){epochs++;}
 void aacp_mic_audio_enqueue(const uint8_t*p,uint8_t n){(void)p;(void)n;}
@@ -57,10 +58,9 @@ int main(void){
  uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x41,ack,6);assert(!aap_protocol_seen());
  callback(L2CAP_DATA_PACKET,0x42,ack,6);assert(aap_protocol_seen());
  aap_set_noise_mode(2);assert(aap_get_noise_mode()==0);send_now();assert(last_len==19); // mic START first
- assert(!rate_calls);now+=799;aacp_mic_poll();assert(!rate_calls);
- now++;aacp_mic_poll();assert(rate_calls==1); // delayed START recovery, outside send callback
+ assert(!rate_calls);now+=800;aacp_mic_poll();assert(!rate_calls);
  capture=false;send_now();assert(last_len==12); // STOP before control writes
- assert(rate_calls==1);aacp_mic_poll();assert(rate_calls==2); // STOP recovery is deferred too
+ aacp_mic_poll();assert(!rate_calls); // Capture never rebuilds the playback encoder.
  send_rc=1;send_now();assert(last_len==11 && last[6]==0x0d && last[7]==2);
  assert(!aap_control_diagnostics().transmitted);
  send_rc=0;send_now();assert(last_len==11 && last[6]==0x0d);
@@ -76,18 +76,18 @@ int main(void){
                   4,0,4,0,9,0,0x26,1,0,0,0};
  callback(L2CAP_DATA_PACKET,0x42,batch,sizeof batch);
  assert(aap_get_noise_mode()==3 && aap_get_ca()==1 && aap_get_pvol()==1);
- // Failed wire sends never schedule recovery. Rapid toggles coalesce.
+ // Failed wire sends and rapid capture toggles never reset playback.
  unsigned calls=rate_calls;capture=true;send_rc=1;send_now();assert(last_len==19);
  now+=800;aacp_mic_poll();assert(rate_calls==calls);
  send_rc=0;send_now();now+=400;capture=false;send_now();assert(last_len==12);
- aacp_mic_poll();assert(rate_calls==++calls);
+ aacp_mic_poll();assert(rate_calls==calls);
  capture=true;send_now();now+=799;aacp_mic_poll();assert(rate_calls==calls);
- now++;aacp_mic_poll();assert(rate_calls==++calls);
+ now++;aacp_mic_poll();assert(rate_calls==calls);
  now+=1000;aacp_mic_poll();assert(rate_calls==calls); // exactly once
  // A new USB intent blocks an old recovery before its command can be sent.
  capture=false;send_now();capture=true;aacp_mic_poll();assert(rate_calls==calls);
- send_now();now+=800;aacp_mic_poll();assert(rate_calls==++calls);
- capture=false;send_now();aacp_mic_poll();assert(rate_calls==++calls);
+ send_now();now+=800;aacp_mic_poll();assert(rate_calls==calls);
+ capture=false;send_now();aacp_mic_poll();assert(rate_calls==calls);
  aap_set_game(true);assert(rate_sequence<jitter_sequence);assert(aap_get_game());
  aap_set_game(false);assert(rate_sequence<jitter_sequence);assert(!aap_get_game());
  unsigned old_dirties=dirties,old_calls=rate_calls;

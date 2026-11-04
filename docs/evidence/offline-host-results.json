@@ -1,0 +1,789 @@
+{
+  "schema": 1,
+  "hardware_run": false,
+  "results": [
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_aacp_mic.c",
+        "src/btstack/aacp_mic_protocol.c",
+        "-o",
+        "{TMP}/test-aacp"
+      ],
+      "returncode": 0,
+      "seconds": 0.208,
+      "log": "check-00.txt",
+      "name": "00 test-aacp"
+    },
+    {
+      "command": [
+        "{TMP}/test-aacp"
+      ],
+      "returncode": 0,
+      "seconds": 0.011,
+      "log": "check-01.txt",
+      "name": "01 test-aacp"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_aacp_control.c",
+        "src/btstack/aacp_control.c",
+        "-o",
+        "{TMP}/test-control"
+      ],
+      "returncode": 0,
+      "seconds": 0.196,
+      "log": "check-02.txt",
+      "name": "02 test-control"
+    },
+    {
+      "command": [
+        "{TMP}/test-control"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-03.txt",
+      "name": "03 test-control"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src",
+        "tests/test_control_command.c",
+        "src/control_command.c",
+        "-o",
+        "{TMP}/test-console"
+      ],
+      "returncode": 0,
+      "seconds": 0.176,
+      "log": "check-04.txt",
+      "name": "04 test-console"
+    },
+    {
+      "command": [
+        "{TMP}/test-console"
+      ],
+      "returncode": 0,
+      "seconds": 0.004,
+      "log": "check-05.txt",
+      "name": "05 test-console"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "tests/transport_mocks",
+        "-I",
+        "src/btstack",
+        "tests/test_aacp_transport.c",
+        "src/btstack/aacp_mic.c",
+        "src/btstack/aacp_control.c",
+        "src/btstack/media_input.c",
+        "src/btstack/aacp_mic_protocol.c",
+        "-o",
+        "{TMP}/test-transport"
+      ],
+      "returncode": 0,
+      "seconds": 0.371,
+      "log": "check-06.txt",
+      "name": "06 test-transport"
+    },
+    {
+      "command": [
+        "{TMP}/test-transport"
+      ],
+      "returncode": 0,
+      "seconds": 0.006,
+      "log": "check-07.txt",
+      "name": "07 test-transport"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-DUSBPODS_MIC_DECODE=1",
+        "-I",
+        "tests/mic_mocks",
+        "-I",
+        "src/btstack",
+        "tests/test_mic_audio.c",
+        "src/btstack/aacp_mic_audio.c",
+        "src/btstack/mic_clock.c",
+        "-o",
+        "{TMP}/test-mic-audio"
+      ],
+      "returncode": 0,
+      "seconds": 0.265,
+      "log": "check-08.txt",
+      "name": "08 test-mic-audio"
+    },
+    {
+      "command": [
+        "{TMP}/test-mic-audio"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-09.txt",
+      "name": "09 test-mic-audio"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_relay_rtp.c",
+        "src/btstack/relay_rtp.c",
+        "-o",
+        "{TMP}/test-relay"
+      ],
+      "returncode": 0,
+      "seconds": 0.103,
+      "log": "check-10.txt",
+      "name": "10 test-relay"
+    },
+    {
+      "command": [
+        "{TMP}/test-relay"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-11.txt",
+      "name": "11 test-relay"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_relay_lifecycle.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.221,
+      "log": "check-12.txt",
+      "name": "12 test_relay_lifecycle.py"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_eld_profile.c",
+        "src/btstack/eld_profile.c",
+        "-o",
+        "{TMP}/test-eld-profile"
+      ],
+      "returncode": 0,
+      "seconds": 0.111,
+      "log": "check-13.txt",
+      "name": "13 test-eld-profile"
+    },
+    {
+      "command": [
+        "{TMP}/test-eld-profile"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-14.txt",
+      "name": "14 test-eld-profile"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "tests/encoder_mocks",
+        "-I",
+        "src/btstack",
+        "tests/test_eld_encoder.c",
+        "src/btstack/eld_encoder.c",
+        "src/btstack/eld_profile.c",
+        "-o",
+        "{TMP}/test-eld-encoder"
+      ],
+      "returncode": 0,
+      "seconds": 0.121,
+      "log": "check-15.txt",
+      "name": "15 test-eld-encoder"
+    },
+    {
+      "command": [
+        "{TMP}/test-eld-encoder"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-16.txt",
+      "name": "16 test-eld-encoder"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_eld_transition.c",
+        "src/btstack/eld_transition.c",
+        "-o",
+        "{TMP}/test-eld-transition"
+      ],
+      "returncode": 0,
+      "seconds": 0.133,
+      "log": "check-17.txt",
+      "name": "17 test-eld-transition"
+    },
+    {
+      "command": [
+        "{TMP}/test-eld-transition"
+      ],
+      "returncode": 0,
+      "seconds": 0.004,
+      "log": "check-18.txt",
+      "name": "18 test-eld-transition"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_eld_adapter.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.407,
+      "log": "check-19.txt",
+      "name": "19 test_eld_adapter.py"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_mic_telemetry.c",
+        "src/btstack/aacp_mic_audio.c",
+        "src/btstack/mic_clock.c",
+        "-o",
+        "{TMP}/test-mic-telemetry"
+      ],
+      "returncode": 0,
+      "seconds": 0.156,
+      "log": "check-20.txt",
+      "name": "20 test-mic-telemetry"
+    },
+    {
+      "command": [
+        "{TMP}/test-mic-telemetry"
+      ],
+      "returncode": 0,
+      "seconds": 0.004,
+      "log": "check-21.txt",
+      "name": "21 test-mic-telemetry"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/tinyusb",
+        "tests/test_usb_host_input.c",
+        "src/tinyusb/usb_capture_lifecycle.c",
+        "src/tinyusb/usb_hid_media.c",
+        "-o",
+        "{TMP}/test-usb-input"
+      ],
+      "returncode": 0,
+      "seconds": 0.206,
+      "log": "check-22.txt",
+      "name": "22 test-usb-input"
+    },
+    {
+      "command": [
+        "{TMP}/test-usb-input"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-23.txt",
+      "name": "23 test-usb-input"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_usb_input_wiring.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.022,
+      "log": "check-24.txt",
+      "name": "24 test_usb_input_wiring.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_live_runner.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.576,
+      "log": "check-25.txt",
+      "name": "25 test_live_runner.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_source_boundaries.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.186,
+      "log": "check-26.txt",
+      "name": "26 test_source_boundaries.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_control_records.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.12,
+      "log": "check-27.txt",
+      "name": "27 test_control_records.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_settings_timing.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.155,
+      "log": "check-28.txt",
+      "name": "28 test_settings_timing.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_sdk_transport_contract.py",
+        "--source-dir",
+        "{REPO}/references/btstack"
+      ],
+      "returncode": 0,
+      "seconds": 0.128,
+      "log": "check-29.txt",
+      "name": "29 test_sdk_transport_contract.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_relay_sdk_routing.py",
+        "--sdk-source",
+        "{REPO}/references/btstack"
+      ],
+      "returncode": 0,
+      "seconds": 0.134,
+      "log": "check-30.txt",
+      "name": "30 test_relay_sdk_routing.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_codec_setup.py",
+        "--sdk-source",
+        "{REPO}/references/btstack"
+      ],
+      "returncode": 0,
+      "seconds": 0.17,
+      "log": "check-31.txt",
+      "name": "31 test_codec_setup.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_eld_negotiation.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.151,
+      "log": "check-32.txt",
+      "name": "32 test_eld_negotiation.py"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_eld_codec_config.c",
+        "src/btstack/eld_codec_config.c",
+        "-o",
+        "{TMP}/test-eld-codec-config"
+      ],
+      "returncode": 0,
+      "seconds": 0.096,
+      "log": "check-33.txt",
+      "name": "33 test-eld-codec-config"
+    },
+    {
+      "command": [
+        "{TMP}/test-eld-codec-config"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-34.txt",
+      "name": "34 test-eld-codec-config"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_mic_clock.c",
+        "src/btstack/mic_clock.c",
+        "-o",
+        "{TMP}/test-mic-clock"
+      ],
+      "returncode": 0,
+      "seconds": 0.089,
+      "log": "check-35.txt",
+      "name": "35 test-mic-clock"
+    },
+    {
+      "command": [
+        "{TMP}/test-mic-clock"
+      ],
+      "returncode": 0,
+      "seconds": 0.077,
+      "log": "check-36.txt",
+      "name": "36 test-mic-clock"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-O1",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-pthread",
+        "-I",
+        "src/tinyusb",
+        "tests/test_usb_hid_threads.c",
+        "src/tinyusb/usb_hid_media.c",
+        "-o",
+        "{TMP}/test-usb-hid-threads"
+      ],
+      "returncode": 0,
+      "seconds": 0.155,
+      "log": "check-37.txt",
+      "name": "37 test-usb-hid-threads"
+    },
+    {
+      "command": [
+        "{TMP}/test-usb-hid-threads"
+      ],
+      "returncode": 0,
+      "seconds": 0.009,
+      "log": "check-38.txt",
+      "name": "38 test-usb-hid-threads"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_verify_uf2.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.047,
+      "log": "check-39.txt",
+      "name": "39 test_verify_uf2.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_button_context.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.122,
+      "log": "check-40.txt",
+      "name": "40 test_button_context.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_control_status.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.122,
+      "log": "check-41.txt",
+      "name": "41 test_control_status.py"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-I",
+        "src/btstack",
+        "tests/test_media_input.c",
+        "src/btstack/media_input.c",
+        "-o",
+        "{TMP}/test-media-input"
+      ],
+      "returncode": 0,
+      "seconds": 0.086,
+      "log": "check-42.txt",
+      "name": "42 test-media-input"
+    },
+    {
+      "command": [
+        "{TMP}/test-media-input"
+      ],
+      "returncode": 0,
+      "seconds": 0.005,
+      "log": "check-43.txt",
+      "name": "43 test-media-input"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_live_matrix.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.698,
+      "log": "check-44.txt",
+      "name": "44 test_live_matrix.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_media_input_wiring.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.404,
+      "log": "check-45.txt",
+      "name": "45 test_media_input_wiring.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_pcm_packet_path.py",
+        "--fdk-lib",
+        "{FDK}"
+      ],
+      "returncode": 0,
+      "seconds": 0.886,
+      "log": "check-46.txt",
+      "name": "46 test_pcm_packet_path.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_usb_control_boundaries.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.186,
+      "log": "check-47.txt",
+      "name": "47 test_usb_control_boundaries.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_uac1_controls.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.15,
+      "log": "check-48.txt",
+      "name": "48 test_uac1_controls.py"
+    },
+    {
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+        "tests/test_mic_recovery_integration.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.938,
+      "log": "check-49.txt",
+      "name": "49 test_mic_recovery_integration.py"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACdec/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACenc/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libSYS/include",
+        "tests/test_mic_fdk.c",
+        "{FDK}",
+        "-lstdc++",
+        "-lm",
+        "-o",
+        "{TMP}/mic-fdk"
+      ],
+      "returncode": 0,
+      "seconds": 0.308,
+      "log": "check-50.txt",
+      "name": "compile mic-fdk"
+    },
+    {
+      "command": [
+        "{TMP}/mic-fdk"
+      ],
+      "returncode": 0,
+      "seconds": 0.021,
+      "log": "check-51.txt",
+      "name": "mic-fdk"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address",
+        "-DUSBPODS_MIC_DECODE=1",
+        "-I",
+        "tests/time_mocks",
+        "-I",
+        "src/btstack",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACdec/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACenc/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libSYS/include",
+        "tests/test_eld_duplex_fdk.c",
+        "src/btstack/eld_profile.c",
+        "src/btstack/eld_encoder.c",
+        "src/btstack/aacp_mic_audio.c",
+        "src/btstack/mic_clock.c",
+        "src/resamp44.c",
+        "{FDK}",
+        "-lstdc++",
+        "-lm",
+        "-o",
+        "{TMP}/eld-duplex"
+      ],
+      "returncode": 0,
+      "seconds": 0.515,
+      "log": "check-52.txt",
+      "name": "compile eld-duplex"
+    },
+    {
+      "command": [
+        "{TMP}/eld-duplex"
+      ],
+      "returncode": 0,
+      "seconds": 0.841,
+      "log": "check-53.txt",
+      "name": "eld-duplex"
+    },
+    {
+      "command": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fsanitize=address",
+        "-I",
+        "src/btstack",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACdec/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libAACenc/include",
+        "-isystem",
+        "3rd-party/fdk-aac/libSYS/include",
+        "tests/test_eld_frequency.c",
+        "src/btstack/eld_profile.c",
+        "src/btstack/eld_encoder.c",
+        "{FDK}",
+        "-lstdc++",
+        "-lm",
+        "-o",
+        "{TMP}/eld-frequency"
+      ],
+      "returncode": 0,
+      "seconds": 0.318,
+      "log": "check-54.txt",
+      "name": "compile eld-frequency"
+    },
+    {
+      "command": [
+        "{TMP}/eld-frequency"
+      ],
+      "returncode": 0,
+      "seconds": 0.461,
+      "log": "check-55.txt",
+      "name": "eld-frequency"
+    }
+  ],
+  "skipped": [],
+  "passed": 56,
+  "failed": 0,
+  "portable_manifest": "tests/offline-commands.json",
+  "source_commit": "recorded in current-validation.json"
+}
