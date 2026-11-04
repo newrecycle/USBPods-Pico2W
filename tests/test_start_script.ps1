@@ -45,6 +45,10 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   New-Item (Join-Path $TempRoot 'fail-flash') | Out-Null
   Run-Launcher 1
   if (Test-Path (Join-Path $TempRoot 'run-args.json')) { throw 'Tests ran after flash failure' }
+  Remove-Item (Join-Path $TempRoot 'flash-args.json')
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName 'fixture-one' -TargetMac 'AA:BB:CC:DD:EE:FF' *> (Join-Path $TempRoot 'launcher.log')
+  if ($LASTEXITCODE -eq 0) { throw 'Conflicting target identities unexpectedly accepted' }
+  if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Invalid target selection reached the firmware flasher' }
   Write-Host 'PASS Windows launcher: automatic flash, changed COM, quoted paths/target, test failure exit, flash failure stop'
 } finally {
   $env:PATH = $PreviousPath
