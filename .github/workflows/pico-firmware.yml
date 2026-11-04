@@ -1,7 +1,7 @@
 name: Pico firmware build
 on:
   push:
-    branches: [main, codex/eld-integration]
+    branches: [main, codex/eld-integration, 'audit/duplex-192k-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
