@@ -709,12 +709,18 @@ void tinyusb_control_task(void){
    uint16_t min_pkt, max_pkt;
    int16_t  peak_l, peak_r, last_l, last_r;
    uint64_t energy;
+   bool mic_capture, mic_mixed; /* a tap window crossing mic alt changes is ambiguous */
  } tap;
 
  static void usb_pcm_tap_feed(const int16_t *pcm, uint16_t bytes)
  {
    uint32_t now = to_ms_since_boot(get_absolute_time());
-   if (tap.t0 == 0) { tap.t0 = now; tap.min_pkt = 0xFFFF; }
+   bool capture_now = usb_capture_running();
+   if (tap.t0 == 0) {
+     tap.t0 = now; tap.min_pkt = 0xFFFF; tap.mic_capture = capture_now;
+   } else if (tap.mic_capture != capture_now) {
+     tap.mic_mixed = true;
+   }
    if (tap.last_ms && now - tap.last_ms > tap.gap_max) tap.gap_max = now - tap.last_ms;
    tap.last_ms = now;
    tap.pkts++; tap.bytes += bytes;
@@ -737,20 +743,21 @@ void tinyusb_control_task(void){
    if (all_zero) tap.zero_pkts++;
 
    if (now - tap.t0 >= 500) {
-     printf("[tap] %lums pkts %lu bytes %lu (pkt %u..%u) peak L %d R %d avg %lu zero %lu jumps %lu maxgap %lums\n",
+     printf("[tap] %lums pkts %lu bytes %lu (pkt %u..%u) peak L %d R %d avg %lu zero %lu jumps %lu maxgap %lums mic=%s\n",
             (unsigned long)(now - tap.t0), (unsigned long)tap.pkts,
             (unsigned long)tap.bytes, tap.min_pkt == 0xFFFF ? 0 : tap.min_pkt,
             tap.max_pkt, tap.peak_l, tap.peak_r,
             (unsigned long)(tap.energy / (tap.bytes ? tap.bytes : 1)),
             (unsigned long)tap.zero_pkts, (unsigned long)tap.jumps,
-            (unsigned long)tap.gap_max);
+            (unsigned long)tap.gap_max,
+            tap.mic_mixed ? "transition" : tap.mic_capture ? "open" : "closed");
      printf("[tap] pcm: %d %d | %d %d | %d %d | %d %d\n",
             pcm[0], pcm[1], n > 3 ? pcm[2] : 0, n > 3 ? pcm[3] : 0,
             n > 5 ? pcm[4] : 0, n > 5 ? pcm[5] : 0,
             n > 7 ? pcm[6] : 0, n > 7 ? pcm[7] : 0);
      uint32_t keep_last = tap.last_ms; int16_t kl = tap.last_l, kr = tap.last_r;
      memset(&tap, 0, sizeof tap);
-     tap.t0 = now; tap.min_pkt = 0xFFFF;
+     tap.t0 = now; tap.min_pkt = 0xFFFF; tap.mic_capture = capture_now;
      tap.last_ms = keep_last; tap.last_l = kl; tap.last_r = kr;
    }
  }
@@ -763,7 +770,8 @@ void tinyusb_control_task(void){
    uint32_t now = to_ms_since_boot(get_absolute_time());
    if (tap.t0 == 0) { tap.t0 = now; tap.min_pkt = 0xFFFF; return; }
    if (now - tap.t0 >= 500 && tap.pkts == 0) {
-     printf("[tap] %lums pkts 0 — host sent NOTHING\n", (unsigned long)(now - tap.t0));
+     printf("[tap] %lums pkts 0 — host sent NOTHING mic=%s\n",
+           (unsigned long)(now - tap.t0), usb_capture_running() ? "open" : "closed");
      tap.t0 = now;
    }
  }
