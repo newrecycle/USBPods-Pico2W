@@ -833,5 +833,14 @@
       "tests/test_eld_foreground.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "mic-close-tap",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_mic_close_tap.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]
