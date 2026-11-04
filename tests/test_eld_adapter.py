@@ -181,10 +181,10 @@ int main(void) {
 
  // Teardown during WAIT_START invalidates the pending retry and callbacks.
  connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
- uint32_t old_rebuilds=rebuild_calls,old_pumps=pumps,old_starts=starts;
+ uint32_t old_rebuilds=rebuild_calls,old_pumps=pumps,stale_starts=starts;
  src_eld_link_reset();a2dp_is_connected_flag=false;src_stream_start_accepted();
  advance(7000);a2dp_source_main_work();
- assert(rebuild_calls==old_rebuilds && pumps==old_pumps && starts==old_starts && !disconnects);
+ assert(rebuild_calls==old_rebuilds && pumps==old_pumps && starts==stale_starts && !disconnects);
 
  // Channel-late jitter reapply and new requests supersede old settle timers.
  connected();a2dp_source_queue_jitter(90);advance(200);request(3,true,2);advance(500);
