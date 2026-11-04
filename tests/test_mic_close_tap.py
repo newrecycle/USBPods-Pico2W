@@ -5,6 +5,7 @@ future optional CDC observations discriminate host-side L/R data in an
 open/closed/transition capture window. A baseline without state tagging must
 fail, rather than falsely attributing a mixed window to a closed microphone.
 """
+import argparse
 import os
 import re
 import subprocess
@@ -13,7 +14,11 @@ from pathlib import Path
 
 from test_source_boundaries import ROOT, function
 
-src = (ROOT / "src/tinyusb/uac.c").read_text()
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--source-file", type=Path, default=ROOT/"src/tinyusb/uac.c",
+                    help="Use an archived uac.c for an expected-failure baseline")
+options = parser.parse_args()
+src = options.source_file.read_text()
 start = src.index("volatile bool usb_pcm_tap;")
 structure = re.search(r"static struct\s*\{[^}]*\}\s*tap;", src[start:], re.S)
 assert structure, "Missing production tap counters"
@@ -63,8 +68,8 @@ with tempfile.TemporaryDirectory() as temp:
     exe = directory / "mic_tap"
     c.write_text(
         fixture + "\n" + declaration + "\n"
-        + function("src/tinyusb/uac.c", "usb_pcm_tap_feed") + "\n"
-        + function("src/tinyusb/uac.c", "usb_pcm_tap_tick") + "\n" + tests
+        + function(options.source_file.resolve(), "usb_pcm_tap_feed") + "\n"
+        + function(options.source_file.resolve(), "usb_pcm_tap_tick") + "\n" + tests
     )
     subprocess.run(
         ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
