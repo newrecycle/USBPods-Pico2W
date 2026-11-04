@@ -716,11 +716,11 @@ void tinyusb_control_task(void){
  {
    uint32_t now = to_ms_since_boot(get_absolute_time());
    bool capture_now = usb_capture_running();
-   if (tap.t0 == 0) {
-     tap.t0 = now; tap.min_pkt = 0xFFFF; tap.mic_capture = capture_now;
-   } else if (tap.mic_capture != capture_now) {
-     tap.mic_mixed = true;
-   }
+   if (tap.t0 == 0) { tap.t0 = now; tap.min_pkt = 0xFFFF; }
+   /* The 50 ms tap tick can initialize t0 before the first speaker packet.
+      Tag the first *actual PCM sample*, not an idle interval. */
+   if (tap.pkts == 0) tap.mic_capture = capture_now;
+   else if (tap.mic_capture != capture_now) tap.mic_mixed = true;
    if (tap.last_ms && now - tap.last_ms > tap.gap_max) tap.gap_max = now - tap.last_ms;
    tap.last_ms = now;
    tap.pkts++; tap.bytes += bytes;
