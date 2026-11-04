@@ -8,6 +8,9 @@ on:
       - 'tools/live_audio.py'
       - 'tools/Run-Test.ps1'
       - 'tests/test_live_runner.py'
+      - 'tests/test_validation_audit.py'
+      - 'tools/package_live_test.py'
+      - 'tools/flash_candidate.py'
       - 'tests/test_live_matrix.py'
       - 'tests/test_live_cli_e2e.py'
       - 'tests/test_start_script.ps1'
@@ -37,6 +40,7 @@ jobs:
         run: |
           python3 tests/test_live_runner.py
           python3 tests/test_live_matrix.py
+          python3 tests/test_validation_audit.py
       - name: Exercise production codec scheduling and transition adapters
         run: |
           python3 tests/test_eld_foreground.py
