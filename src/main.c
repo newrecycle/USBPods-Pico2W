@@ -40,6 +40,26 @@
 #include "pico/flash.h"
 
 
+#ifdef USBPODS_DUAL_CORE_MIC
+/* AACP AU producer and USB PCM consumer stay on core 0. The existing C11
+ * SPSC rings transfer buffers to and from the bounded core-1 decoder.
+ * The old core-1 encoder is NOT safe and remains disabled. */
+static uint32_t mic_core1_stack[4096] __attribute__((aligned(16)));
+static _Atomic bool mic_core1_ready;
+static _Atomic uint32_t mic_core1_passes;
+static void mic_core1_entry(void) {
+    /* SDK flash lockout owns the multicore FIFO: never use it for messages. */
+    if (!flash_safe_execute_core_init())
+        panic("mic core1 flash lockout registration failed");
+    atomic_store_explicit(&mic_core1_ready, true, memory_order_release);
+    for (;;) {
+        aacp_mic_audio_work();
+        atomic_fetch_add_explicit(&mic_core1_passes, 1, memory_order_relaxed);
+        if (!aacp_mic_audio_pending()) sleep_us(250);
+    }
+}
+#endif
+
 /* Boot2 re-entry WITHOUT a cache flush — see SAFE-YANK below. On RP2350
    the callable flash-setup code lives at BOOTRAM_BASE (the ROM copies it
    there at boot) — NOT at XIP_BASE like the RP2040 (calling the flash
@@ -427,7 +447,8 @@ int main() {
     watchdog_hw->scratch[2] = 0;
     watchdog_hw->scratch[4] = 0;
 
-    flash_safe_execute_core_init();
+    if (!flash_safe_execute_core_init())
+        panic("core0 flash lockout registration failed");
 
     settings_init();   /* journaled store: load or migrate the legacy pages */
 
@@ -616,14 +637,28 @@ int main() {
     }
     sleep_ms(200);
 
-    // NOTE: FDK-AAC hangs on Core 1 (likely internal global state / malloc contention)
-    // Keep encoding on Core 0 for now
-    // multicore_launch_core1_with_stack(core1_aaceld_encoder_loop, core1_stack, sizeof(core1_stack));
-
+    /* Keep the incomplete core-1 encoder disabled: its handle can be freed
+     * without worker acknowledgment and its encoded queue has no consumer.
+     * Offload the persistent microphone decoder instead, after initialization. */
+#ifdef USBPODS_DUAL_CORE_MIC
+    if (!radio_absent) {
+        multicore_launch_core1_with_stack(mic_core1_entry, mic_core1_stack,
+                                          sizeof mic_core1_stack);
+        absolute_time_t deadline = make_timeout_time_ms(500);
+        while (!atomic_load_explicit(&mic_core1_ready, memory_order_acquire)) {
+            if (time_reached(deadline))
+                panic("mic core1 failed to register flash lockout");
+            tight_loop_contents();
+        }
+        printf("[core1] experimental mic decoder ready; flash lockout registered\n");
+    }
+    /* QSPI CS-yank cannot be protected by core-0 IRQ masking on two cores.
+     * Disable BOOTSEL polling in this build; CDC reset/picotool still work. */
+    printf("[core1] BOOTSEL polling disabled for cross-core XIP safety\n");
+#else
     static repeating_timer_t bootsel_timer;
-    /* Button poll is safe on EVERY board now — get_bootsel_button re-enters
-       XIP via boot2 after each CS yank (see SAFE-YANK above). */
     add_repeating_timer_us(20000, bootsel_timer_callback, NULL, &bootsel_timer);
+#endif
 
     // Enable watchdog — auto-resets if main loop stops feeding it (2 seconds)
     watchdog_enable(2000, true);
@@ -638,7 +673,9 @@ int main() {
         watchdog_hw->scratch[3] = 0;   /* usb-IRQ liveness window resets */
         watchdog_hw->scratch[6] = 1;
         tinyusb_control_task();
+#ifndef USBPODS_DUAL_CORE_MIC
         bootsel_main_work(radio_absent);
+#endif
         watchdog_hw->scratch[6] = 2;
         settings_tick();    // debounced flash commits (main loop ONLY)
         { extern void license_task(void); license_task(); }  // deferred re-verify
@@ -660,7 +697,9 @@ int main() {
             async_context_acquire_lock_blocking(cyw43_arch_async_context());
             aacp_mic_poll();
             async_context_release_lock(cyw43_arch_async_context());
+#ifndef USBPODS_DUAL_CORE_MIC
             aacp_mic_audio_work();
+#endif
             for (int rn = 0; rn < 6 && bt_sink_relay_work(); rn++) { }
             watchdog_hw->scratch[6] = 4;
             a2dp_source_main_work();   /* deferred ELD encoder rebuild (TX stall) */
@@ -700,7 +739,13 @@ int main() {
         /* A bounded decode pass may leave runnable AUs behind. Service the
            normal loop/watchdog again immediately in that case, rather than
            adding 2 ms to every catch-up batch. Full PCM queues still sleep. */
+#ifdef USBPODS_DUAL_CORE_MIC
+        /* Only core 1 owns the decoder queue. Core 0 must not busy-spin
+         * simply because the other core has runnable work. */
+        sleep_ms(aacp_mic_capture() ? 2 : 10);
+#else
         if (!aacp_mic_audio_pending()) sleep_ms(aacp_mic_capture() ? 2 : 10);
+#endif
     }
 
 }

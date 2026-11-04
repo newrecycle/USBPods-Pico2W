@@ -43,6 +43,12 @@ include(pico_sdk_import.cmake)
 
 project(USBPods_Pico2W C CXX ASM)
 
+# The codec offload remains opt-in until actual RP2350 hardware acceptance.
+option(USBPODS_DUAL_CORE_MIC "EXPERIMENTAL: AACP microphone decode on core 1" OFF)
+if(USBPODS_DUAL_CORE_MIC AND NOT USBPODS_MIC_DECODE)
+    message(FATAL_ERROR "USBPODS_DUAL_CORE_MIC requires USBPODS_MIC_DECODE=ON")
+endif()
+
 
 # Select the pinned SDIO image explicitly; local builds default to 0065.
 set(USBPODS_BTFW rpi0065 CACHE STRING "Controller image: rpi0065 or stock0031")
@@ -214,6 +220,10 @@ endif()
 if(USBPODS_RELAY)
     string(REPLACE "Lite" "Reconstructed" USBPODS_OUT_NAME "${USBPODS_OUT_NAME}")
 endif()
+if(USBPODS_DUAL_CORE_MIC)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_DUAL_CORE_MIC=1)
+    string(APPEND USBPODS_OUT_NAME _EXPERIMENTAL_Core1Mic)
+endif()
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR} OUTPUT_VARIABLE USBPODS_BUILD_SHA OUTPUT_STRIP_TRAILING_WHITESPACE)
 if(NOT USBPODS_BUILD_SHA MATCHES "^[0-9a-f]+$")
     set(USBPODS_BUILD_SHA unknown)
@@ -279,7 +289,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # silently fell back to SBC.
     HAVE_AAC_FDK
     CYW43_LWIP=0
-    PICO_FLASH_ASSUME_CORE1_SAFE=1
+    # No PICO_FLASH_ASSUME_CORE1_SAFE override: both cores participate in
+    # pico_flash lockout when the experimental worker is active.
     # OOM = malloc returns NULL (FDK bails cleanly, relay prints an error)
     # instead of a device-rebooting panic mid-stream.
     PICO_MALLOC_PANIC=0
@@ -297,8 +308,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # headroom. Relocated to top of main RAM by memmap_bigstack.ld; main.c
     # arms MSPLIM so any overflow faults loudly instead of chewing heap.
     PICO_STACK_SIZE=0x6000
-    # Core-1 stack defaults to PICO_STACK_SIZE and must still fit its 4 KB
-    # SCRATCH_X bank (core 1 never launches — this only sizes the dummy).
+    # The experimental decoder has its own explicit 16 KiB stack.
+    # This SDK default remains unused by multicore_launch_core1_with_stack.
     PICO_CORE1_STACK_SIZE=0x1000
 
     # must enable on rp2040 & 330kbps(MQ)
