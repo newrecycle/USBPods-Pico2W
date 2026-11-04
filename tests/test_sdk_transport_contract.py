@@ -30,16 +30,16 @@ def response_label_guard():
     guard_start=prelude.index('    if (connection->initiator_signaling_packet.transaction_label !=')
     return prelude[guard_start:]
 
-def extract(file,name):
-    path=directory/file
-    if not path.exists():path=directory/('sdk-'+file)
-    source=path.read_text()
+def extract_source(source,name):
     match=re.search(r'^(?:void|uint8_t) '+name+r'\([^;]*?\)\s*\{',source,re.M)
     assert match,name
     start=source.index('{',match.start());end=start+1;depth=1
     while depth:
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[match.start():end]
+
+def extract(file,name):
+    return extract_source(read_sdk(file),name)
 
 fixture=r'''
 #include <assert.h>
@@ -74,8 +74,12 @@ static void avdtp_streaming_emit_can_send_media_packet_now(avdtp_stream_endpoint
 tests=r'''
 int main(void) {
  endpoint.l2cap_media_cid=0x80;endpoint.remote_sep.seid=3;endpoint.state=AVDTP_STREAM_ENDPOINT_STREAMING;
- // Negative control: the pinned unpatched SDK queues START even when the
- // endpoint is STREAMING, then silently clears the flag without sending.
+ // Failing-before reproduction: execute the unchanged reference SDK body,
+ // not a hand-written model. Its success only queues an unsendable START.
+ assert(baseline_avdtp_start_stream(0x42,1)==0 && signals==1 && endpoint.start_stream==1);
+ endpoint.start_stream=0;signals=0;
+ // Passing-after: the patched production SDK rejects this state up front,
+ // rather than silently clearing a queued START without signaling.
  assert(avdtp_start_stream(0x42,1)==12 && signals==0 && !endpoint.start_stream);
  endpoint.state=0; // Configured but media not yet OPENED: never queue.
  assert(avdtp_start_stream(0x42,1)==12 && signals==0 && !endpoint.start_stream);
@@ -128,7 +132,11 @@ with tempfile.TemporaryDirectory() as temp:
         'case AVDTP_RESPONSE_REJECT_MSG:',1)[0]
     assert old_accept.index(advance)>old_accept.index(emit)
     code=fixture+'static void check_late_response(label_connection_t *connection) {\n'+guard+' accepted_responses++;\n}\n'
-    code+=extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
+    baseline_start=extract_source(
+        (Path(__file__).resolve().parents[1]/'references/btstack/avdtp.c').read_text(),
+        'avdtp_start_stream'
+    ).replace('uint8_t avdtp_start_stream(', 'uint8_t baseline_avdtp_start_stream(',1)
+    code+=baseline_start+extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
     code+=extract('avdtp_initiator.c','avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint')+tests
     (path/'test.c').write_text(code)
     subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(path/'test.c'),'-o',str(path/'test')],check=True)
