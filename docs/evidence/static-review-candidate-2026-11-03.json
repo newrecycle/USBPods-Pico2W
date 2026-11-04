@@ -1,0 +1,130 @@
+{
+  "schema": "usbpods-static-review-candidate/v1",
+  "recorded_at": "2026-11-03T20:00:00-07:00",
+  "purpose": "Offline static-review repair candidate: build/link/UF2 verification and host-suite evidence only. No hardware run, flashing, packaging, audio or physical-routing claim.",
+  "branch": "work/local-mic-routing",
+  "candidate_commit": "f3e53a7400d8835d8c64e831f1d190b3395db079",
+  "previous_commits": [
+    "8fc20d8",
+    "7d9a447",
+    "a0532e5"
+  ],
+  "handoff_source_commit": "7de213042d82367401aedef3a0e9a864f9ab6773",
+  "review_record": "docs/STATIC-REVIEW-2026-11-03.md",
+  "host_suite": {
+    "command": "python3 tools/run_offline_checks.py --fdk-lib build-host-fdk/libfdk-aac.a",
+    "result": {
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0
+    },
+    "summary": "build-offline-evidence-reviewfix/summary.json (git-ignored)",
+    "environment": {
+      "os": "Ubuntu 26.04.1",
+      "host_cc": "clang 22.1.2 (+gcc-14 for pinned host tools)",
+      "python": "3.14.4",
+      "sanitizers": "ASan/UBSan",
+      "fdk": "native build-host-fdk/libfdk-aac.a"
+    }
+  },
+  "probe_before_after": {
+    "baseline_channel_source": "build-offline-evidence/archive/audit-output/mic-watch-before.c (archived, git-ignored)",
+    "baseline_result": "fails assertion last_len==12 && aap_control_diagnostics().mic_retry_count==1 (expected)",
+    "current_result": "./tests/test_mic_recovery_integration.py --probe prints 'Ignored initial START: bounded AACP retry with uninterrupted playback passed'"
+  },
+  "target_matrix": [
+    {
+      "id": "rpi0065-aaceld",
+      "firmware": "rpi0065",
+      "mic": "ON",
+      "stem": "USBPods_Pico2W_Reconstructed_AACELD_Mic",
+      "elf": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.elf",
+        "bytes": 14261440,
+        "sha256": "35460aac5e16bab012dd28640245c79ed6ca05d1874d6a122e4803b2048fc36b"
+      },
+      "bin": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.bin",
+        "bytes": 1809168,
+        "sha256": "0f8abc9ae793bea15f036fddab0ebfde283b81652471b654bd8c5f7f8c23f454"
+      },
+      "uf2": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.uf2",
+        "bytes": 3618816,
+        "sha256": "b8d61529bc39e412864302aa07e58374ad6079297feab5c6e9772fbe8f4317ff"
+      }
+    },
+    {
+      "id": "stock0031-transport",
+      "firmware": "stock0031",
+      "mic": "OFF",
+      "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
+      "elf": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
+        "bytes": 14245124,
+        "sha256": "04dd397f9d8cacd7e174bd36384647ad6fe451636839ac1d1c6a848d9ceb3e4a"
+      },
+      "bin": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
+        "bytes": 1807544,
+        "sha256": "375157a819faa5a43904395565d48ca47fb62b28a9ca6a716104a8062545187d"
+      },
+      "uf2": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
+        "bytes": 3615232,
+        "sha256": "4ad7d49fc7f653952d3e0083f4116838d5822cc938e2a7ed687a3ce70379c0f4"
+      }
+    },
+    {
+      "id": "rpi0065-transport",
+      "firmware": "rpi0065",
+      "mic": "OFF",
+      "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
+      "elf": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
+        "bytes": 14245968,
+        "sha256": "ccad9c3b80f1e7aafe5f79ca673bb7931b0ac3a446e18ae519a973c92a212af2"
+      },
+      "bin": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
+        "bytes": 1808328,
+        "sha256": "5c3e35c6fdfd32282bcb1f9200643a9130ec5d5c5592213f253e3738d7210479"
+      },
+      "uf2": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
+        "bytes": 3616768,
+        "sha256": "dc43821cc091cbe6ddecea1c39d502fc5f6176d9a6e597abf94b929d5ff7bc8f"
+      }
+    }
+  ],
+  "sco_probes": [
+    {
+      "board": "pico_w",
+      "uf2": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-sco-probe-pico_w/usbpods_sco_probe.uf2",
+        "bytes": 1008640,
+        "sha256": "f6332740cb0eb36a30a7290354b1a8c3beeec01cda2601e4049cc7e3007c3265"
+      }
+    },
+    {
+      "board": "pico2_w",
+      "uf2": {
+        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-sco-probe-pico2_w/usbpods_sco_probe.uf2",
+        "bytes": 979968,
+        "sha256": "adfdd021896dfaa1fd0d2eabcf08977ee802c3ee734efb50c94e3fafdba6404e"
+      }
+    }
+  ],
+  "deviations": [
+    "CI runs Ubuntu 24.04; local Ubuntu 26.04.1 CMake 4.2.3 requires -DCMAKE_POLICY_VERSION_MINIMUM=3.5 for 3rd-party/ldacBT.",
+    "Host pioasm/elf2uf2 built with gcc-14/g++-14 because /usr/bin/c++ is clang 22 and breaks pinned SDK host tools.",
+    "Arm GNU Toolchain 13.2.rel1 tarball under git-ignored .tools/ approximates the Ubuntu noble package.",
+    "ccache, CI caches and the optional 32-bit codec-heap audit were not reproduced (no 32-bit multilib, no sudo)."
+  ],
+  "limitations": [
+    "No flash/execution: build+verify only.",
+    "32-bit codec heap audit absent; packaging gate now rejects that for USBPods candidates instead of silently passing.",
+    "TinyUSB timer-IRQ/main-loop serialization and UAC1 44.1 host behavior are statically argued, not host-observed.",
+    "Physical routing, RF/acoustic behavior, gesture semantics and soak results remain live-only."
+  ]
+}

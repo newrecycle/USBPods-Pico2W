@@ -120,13 +120,14 @@ prove the physical left/right symptom fixed; no live package is requested.
 ### Local continuation result (2026-11-03)
 
 A local worktree (`work/local-mic-routing`) continued the review offline. With
-native FDK on Ubuntu clang 22.1.2 the maintained host suite passes 56/56; the
-first run failed one generated C fixture under `-Wsign-compare` (clang only; the
-CI gcc build had passed) and the fixture now uses an explicit unsigned cast. The
-archived ignored-START baseline still fails as expected and the current probe
-passes, preserving the before/after proof on this host. `7de2130` is an ancestor
-of the worktree HEAD and the only later file changes are documentation/metadata,
-so the tested source bytes are current.
+native FDK on Ubuntu clang 22.1.2 the maintained host suite passed 56/56 at
+that pass; the first run failed one generated C fixture under `-Wsign-compare`
+(clang only; the CI gcc build had passed) and the fixture now uses an explicit
+unsigned cast. The archived ignored-START baseline still fails as expected and
+the current probe passes, preserving the before/after proof on this host. After
+the static-review fixes recorded below the suite is 59/59. `7de2130` is an
+ancestor of the worktree HEAD and the only later source changes are the review
+fixes; the reviewed metadata remains current.
 
 The three target compatibility-matrix builds and both SCO diagnostic probes
 were then reproduced offline on the same host with project-local toolchains
@@ -156,8 +157,43 @@ write that reaches the sink beyond START/STOP is the delayed AACP `0x0b` jitter
 control, which the pinned working fork does not send. Unresolved asymmetry
 hypotheses and proposed single-variable checks are recorded in
 [the reference review](MIC-ROUTING-REFERENCE-REVIEW.md#offline-re-review-after-the-isolation-change).
-This pass changed tests, documentation and one misleading source comment only;
-no firmware behavior changed.
+That isolation-review pass changed tests, documentation and one misleading
+source comment only; no firmware behavior changed. The later static-review pass
+did change firmware behavior, as recorded next.
+
+### Static offline review (2026-11-03)
+
+A whole-tree static review then ran on top of the local reproduction: three
+scoped reviewers (USB/control, AVDTP/playback, ELD/mic/codec) plus one
+main-loop/concurrency reviewer, followed by a single whole-codebase pass. Every
+high/medium finding was reproduced against the source and fixed with a
+regression that executes production bodies where practical. Fixed areas:
+AVDTP pump-start-after-early-START, one-shot AVRCP volume seeding, teardown
+flag clearing, checked discovery/capability/AVRCP/SDP returns and faithful
+relay lifecycle mocks; USB mic-capture close only on a real alt-0 close,
+atomic host-volume requests, a single advertised UAC2 format, RW speaker clock,
+settings version validation and corrected console/storage comments; main-loop
+audio slot queues allocated once (no `calloc` from the BTstack IRQ), cyw43
+async-context locking for main-loop BT/AVRCP mutations, radio-absent guards and
+a correct watchdog `scratch[7]` legend; ELD/mic resampler undersized-cap
+refusal, one bounded rebuild on peer SUSPEND during managed WAIT_START,
+transactional AAC-LC setup cleanup, idempotent ELD retry ladder, mic decoder
+flush retry, and the 63/64/65-sample USB capture contract. A second pass on
+the pinned candidate additionally bounded the untrusted inquiry-name copy,
+made host mute a state (not a toggle), serialized main-loop TinyUSB writes
+against the timer-IRQ `tud_task()`, matched the UAC1 44.1 kHz endpoint maximum
+(180) to its advertised rate, and made the packaging gate require the 32-bit
+codec-heap audit.
+
+Finding-by-finding evidence, deferred items and limits are in
+[STATIC-REVIEW-2026-11-03.md](STATIC-REVIEW-2026-11-03.md); the candidate
+artifact hashes are in
+[evidence/static-review-candidate-2026-11-03.json](evidence/static-review-candidate-2026-11-03.json).
+Verification at the repair commit: host suite 59/59 with native FDK/ASan/UBSan,
+all three target matrix builds and both SCO probes re-verified (UAC1 44.1
+rate/endpoint check active), and the archived ignored-START baseline still
+fails while the current probe passes. No live run, flashing or packaging was
+performed, and the physical left/right symptom remains unverified.
 
 ## Safe local checkout
 
