@@ -305,6 +305,15 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+The 062729 probe stopped before capture because preflight sampled a brief
+automatic ELD refresh. Playback resumed approximately 230 ms after suspension;
+this session did not reproduce the final 30-second ACL drop. The new trace
+also proves the old ACK detector interpreted a Connection Response's status
+as a Message opcode. Read [PREFLIGHT-062729.md](PREFLIGHT-062729.md) for the
+bounded continuous-stability preflight repair and actual 18-byte response
+validation. Earlier six-byte status-1 ACK fixtures were invented and incorrect.
+No physical disconnect/channel fix is claimed by these repairs.
+
 The subsequent 055513/055648 runs on `241dc18` both ended with remote HCI
 termination about 30.12/30.17 seconds after AACP opened. Flashing worked; mic
 frames decoded without errors or queue drops until termination. Phone Bluetooth

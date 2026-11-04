@@ -31,6 +31,30 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_preflight_restarts_stability_window_after_brief_recovery(self):
+        class Clock:
+            now=0
+            def monotonic(self):return self.now
+            def sleep(self,n):self.now+=n
+        clock=Clock()
+        class Link:
+            repeating=False
+            def request(self,cmd):
+                paused=(int(clock.now*4)%2==1) if self.repeating else .5<=clock.now<.75
+                if cmd=='eldstatus':return dict(transition='wait-start' if paused else 'ready',pending=int(paused))
+                return dict(connected=1,confirmed=1,streaming=int(not paused),codec=4,
+                            tx_packets=int(clock.now*50),send_failures=0)
+        link=Link()
+        with mock.patch.object(live,'time',clock):
+            result=live.connection_preflight(link,FakeRecorder(),seconds=1)
+        self.assertEqual(result['resettles'],1);self.assertGreaterEqual(clock.now,1.75)
+        self.assertGreaterEqual(result['start']['tx_packets'],37)
+        clock.now=0;link.repeating=True
+        with mock.patch.object(live,'time',clock):
+            with self.assertRaisesRegex(TimeoutError,'fixed preflight budget'):
+                live.connection_preflight(link,FakeRecorder(),seconds=1)
+        self.assertLessEqual(clock.now,16.25)
+
     def test_noise_off_requires_an_affirmative_capability(self):
         for allowed in (-1,0,None):
             self.assertEqual(live.peer_control_values('noise',[1,2,3,4],{'allow_off':allowed}),[2,3,4])

@@ -58,8 +58,13 @@ int main(void){
  assert(diag.open && diag.cid==0x42 && diag.init_sent==3 && diag.init_mask==7);
  assert(!diag.peer_seen && !diag.handshake_ack && !diag.rx_packets);
  uint8_t bad[]={4,0,4,0,9,0};callback(L2CAP_DATA_PACKET,0x42,bad,6);assert(!aap_protocol_seen());
- uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x41,ack,6);assert(!aap_protocol_seen());
- callback(L2CAP_DATA_PACKET,0x42,ack,6);assert(aap_protocol_seen());
+ uint8_t ack[]={1,0,4,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0};callback(L2CAP_DATA_PACKET,0x41,ack,sizeof ack);assert(!aap_protocol_seen());
+ for(unsigned n=0;n<sizeof ack;n++)assert(!aacp_connection_response_success(ack,n));
+ assert(aacp_connection_response_success(ack,sizeof ack));
+ ack[4]=1;assert(!aacp_connection_response_success(ack,sizeof ack));ack[4]=0;
+ ack[2]=5;assert(!aacp_connection_response_success(ack,sizeof ack));ack[2]=4;
+ assert(!aacp_connection_response_success(ack,sizeof ack+1));
+ callback(L2CAP_DATA_PACKET,0x42,ack,sizeof ack);assert(aap_protocol_seen());
  aacp_mic_get_session_diagnostics(&diag);assert(diag.peer_seen && diag.handshake_ack && diag.rx_packets==2);
  // Unknown control metadata is bounded even for many new opcodes; the
  // payload is never interpreted/logged. Unrelated channels do not affect it.
@@ -130,7 +135,7 @@ int main(void){
  aacp_mic_get_session_diagnostics(&diag);assert(!diag.open && diag.init_mask==7 && diag.handshake_ack);
  now+=3000;aacp_mic_poll();assert(rate_calls==calls);event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
  aacp_mic_get_session_diagnostics(&diag);assert(!diag.init_mask && !diag.handshake_ack && !diag.rx_packets);
- send_now();send_now();send_now();callback(L2CAP_DATA_PACKET,0x42,ack,6);
+ send_now();send_now();send_now();callback(L2CAP_DATA_PACKET,0x42,ack,sizeof ack);
  last_len=0;send_now();assert(!last_len); // stale control not replayed after reconnect
  aap_set_ca(true);request_rc=1;for(int i=0;i<3;i++)aacp_mic_poll();assert(!aap_channel_open());
  assert(locks==0);puts("AACP channel lifecycle, failed sends, shared controls and stale events passed");

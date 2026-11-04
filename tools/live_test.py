@@ -57,33 +57,30 @@ def restoration_commands(original, current):
     return commands
 
 def connection_preflight(link,recorder,seconds=5):
-    """Require sustained source traffic before feature mutations or recording."""
-    settle_until=time.monotonic()+15
-    while True:
-        start=link.request('status');encoder=link.request('eldstatus')
-        recorder.log('connection-preflight.jsonl',{'phase':'settle','status':start,'encoder':encoder})
-        if start.get('mic_watchdog_failed') or start.get('fault_hold') or not start.get('connected') or encoder.get('transition')=='failed':
-            raise RuntimeError('Firmware failed while settling initial microphone/playback: '+str({'status':start,'encoder':encoder}))
-        if (start.get('confirmed') and start.get('streaming') and start.get('codec')==4 and
-            encoder.get('transition')=='ready' and not encoder.get('pending') and
-            not start.get('mic_recovery_pending') and (not start.get('capture') or start.get('mic_started'))):break
-        if time.monotonic()>=settle_until:raise TimeoutError('Initial microphone/playback recovery did not settle')
-        time.sleep(.25)
-    deadline=time.monotonic()+seconds
+    """Require one continuous ready interval within a fixed setup budget."""
+    deadline=time.monotonic()+15+seconds
+    stable_since=None;start=None;resettles=0
     while time.monotonic()<deadline:
         state=link.request('status');encoder=link.request('eldstatus')
-        recorder.log('connection-preflight.jsonl',{'status':state,'encoder':encoder})
-        if not all(state.get(k) for k in ('connected','confirmed','streaming')) or state.get('codec')!=4:
-            raise RuntimeError('Headset/AACP/playback did not remain connected: '+str(state))
-        if encoder.get('transition')!='ready' or encoder.get('pending') or state.get('mic_recovery_pending') or state.get('fault_hold') or state.get('mic_watchdog_failed'):
-            raise RuntimeError('Firmware setup/recovery failed: '+str(encoder))
+        recorder.log('connection-preflight.jsonl',{'phase':'settle' if start is None else 'measure','status':state,'encoder':encoder})
+        if state.get('mic_watchdog_failed') or state.get('fault_hold') or not state.get('connected') or encoder.get('transition')=='failed':
+            raise RuntimeError('Firmware failed while settling initial microphone/playback: '+str({'status':state,'encoder':encoder}))
+        ready=(state.get('confirmed') and state.get('streaming') and state.get('codec')==4 and
+               encoder.get('transition')=='ready' and not encoder.get('pending') and
+               not state.get('mic_recovery_pending') and (not state.get('capture') or state.get('mic_started')))
+        if not ready:
+            if start is not None:resettles+=1
+            stable_since=None;start=None
+        elif start is None:
+            start=state;stable_since=time.monotonic()
+        elif time.monotonic()-stable_since>=seconds:
+            if not ((state.get('tx_packets',0)-start.get('tx_packets',0))&0xffffffff):
+                raise RuntimeError('Playback state reported streaming but no media packets progressed')
+            if ((state.get('send_failures',0)-start.get('send_failures',0))&0xffffffff):
+                raise RuntimeError('Playback media submissions failed during connection preflight')
+            return {'start':start,'end':state,'seconds':seconds,'resettles':resettles}
         time.sleep(.25)
-    end=link.request('status')
-    if not ((end.get('tx_packets',0)-start.get('tx_packets',0))&0xffffffff):
-        raise RuntimeError('Playback state reported streaming but no media packets progressed')
-    if ((end.get('send_failures',0)-start.get('send_failures',0))&0xffffffff):
-        raise RuntimeError('Playback media submissions failed during connection preflight')
-    return {'start':start,'end':end,'seconds':seconds}
+    raise TimeoutError('Initial microphone/playback recovery did not settle within the fixed preflight budget')
 
 def verify_manifest(root, manifest):
     if manifest.get('validation_blockers'):

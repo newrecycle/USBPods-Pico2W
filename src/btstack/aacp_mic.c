@@ -57,7 +57,7 @@ static void session_note_control(const uint8_t *p,size_t n,bool handled) {
  session_diag.last_opcode=(uint16_t)p[4]|((uint16_t)p[5]<<8);
  session_diag.last_length=(uint16_t)n;
  if(!handled)session_diag.rx_unhandled++;
- if(p[0]==1 && session_diag.last_opcode==1)session_diag.handshake_ack=true;
+ if(aacp_connection_response_success(p,n))session_diag.handshake_ack=true;
  uint32_t key=((uint32_t)p[0]<<16)|session_diag.last_opcode;
  for(uint32_t i=0;i<session_diag.logged_headers;i++)if(logged_headers[i]==key)return;
  if(session_diag.logged_headers>=16)return;

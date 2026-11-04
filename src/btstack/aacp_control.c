@@ -34,9 +34,14 @@ void aacp_control_sent(aacp_control *s,int slot,uint8_t value) {
  if(slot>=0 && slot<5 && s->values[slot]==value)
    s->pending&=(uint8_t)~(1u<<slot);
 }
+bool aacp_connection_response_success(const uint8_t *p,size_t n) {
+ /* Type 1 is a Connection Response, not a Message with an opcode. Its
+    14-byte payload is status, major, minor, features. Status zero succeeds. */
+ return n==18 && p[0]==1 && p[1]==0 && p[2]==4 && p[3]==0 && p[4]==0 && p[5]==0;
+}
 bool aacp_control_receive(aacp_control *s,const uint8_t *p,size_t n) {
  if(n<6 || p[1] || p[2]!=4 || p[3] || p[5]) return false;
- if(p[0]==1) return p[4]==1; /* handshake acknowledgment */
+ if(p[0]==1) return aacp_connection_response_success(p,n);
  if(p[0]!=4) return false;
  switch(p[4]) {
  case 0x2b: return true; /* Peer information; not a validated feature acknowledgment. */

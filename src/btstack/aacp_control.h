@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+bool aacp_connection_response_success(const uint8_t *p,size_t n);
 /* All operations run under the channel owner's async-context lock. */
 typedef struct {
  uint8_t battery[3], noise;

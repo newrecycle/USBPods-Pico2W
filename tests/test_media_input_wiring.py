@@ -32,7 +32,7 @@ int main(void) {
  assert(transport_baseline()==0);
  bd_addr_t addr={1,2,3,4,5,6};aap_connect(addr);now+=3000;aacp_mic_poll();
  request_rc=0;send_rc=0;capture=false;event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
- send_now();send_now();send_now();uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x42,ack,6);
+ send_now();send_now();send_now();uint8_t ack[]={1,0,4,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0};callback(L2CAP_DATA_PACKET,0x42,ack,sizeof ack);
  config.stem_hid=1;
  uint8_t native[]={HCI_EVENT_AVRCP_META,5,AVRCP_SUBEVENT_OPERATION,0x91,0,AVRCP_OPERATION_ID_PLAY,1};
  unsigned keys=host_keys;

@@ -58,6 +58,7 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
         (root/'docs/AACP-SESSION-0555.md').read_text().replace(
             '(evidence/aacp-session-0555.json)','(aacp-session-0555.json)'))
     shutil.copy2(root/'docs/evidence/aacp-session-0555.json',out/'aacp-session-0555.json')
+    shutil.copy2(root/'docs/PREFLIGHT-062729.md',out/'PREFLIGHT-062729.md')
     shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)
     shutil.copy2(evidence/'verification.json',out/'verification.json')

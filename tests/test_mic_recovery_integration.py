@@ -114,7 +114,7 @@ static void setup(void){
  bd_addr_t addr={1,2,3,4,5,6};aap_connect(addr);tick(1500);
  event(L2CAP_EVENT_CHANNEL_OPENED,0x42);
  send_now();send_now();send_now();
- uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x42,ack,sizeof ack);
+ uint8_t ack[]={1,0,4,0,0,0,1,0,2,0,0,0,0,0,0,0,0,0};callback(L2CAP_DATA_PACKET,0x42,ack,sizeof ack);
  assert(aap_protocol_seen() && get(STREAMING) && !get(SUSPENDS));
 }
 static void start_mic(void){usb_alt(true);send_now();assert(last_len==19);}
