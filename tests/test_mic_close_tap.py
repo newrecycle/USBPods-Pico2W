@@ -28,7 +28,9 @@ declaration = structure.group(0)
 # opening brace. The production timer has a trailing C comment on its signature.
 # Extract that same production body, including the comment, without rewriting it.
 def tap_tick_source(text):
-    start = text.index("void usb_pcm_tap_tick(void)")
+    match = re.search(r"(?m)^[ \\t]*void usb_pcm_tap_tick\\(void\\)", text)
+    assert match, "Missing production tap tick definition"
+    start = match.start()
     brace = text.index("{", start)
     depth = 1
     end = brace + 1
@@ -85,11 +87,13 @@ with tempfile.TemporaryDirectory() as temp:
         + function(options.source_file.resolve(), "usb_pcm_tap_feed") + "\n"
         + tap_tick_source(src) + "\n" + tests
     )
-    subprocess.run(
+    compiled = subprocess.run(
         ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
          "-fsanitize=address,undefined", str(c), "-o", str(exe)],
-        check=True, capture_output=True, text=True,
+        capture_output=True, text=True,
     )
+    if compiled.returncode:
+        raise AssertionError(compiled.stdout + compiled.stderr)
     result = subprocess.run(
         [str(exe)], capture_output=True, text=True,
         env={**os.environ, "ASAN_OPTIONS": "detect_leaks=0"},
