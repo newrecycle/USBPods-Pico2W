@@ -88,19 +88,89 @@ left/right symptom remains unexplained and unclaimed.
 | W-F5 | Packaging gate accepted `build_verified=True` even when the 32-bit codec-heap audit was skipped. | `package_live_test.require_codec_heap_audit()` requires `runtime_allocation_verified == true` for USBPods candidates. | Unit test covers missing/false/true; packaging still paused. |
 | W-F6 | No test for the mute state machine or the untrusted name path; doc drift. | Tests above; fixed settings UART default, LHDC rate mapping, first-commit sector and 189-byte license comments. | Same tests. |
 
+### Whole-codebase review dispositions
+
+The whole-codebase reviewer report (`.tools/review/full-review.md`, git-ignored)
+was rechecked at `7bd1c47`; it records ten findings (1 high, 4 medium, 5 low),
+all fixed, and no open code findings at that revision. Disposition:
+
+| # | Severity | Finding | Status |
+|---| --- | --- | --- |
+| W1 | high | HCI inquiry/EIR name copied with an unclamped length into `char[240]` (stack overflow). | Fixed in `f3e53a7`: clamped `inquiry_name_copy()`; ASan length sweep. |
+| W2 | medium | UAC host mute implemented as a toggle; mute→unmute→mute inverted and first mute at a new volume was ignored. | Fixed in `f3e53a7`: apply the host mute state; boundary sequence test. |
+| W3 | medium | Main-loop `tud_hid_report`/`tud_audio_int_write` could race the timer-IRQ `tud_task()`. | Fixed in `f3e53a7`: interrupt-disabled sections; wiring test. |
+| W4 | low | UAC1 44.1 kHz advertised the 48 kHz 192-byte endpoint maximum. | Fixed in `f3e53a7`: per-personality 180/192; verifier checks rate/endpoint pairs. |
+| W5 | medium | Packaging could accept `build_verified` without the 32-bit codec-heap audit. | Fixed in `f3e53a7`: `require_codec_heap_audit()` gate + unit test. |
+| W6 | medium | The descriptor-only 44.1 fix left `spk_arm` at 192 bytes, splitting the ISO transfer 180+12 B. | Fixed in `7bd1c47`: arm `tu_edpt_packet_size(&s_ep_out_desc)`; wiring test. |
+| W7 | low | All-channels GET_CUR volume returned the right-channel value. | Fixed in `7bd1c47`: master readback; UAC1 control fixture case. |
+| W8 | low | Failed/cancelled UAC1 ISO transfers still published the stale buffer as PCM. | Fixed in `7bd1c47`: failed result re-arms without pushing; wiring test. |
+| W9 | low | UART input could starve CDC input on a noisy/floating RX. | Fixed in `7bd1c47`: CDC serviced before UART; wiring test. |
+| W10 | low | `VERIFICATION-2026-11-03.md` still claimed non-ELD codec setup allocates in Bluetooth callbacks. | Fixed in `7bd1c47`: doc now states the main-loop deferral. |
+
+Residual static risks kept explicit: AVDTP pending-START ordering when a peer
+reverses the normal establish-then-START order is untested; the relay PCM
+indices are `volatile` with an explicit `dmb` rather than C11 atomics (single-
+core handoff intended); the TinyUSB IRQ exclusion and UAC1 44.1 host behaviour
+are statically argued, not host-observed. A final low-reasoning whole-candidate
+review pass was run after the repairs; its outcome is recorded below.
+
+### Final whole-candidate review
+
+A final single low-reasoning whole-candidate reviewer (report
+`.tools/review/final-review.md`, git-ignored) re-read the repaired tree at
+`7bd1c47`. It verified all ten earlier findings fixed and found no firmware
+regression, but returned **CHANGES REQUESTED** for one tooling defect: the new
+packaging codec-heap gate required `memory.runtime_allocation_verified == true`
+while `verify_build.py` still always wrote false, so even a valid
+`codec-heap32.json` could never satisfy the gate. Fixed in `3c9a034` by
+factoring `apply_codec_heap_audit()`: it rejects non-32-bit pointers,
+missing/negative peaks and over-heap estimates, and only after every check
+passes records `host_codec_estimate` and sets
+`runtime_allocation_verified = true`. `tests/test_verify_uf2.py` covers a valid
+audit and five invalid ones and asserts the flag is never set on rejection. A
+full `package()` success-path integration test remains a known gap (packaging
+is paused; the gate and its producer are unit-tested separately). The final
+candidate at `3c9a034` differs from `7bd1c47` only in tools/tests, not firmware
+sources.
+
+### Reproducible-build correction (found by the final end-to-end run)
+
+The final end-to-end verification rebuilt each target twice from the same
+commit and produced **different ELF/BIN/UF2 hashes**, which would undermine
+UF2-hash-based candidate identity and evidence pinning. Two sources of
+embedded build time were found and removed in `e8b6320`:
+
+- `3rd-party/fdk-aac` embeds `__DATE__`/`__TIME__` in its library-info strings
+  by default. The target now builds with `SUPPRESS_BUILD_DATE_INFO`; the
+  strings are diagnostic only and are not used at runtime.
+- The `src/main.c` boot banner printed `__DATE__`/`__TIME__`; it now prints
+  `USBPODS_BUILD_SHA` (the same deterministic source SHA already exposed by
+  the control-channel `info` reply).
+
+Verified after the fix: two independent clean `rpi0065`/AAC-ELD builds at the
+same commit produce byte-identical UF2 (`sha256 c87b378e…2972` for the final
+candidate), and a rebuild in a fresh build directory matches the recorded
+end-to-end hash exactly. Hashes remain tied to the embedded source SHA, so a
+later docs-only commit rebuilds with a different SHA field (the firmware
+sources are unchanged).
+
 ## Verification at this record
 
 - Host suite: `python3 tools/run_offline_checks.py --fdk-lib build-host-fdk/libfdk-aac.a`
   → **59 passed, 0 failed, 0 skipped** (native FDK, ASan/UBSan, clang 22.1.2;
-  includes new `resamp44`, `forensics-legend` and the extended fixtures).
+  includes new `resamp44`, `forensics-legend` and the extended fixtures),
+  re-run at the final firmware candidate `e8b6320` (host suite is
+  source-independent of the docs-only record commit).
 - Ignored-START probe before/after: archived
   `build-offline-evidence/archive/audit-output/mic-watch-before.c` still fails
   its assertion; current `tests/test_mic_recovery_integration.py --probe`
   passes with playback untouched.
-- Target matrix and SCO probes: all three CI variants plus both boards build,
-  pass controller-image selection/`uart0076` audit/`verify_build.py`, with the
-  UAC1 44.1 rate/endpoint check active. Hashes are recorded in
-  `docs/evidence/static-review-candidate-2026-11-03.json`.
+- Target matrix and SCO probes: all three CI variants plus both boards were
+  rebuilt and re-verified at final-candidate source state `e8b6320`;
+  `verify_build.py` passes with the UAC1 44.1 rate/endpoint check active, and
+  the UF2/ELF/BIN hashes are recorded in
+  `docs/evidence/static-review-candidate-2026-11-03.json`. The SCO probe
+  hashes are unchanged (`pico_w` f6332740…c3265, `pico2_w` adfdd021…404e).
 - Evidence limits: build/link/UF2 verification only; no flash, boot, radio,
   audio, physical-routing or packaging validation. The 32-bit codec-heap audit
   was not reproduced locally (now an explicit packaging gate instead), and the

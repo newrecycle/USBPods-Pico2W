@@ -189,6 +189,14 @@ Finding-by-finding evidence, deferred items and limits are in
 [STATIC-REVIEW-2026-11-03.md](STATIC-REVIEW-2026-11-03.md); the candidate
 artifact hashes are in
 [evidence/static-review-candidate-2026-11-03.json](evidence/static-review-candidate-2026-11-03.json).
+Final end-to-end checks also found that two clean target builds of the same
+commit had produced different UF2 hashes: FDK-AAC embeds its build date/time
+in diagnostic strings and the boot banner printed `__DATE__`/`__TIME__`.
+Commit `e8b6320` suppresses the FDK strings and prints `USBPODS_BUILD_SHA` in
+the banner instead; two independent clean builds now produce byte-identical
+firmware. Hashes stay tied to the embedded source SHA, so a later docs-only
+commit rebuilds with a different SHA field, not different firmware sources.
+
 Verification at the repair commit: host suite 59/59 with native FDK/ASan/UBSan,
 all three target matrix builds and both SCO probes re-verified (UAC1 44.1
 rate/endpoint check active), and the archived ignored-START baseline still
