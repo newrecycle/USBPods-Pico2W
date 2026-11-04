@@ -63,14 +63,15 @@ int main(void) {
     usb_pcm_tap_feed(left,sizeof left);
     simulated_ms=600;usb_pcm_tap_feed(left,sizeof left); // stable open
 
-    capture_on=false;simulated_ms=650;
-    usb_pcm_tap_feed(left,sizeof left);
+    // Include PCM on BOTH sides of each state change inside its window.
+    simulated_ms=650;usb_pcm_tap_feed(left,sizeof left);
+    capture_on=false;simulated_ms=900;usb_pcm_tap_feed(left,sizeof left);
     simulated_ms=1150;usb_pcm_tap_feed(left,sizeof left); // transition window
     simulated_ms=1200;usb_pcm_tap_feed(right,sizeof right);
     simulated_ms=1700;usb_pcm_tap_feed(right,sizeof right); // stable closed
 
-    capture_on=true;simulated_ms=1750;
-    usb_pcm_tap_feed(right,sizeof right);
+    simulated_ms=1750;usb_pcm_tap_feed(right,sizeof right);
+    capture_on=true;simulated_ms=2000;usb_pcm_tap_feed(right,sizeof right);
     simulated_ms=2250;usb_pcm_tap_feed(right,sizeof right); // transition window
     simulated_ms=2300;usb_pcm_tap_feed(left,sizeof left);
     simulated_ms=2800;usb_pcm_tap_feed(left,sizeof left); // stable reopened
