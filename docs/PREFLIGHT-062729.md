@@ -41,3 +41,11 @@ failure and mic-closed channel asymmetry remain unresolved hardware items.
 Use the next packaged `Run-Test.ps1 -CdcPort COM3 -SessionOnly` for a 45-second
 simultaneous playback/mic/USB-diagnostic/HID run. Phone-speaker input for the
 first 20 seconds is sufficient. Return the results ZIP even on early failure.
+
+Verified source `880dc318072f191f1440d3f0b262d83e32729b59` passed CI run
+[41786883085](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41786883085)
+with three firmware variants and the Windows launcher. All 66 offline checks
+and 15 exact-package CLI scenarios passed. The archived parser rejected
+success status zero and accepted error status one; the corrected parser
+reverses both outcomes. The archived preflight also reproduced the false
+failure. [Release evidence](evidence/preflight-062729.json) records the hashes.

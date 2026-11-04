@@ -1,0 +1,21 @@
+{
+  "source_sha": "880dc318072f191f1440d3f0b262d83e32729b59",
+  "zip_sha256": "7bfd43861f45e673d7be06ae9d3ae549d26ac8a103b19346d1e9169706da283b",
+  "uf2_sha256": "924d21dc89fb41839c77b4a2e7f6bb44620fd377b40e2b9b5df5d5381ef64af6",
+  "ci_run_id": 41786883085,
+  "bytes": 1453347,
+  "offline_checks_passed": 66,
+  "packaged_cli_scenarios_passed": 15,
+  "target_variants_passed": 3,
+  "windows_launcher_passed": true,
+  "physical_acceptance": false,
+  "input_archive": "USBPods-results-20261104T062729Z.zip",
+  "input_sha256": "cd241d92dac6bff7cc498354cb6d389bcde60bebaade35b6fff75637864b5bb2",
+  "negative_controls": {
+    "old_parser_success_status_accepted": false,
+    "old_parser_error_status_accepted": true,
+    "fixed_parser_success_status_accepted": true,
+    "fixed_parser_error_status_accepted": false,
+    "old_preflight_false_failure_seconds": 0.5
+  }
+}
