@@ -2,7 +2,7 @@
 import sys, struct, unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
-from verify_build import verify_uf2
+from verify_build import apply_codec_heap_audit, verify_uf2
 
 def block(addr,index,count,family=0xe48bff59,flags=0x2000,data=bytes(256)):
     b=bytearray(512)
@@ -27,4 +27,21 @@ class UF2(unittest.TestCase):
         for corrupt in (valid[:-1],valid[512:],valid+valid[-512:],valid[:1024]):
             if corrupt==valid[512:]: continue # compatibility block is optional
             with self.assertRaises(ValueError): verify_uf2(corrupt,bytes(512))
+class CodecHeapAudit(unittest.TestCase):
+    def test_valid_audit_sets_verified_flag(self):
+        memory={}
+        out=apply_codec_heap_audit(memory,5000,{"pointer_bytes":4,"codec_requested_peak":1000})
+        self.assertIs(out,memory)
+        self.assertTrue(memory["runtime_allocation_verified"])
+        self.assertEqual(memory["host_codec_estimate"]["remaining_before_allocator_and_other_heap_users"],4000)
+    def test_invalid_audits_are_rejected_and_never_verified(self):
+        for region,audit in ((5000,{"pointer_bytes":8,"codec_requested_peak":1}),
+                             (5000,{"pointer_bytes":4}),
+                             (5000,{"pointer_bytes":4,"codec_requested_peak":-1}),
+                             (100,{"pointer_bytes":4,"codec_requested_peak":100}),
+                             (100,{"pointer_bytes":4,"codec_requested_peak":101})):
+            memory={}
+            with self.subTest(audit=audit), self.assertRaises(ValueError):
+                apply_codec_heap_audit(memory,region,audit)
+            self.assertFalse(memory.get("runtime_allocation_verified",False))
 if __name__=='__main__': unittest.main()

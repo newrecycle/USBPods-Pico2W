@@ -42,6 +42,28 @@ def verify_uf2(uf2, binary):
         raise ValueError("UF2 does not reproduce linked flash binary")
     return total, families
 
+def apply_codec_heap_audit(memory, region, audit):
+    """Validate a 32-bit codec-heap audit and mark the report verified.
+
+    Raises ValueError for an unusable audit. Mutates and returns `memory` so the
+    packaging gate can require runtime_allocation_verified == true: this is the
+    only producer that can set that flag, so it must only happen after every
+    numeric check passed.
+    """
+    if audit.get("pointer_bytes") != 4:
+        raise ValueError("codec allocation audit must use 32-bit pointers")
+    peak = audit.get("codec_requested_peak")
+    if not isinstance(peak, int) or peak < 0:
+        raise ValueError("codec allocation audit has no non-negative peak")
+    remaining = region - peak
+    audit = dict(audit)
+    audit["remaining_before_allocator_and_other_heap_users"] = remaining
+    if remaining <= 0:
+        raise ValueError("32-bit codec request estimate exceeds target heap before allocator/BT overhead")
+    memory["host_codec_estimate"] = audit
+    memory["runtime_allocation_verified"] = True
+    return memory
+
 def verify_microphone_descriptors(binary, symbols):
     configs = {}
     for name in ("desc_configuration_uac2", "desc_configuration_uac1", "desc_configuration_uac1_44"):
@@ -109,12 +131,8 @@ def verify(build, evidence, name="USBPods_Pico2W_Lite"):
         report["memory"] = {"heap_region_bytes": region, "heap_start": hex(addresses["end"]), "heap_limit": hex(addresses["__HeapLimit"]), "runtime_allocation_verified": False}
         audit_path = evidence / "codec-heap32.json"
         if name.startswith("USBPods_") and audit_path.exists():
-            audit = json.loads(audit_path.read_text())
-            if audit["pointer_bytes"] != 4: raise ValueError("codec allocation audit must use 32-bit pointers")
-            audit["remaining_before_allocator_and_other_heap_users"] = region - audit["codec_requested_peak"]
-            report["memory"]["host_codec_estimate"] = audit
-            if audit["remaining_before_allocator_and_other_heap_users"] <= 0:
-                raise ValueError("32-bit codec request estimate exceeds target heap before allocator/BT overhead")
+            apply_codec_heap_audit(report["memory"], region,
+                                   json.loads(audit_path.read_text()))
     total, families = verify_uf2(uf2, binary)
     if name.startswith("USBPods_"):
         report["usb_descriptors"] = verify_microphone_descriptors(binary,symbols)
