@@ -1,8 +1,43 @@
+diff --git a/src/classic/avdtp.c b/src/classic/avdtp.c
+--- a/src/classic/avdtp.c
++++ b/src/classic/avdtp.c
+@@ -1229,12 +1229,17 @@ uint8_t avdtp_start_stream(uint16_t avdtp_cid, uint8_t local_seid){
+     if (!is_avdtp_remote_seid_registered(stream_endpoint)){
+         log_error("avdtp_media_connect: no remote sep registered with the stream endpoint");
+         return ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER;
+     }
+ 
++    /* A queued START is silently discarded by CAN_SEND_NOW in other states.
++       Reject it now instead of reporting a successful SDK submission. */
++    if (stream_endpoint->state != AVDTP_STREAM_ENDPOINT_OPENED) {
++        return ERROR_CODE_COMMAND_DISALLOWED;
++    }
++
+     if (!is_avdtp_remote_seid_registered(stream_endpoint) || stream_endpoint->start_stream == 1){
+         return ERROR_CODE_COMMAND_DISALLOWED;
+     }
+ 
+     if (stream_endpoint->start_stream == 1) {
 diff --git a/src/classic/avdtp_initiator.c b/src/classic/avdtp_initiator.c
 index 36055e4e4..13b3a9402 100644
 --- a/src/classic/avdtp_initiator.c
 +++ b/src/classic/avdtp_initiator.c
-@@ -284,6 +284,23 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
+@@ -79,7 +79,15 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
+     avdtp_stream_endpoint_t * stream_endpoint_for_event = NULL;
+ 
+     avdtp_sep_t sep;
++    /* A delayed/duplicate reply cannot retire another outstanding transaction. */
++    if (connection->initiator_signaling_packet.transaction_label !=
++        connection->initiator_transaction_label) {
++        log_info("stale AVDTP response label %u (expected %u)",
++                 connection->initiator_signaling_packet.transaction_label,
++                 connection->initiator_transaction_label);
++        return;
++    }
+     if (connection->initiator_connection_state == AVDTP_SIGNALING_CONNECTION_INITIATOR_W4_ANSWER) {
+         connection->initiator_connection_state = AVDTP_SIGNALING_CONNECTION_INITIATOR_IDLE;
+     } else {
+@@ -284,6 +292,23 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
                  case AVDTP_SI_SET_CONFIGURATION:
                      connection->configuration_state = AVDTP_CONFIGURATION_STATE_IDLE;
                      sep.in_use = 0;
