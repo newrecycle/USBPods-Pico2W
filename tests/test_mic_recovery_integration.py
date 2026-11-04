@@ -178,6 +178,17 @@ int main(int argc,char **argv){
  usb_alt(false);usb_alt(true);send_now();assert(last_len==19);
  assert(!aap_control_diagnostics().mic_watchdog_failed && !aap_control_diagnostics().mic_retry_count);
  audio();playback_untouched();
+ // A channel teardown also clears the held fault: a reconnect after the peer
+ // drops the channel must be allowed to retry. The counters describe one
+ // channel attempt, not the whole boot.
+ setup();start_mic();
+ for(unsigned i=1;i<=3;i++){tick(2000);send_now();send_now();}
+ tick(2000);send_now();assert(aap_control_diagnostics().mic_watchdog_failed);
+ aap_disconnect();
+ assert(!aap_control_diagnostics().mic_watchdog_failed &&
+        !aap_control_diagnostics().mic_retry_count &&
+        !aap_control_diagnostics().mic_restarts &&
+        !aap_control_diagnostics().mic_watchdog_failures);
 
  // A close while retry STOP is queued cannot be followed by stale START.
  setup();start_mic();tick(2000);usb_alt(false);send_now();assert(last_len==12);

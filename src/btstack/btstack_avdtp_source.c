@@ -502,9 +502,10 @@ void a2dp_source_eld_send(void) {
        handoff) used to pass silently — stamps claimed a perfect timeline
        while arrival times slipped, and the desync ACCUMULATED per hole
        (Windows' per-sound EP close/open walked the decoder off in ~3 tones:
-       dirty -> mute). Account every real hole into the RTP clock and flag
-       it with the RTP marker bit so each gap is an explicit, self-healing
-       discontinuity instead of hidden drift. */
+       dirty -> mute). Final policy: do NOT compensate a delayed send by
+       advancing the RTP clock (see FLUSH-WORLD RULE in the gap branch) and
+       keep the marker bit 0, as on the macOS wire; the stamp below is the
+       plain millisecond clock. The next paragraph explains the windowing. */
     uint32_t now_ms = btstack_run_loop_get_time_ms();
     uint32_t prev_send_ms = src_eld_last_send_ms;   /* pre-update, for the tap */
     uint8_t rtp_marker = 0;

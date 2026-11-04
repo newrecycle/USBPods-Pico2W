@@ -90,3 +90,73 @@ implementation removes unconditional playback reset and adds bounded AACP-only
 liveness recovery. A before/after probe reproduces the ignored-START gap; coupled
 tests verify capture isolation and profile races. They do not prove the physical
 left/right issue resolved. Hardware packaging remains paused.
+
+## Offline re-review after the isolation change
+
+Reviewed locally in branch `work/local-mic-routing` at handoff source
+`7de2130` (documentation-only HEAD `2503a52`; verified with
+`git diff --stat 7de2130..2503a52`). The maintained host suite passes 56/56
+with native FDK after a clang-only fixture fix, and the archived ignored-START
+baseline still fails while the current probe passes. No hardware run or live
+package is involved.
+
+### What this pass establishes offline
+
+- The USB capture path cannot request playback work: `usb_capture_lifecycle.c`
+  only publishes intent through `aacp_mic_set_capture()`. The coupled test
+  asserts `SUSPENDS`/`BUILDS` unchanged at each capture transition and that
+  playback keeps streaming across open/close, retries, profile races and
+  teardown (`tests/test_mic_recovery_integration.py`).
+- The liveness watchdog is AACP-only: 2 s after a successful START send,
+  three STOP/START retries per generation, only successful sends commit, and
+  exhaustion sends one final STOP and stops AU enqueue while playback stays up.
+  `aacp_mic.c` does not call `a2dp_source_recover_eld_stream()` or
+  `a2dp_source_apply_eld_rate()` from capture lifecycle.
+- The only sink-directed write clocked to a mic transition beyond AACP
+  START/STOP is the deferred AACP `0x0b` jitter control:
+  `a2dp_source_queue_jitter()` is reissued at channel open and after
+  START/STOP, and the source defers it 500 ms while streaming
+  (`src/btstack/btstack_avdtp_source.c:1622-1634`). The pinned working fork
+  sends no `0x0b` writes in its snapshot. This remains an unverified
+  reconstruction policy, not a demonstrated defect.
+- An exhausted capture fault is cleared by a new capture generation or by
+  AACP channel teardown. The teardown reset is required so a peer-dropped
+  channel can reconnect and retry; retry counters are per channel attempt,
+  not boot lifetime. The coupled test now pins this boundary and the handoff
+  wording was corrected.
+- RTP stamping is the plain millisecond wall clock
+  (`btstack_avdtp_source.c:649-650`), the marker bit is always 0 (`:511`), and
+  a detected send gap only increments `src_ts_snaps` and schedules a kick — it
+  does not move the clock. A stale comment claiming gap compensation was
+  corrected this pass; no behavior changed.
+
+### Hypotheses still unresolved
+
+| Hypothesis | Evidence available | Status |
+| --- | --- | --- |
+| RTP millisecond clock vs sample-count | macOS wire note used by the Full source; fork accumulates frames × 480 | Both are reported to play. One stereo A2DP stream carries both channels, so timestamp policy changes playout/jitter-buffer timing, not which bud renders. No host test pins it. Unchanged. |
+| Encoder profile | Fork 265 kbps CBR/SBR off; this project negotiates 192/256/320 kbps with VBR/SBR on the VBR profile | Differences change bitrate/latency, not channel selection. The 101a970 capture contained a redundant profile rebuild and a rejected START (263); later transaction fixes cover that, not routing. Unchanged. |
+| Reset semantics | LibrePods Linux card-profile precedent; working identical-hardware fork needs no reset; original symptom predates the added automatic reset | Removal is a controlled hypothesis. Sink decoder/TWS relay reinitialisation is the only documented mechanism that can change per-bud rendering, but our hardware has no capture showing it. Residual automatic resets (TX-stall recovery, suspended-stream self-heal) remain and could still fire if the pump stalls. |
+| AACP `0x0b` jitter writes | Present here, absent in the working fork | Could reinitialise a sink-side buffer at exactly the mic transition; untested and unproven. |
+| Windows endpoint churn | `src/tinyusb/uac.c` reacts to playback stop (`usb_stop_delay`, connmode 2 replug); mic open/close can make the host reopen streams | Offline code cannot observe host-side endpoint events; correlation logging is needed. |
+| Per-bud TWS relay behaviour | Upstream one-bud comment; no AirPods internals | Only physical listening plus sink-side state correlation can establish it. |
+| Conversation Awareness | Upstream Linux advice disables it during capture; this firmware has no capture-time CA policy | CA affects ANC/transparency, not proven to switch a bud. Adding speculative policy is out of scope. |
+| HID/stem gestures | Recorded AVRCP attempts looked like PLAY | No gesture semantics added or inferred. |
+
+### Proposed single-variable checks for a later authorized session
+
+No live run is requested. When packaging is unpaused:
+
+1. Log correlation across several mic toggles: CDC `:status` timestamps, mic
+   START/STOP sent, `0x0b` jitter writes, ELD `SUSPEND`/`BUILD`/`DROP`, USB
+   playback endpoint stop/reopen (`usb_stop_delay`) and the per-bud listening
+   result. This separates a sink reaction to AACP traffic from host endpoint
+   churn or an AVDTP rebuild.
+2. If the symptom persists with no rebuild and no reset, the remaining
+   suspects are the AACP START/STOP(+jitter) sink reaction or the host
+   endpoint path; if it disappears, the removed automatic reset is implicated
+   but the chronology still prevents calling it a fix.
+3. Keep RTP clock, encoder profile and clock policy fixed in that session; they
+   cannot select one bud and changing them would confound the result.
+4. Require per-bud listening plus received/decoded and USB counters; do not
+   infer success from an accepted START, a build or a runner preflight.

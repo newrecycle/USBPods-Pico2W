@@ -51,7 +51,9 @@ int main(void) {
     while(off<ctx.codec_storage_count) {
      uint8_t *p=ctx.codec_storage+off;
      assert((p[0]&0xf0)==0xb0 && (p[2]&0xf0)==0x10);
-     assert((((p[0]&15)<<8)|p[1])==seq);seq=(seq+1)&4095;
+     /* Unsigned cast: clang -Wextra rejects int vs unsigned here under
+        -Werror; the CI gcc build stayed silent. Same check either way. */
+     assert((unsigned)(((p[0]&15)<<8)|p[1])==seq);seq=(seq+1)&4095;
      unsigned n=((p[2]&15)<<8)|p[3];assert(n && off+4+n<=ctx.codec_storage_count);
      UCHAR *payload[]={p+4};UINT size=n,valid=n;
      assert(aacDecoder_Fill(dec,payload,&size,&valid)==AAC_DEC_OK && !valid);

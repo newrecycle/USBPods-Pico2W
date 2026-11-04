@@ -43,11 +43,14 @@ first-audio recovery path, while isolating its effect from codec/RTP changes.
 
 The watchdog starts its two-second deadline after a successful START send.
 Only a fully framed AU from the active AACP channel establishes reception.
-No audio triggers STOP then START, with three retries per capture generation.
-Only successful sends commit a retry. A late AU can cancel an unsent retry;
-USB close/reopen and disconnect cancel obsolete work. Exhaustion sends a final
-STOP, holds a visible capture fault until a new capture session, and leaves
-playback running. Stale queued AU/PCM history is invalidated on wire transitions.
+No audio triggers STOP then START, with three retries per capture generation
+(a generation also changes on AACP wire transitions). Only successful sends
+commit a retry. A late AU can cancel an unsent retry; USB close/reopen and
+disconnect cancel obsolete work. Exhaustion sends a final STOP, holds a visible
+capture fault until a new capture generation or a new AACP channel session
+(teardown clears it so a reconnect can retry; the retry counters are per
+channel attempt), and leaves playback running. Stale queued AU/PCM history is
+invalidated on wire transitions.
 Selected jitter/game policy is reapplied through the existing delayed control
 path without rebuilding playback. Explicit playback recovery remains available.
 
@@ -113,6 +116,33 @@ The portable local suite passed 56 commands with zero failures/skips. References
 archive member hashes and local documentation links were also checked. A later
 handoff-record commit changes documentation/metadata only. These results do not
 prove the physical left/right symptom fixed; no live package is requested.
+
+### Local continuation result (2026-11-03)
+
+A local worktree (`work/local-mic-routing`) continued the review offline. With
+native FDK on Ubuntu clang 22.1.2 the maintained host suite passes 56/56; the
+first run failed one generated C fixture under `-Wsign-compare` (clang only; the
+CI gcc build had passed) and the fixture now uses an explicit unsigned cast. The
+archived ignored-START baseline still fails as expected and the current probe
+passes, preserving the before/after proof on this host. `7de2130` is an ancestor
+of the worktree HEAD and the only later file changes are documentation/metadata,
+so the tested source bytes are current.
+
+Not reproduced locally: the three target CI builds (no Arm GCC or pico-sdk
+checkout; local Rust is 1.97.1, CI pins 1.85.1), any hardware behavior and any
+live packaging. Those claims still rest on the recorded CI run and the physical
+limits above.
+
+Review outcomes: retry bounds, capture-generation handling, sent-versus-received
+status and playback independence were audited; the coupled test now also pins
+that a channel teardown clears an exhausted fault (required for reconnect) and
+that the counters are per channel attempt. The only remaining mic-lifecycle
+write that reaches the sink beyond START/STOP is the delayed AACP `0x0b` jitter
+control, which the pinned working fork does not send. Unresolved asymmetry
+hypotheses and proposed single-variable checks are recorded in
+[the reference review](MIC-ROUTING-REFERENCE-REVIEW.md#offline-re-review-after-the-isolation-change).
+This pass changed tests, documentation and one misleading source comment only;
+no firmware behavior changed.
 
 ## Safe local checkout
 
@@ -207,11 +237,14 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 ## Continue from here
 
 1. Read `current-validation.json`, inspect local state and run applicable checks.
-2. Review retry bounds, capture generation races, sent-versus-received status,
-   and playback independence. Preserve the before/after proof.
-3. Investigate remaining channel asymmetry using the reference review. RTP
-   sample-count versus wall-clock policy, encoder profile differences and
-   reset semantics are unresolved hypotheses; avoid changing all together.
+2. Re-check retry bounds, capture generation races, sent-versus-received status,
+   and playback independence (audited offline in the continuation result above);
+   preserve the before/after proof.
+3. Remaining channel asymmetry needs physical evidence; the offline re-review in
+   [the reference review](MIC-ROUTING-REFERENCE-REVIEW.md#offline-re-review-after-the-isolation-change)
+   records the unresolved hypotheses, limits and proposed log-only checks. RTP
+   sample-count versus wall-clock policy, encoder profile differences and reset
+   semantics stay unresolved; avoid changing them all together.
 4. Keep physical left/right, HID gesture semantics, RF timing and actual clock
    drift unverified until there is matching evidence. Current packaging is
    paused; this handoff does not request another live run or flashing operation.
