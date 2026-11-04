@@ -48,3 +48,6 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   $env:PATH = $PreviousPath
   Remove-Item -Recurse -Force $TempRoot
 }
+# The last exercised child deliberately exits 1. GitHub's pwsh wrapper checks
+# LASTEXITCODE after this script returns, so finish with this test's result.
+exit 0
