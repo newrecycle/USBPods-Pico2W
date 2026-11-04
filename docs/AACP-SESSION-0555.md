@@ -104,6 +104,12 @@ The maintained native suite passes 66 checks with zero failures/skips, including
 production transport metadata lifecycle/bounds and the actual JSON serializer.
 The CLI replay has 15 scenarios, including a successful session-only run,
 preservation of a peer disconnect around 30 seconds, and a missing ACK that
-must stay UNVERIFIED. Target CI and exact packaged CLI evidence are recorded
-with the final source/artifact identity after building. These simulations do
-not establish physical protocol acceptance.
+must stay UNVERIFIED. Target CI
+[41784529920](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41784529920)
+passed all three Pico variants and the Windows launcher on source
+`20475ab316223feb2d22a5407826295be40b49a8`. The exact packaged runner then passed
+all 15 CLI scenarios. The 32-bit host codec request peak was 215,676 bytes
+against a linked 337,296-byte heap region (121,620 bytes before allocator and
+other users); this is not a target runtime measurement. Archive and UF2 hashes
+are in the evidence record. These simulations do not establish physical
+protocol acceptance.

@@ -315,6 +315,13 @@ bounded metadata API/logging, corrected handshake acceptance reporting and
 not a demonstrated physical repair. The full matrix and protocol bytes remain
 available; do not use automatic reconnects to conceal the failing session.
 
+Diagnostic source `20475ab316223feb2d22a5407826295be40b49a8` passed CI run
+`41784529920` (three firmware variants and Windows launcher). The exact
+`USBPods-Session-Probe-20475ab.zip` passed 15 simulated CLI scenarios; its
+SHA-256 is `dca206c6a2c44cb46326bf61e2ad3999a64bb4d99a2b35a1b73cfd8846c4bec6`.
+See `docs/evidence/aacp-session-0555.json` for artifact identity and the UF2 hash.
+Later documentation-only commits do not change this firmware/runner identity.
+
 Capture 051250 on `2911a82` completed the ten-minute soak and both 256 kbps
 intervals were loss-free. At 192 kbps and in game modes, the timer still staged
 three-AU packets across multiple calls despite the per-fill two-AU cap. Read

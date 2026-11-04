@@ -62,5 +62,42 @@
     "scenarios": 15,
     "passed": 15,
     "physical_acceptance": false
+  },
+  "diagnostic_source_sha": "20475ab316223feb2d22a5407826295be40b49a8",
+  "target_ci": {
+    "run_id": 41784529920,
+    "conclusion": "success",
+    "target_variants_passed": 3,
+    "windows_launcher_passed": true,
+    "artifact_id": 13300004809,
+    "artifact_sha256": "af064d1d281b7a06d30f0bffa02f54c57368f1a6cb2cb1a25fcbe7e66577fa91"
+  },
+  "heap_audit": {
+    "heap_region_bytes": 337296,
+    "heap_start": "0x20027a70",
+    "heap_limit": "0x2007a000",
+    "runtime_allocation_verified": true,
+    "host_codec_estimate": {
+      "pointer_bytes": 4,
+      "codec_requested_peak": 215676,
+      "runtime_allocation_verified": false,
+      "remaining_before_allocator_and_other_heap_users": 121620
+    },
+    "physical_runtime_measurement": false
+  },
+  "release": {
+    "source_sha": "20475ab316223feb2d22a5407826295be40b49a8",
+    "ci_run_id": 41784529920,
+    "sha256": "dca206c6a2c44cb46326bf61e2ad3999a64bb4d99a2b35a1b73cfd8846c4bec6",
+    "bytes": 1452011,
+    "uf2_sha256": "f72544637d1798b7d00b1ec8b782370aa496f3c062517f737d5b2548e1c9cd2d",
+    "packaged_cli_scenarios": 15,
+    "diagnostic_only": true,
+    "physical_fix_claimed": false
+  },
+  "packaged_cli": {
+    "scenarios": 15,
+    "passed": 15,
+    "physical_acceptance": false
   }
 }
