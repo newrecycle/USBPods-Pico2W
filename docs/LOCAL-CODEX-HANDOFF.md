@@ -128,10 +128,25 @@ passes, preserving the before/after proof on this host. `7de2130` is an ancestor
 of the worktree HEAD and the only later file changes are documentation/metadata,
 so the tested source bytes are current.
 
-Not reproduced locally: the three target CI builds (no Arm GCC or pico-sdk
-checkout; local Rust is 1.97.1, CI pins 1.85.1), any hardware behavior and any
-live packaging. Those claims still rest on the recorded CI run and the physical
-limits above.
+The three target compatibility-matrix builds and both SCO diagnostic probes
+were then reproduced offline on the same host with project-local toolchains
+(Arm GNU Toolchain 13.2.rel1 under `.tools/arm-gnu`, pinned SDK
+`bddd20f928ce76142793bef434d4f75f4af6e433`, Rust 1.85.1 in a project-local
+`RUSTUP_HOME`, host tools built with gcc-14/g++-14). Configure, build,
+controller-image selection, `uart0076` audit and `tools/verify_build.py`
+passed for all variants; commands, versions, deviations and the exact
+ELF/BIN/UF2 hashes are recorded in
+[`docs/evidence/local-target-builds.json`](evidence/local-target-builds.json).
+This is build/link/UF2 evidence only: no device was flashed or executed.
+
+Deviations from CI: the local host is Ubuntu 26.04 with CMake 4.2.3, so
+`-DCMAKE_POLICY_VERSION_MINIMUM=3.5` was required by the legacy
+`3rd-party/ldacBT` CMake file; `/usr/bin/c++` here is clang 22, so host
+`pioasm`/`elf2uf2` were built with gcc-14/g++-14 instead. ccache, GitHub
+Actions caches and the optional 32-bit codec-allocation audit were not
+reproduced (the host has no 32-bit multilib and no sudo). Hardware behavior,
+live packaging and the physical left/right symptom remain unreproduced and
+rest on the physical limits above.
 
 Review outcomes: retry bounds, capture-generation handling, sent-versus-received
 status and playback independence were audited; the coupled test now also pins
@@ -222,6 +237,16 @@ stem="$(cat build-local/usbpods-output-name.txt)"
 python3 tools/verify_build.py --build build-local --evidence build-local-evidence --stem "$stem"
 ```
 
+For a rootless local reproduction (used 2026-11-03), the toolchains can live in
+the git-ignored project tree: extract the Arm GNU Toolchain 13.2.rel1 tarball
+under `.tools/arm-gnu`, install Rust 1.85.1 into project-local `RUSTUP_HOME` and
+`CARGO_HOME`, and configure with `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` plus host
+`CC=/usr/bin/gcc-14 CXX=/usr/bin/g++-14`. Those two extra flags compensate for
+this host (Ubuntu 26.04, CMake 4.2, `/usr/bin/c++` = clang 22), not for the
+project. See `docs/evidence/local-target-builds.json` for the exact commands,
+pinned versions and artifact hashes of the rpi0065/AAC-ELD,
+stock0031/transport and rpi0065/transport builds plus both SCO probes.
+
 Do not reapply patches blindly to an already patched SDK. Check its git diff
 or start with a new dedicated checkout. CMake validates required patch markers.
 Keep the project's default universal RP2350 board configuration; do not replace
@@ -237,6 +262,10 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 ## Continue from here
 
 1. Read `current-validation.json`, inspect local state and run applicable checks.
+   The host suite and the three target matrix builds have both been reproduced
+   offline; `docs/evidence/local-target-builds.json` records the local toolchain,
+   deviations and artifact hashes, and the before/after mic probe is preserved in
+   `build-offline-evidence/` (ignored).
 2. Re-check retry bounds, capture generation races, sent-versus-received status,
    and playback independence (audited offline in the continuation result above);
    preserve the before/after proof.

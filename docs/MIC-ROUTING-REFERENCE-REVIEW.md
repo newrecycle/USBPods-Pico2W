@@ -100,6 +100,15 @@ with native FDK after a clang-only fixture fix, and the archived ignored-START
 baseline still fails while the current probe passes. No hardware run or live
 package is involved.
 
+The three compatibility-matrix firmware targets (`rpi0065` with and without
+AAC-ELD microphone decode, plus `stock0031`, all Lite/reconstructed) and both
+SCO diagnostic probes were also rebuilt and byte-verified locally against the
+pinned SDK and Rust toolchain; see
+[`docs/evidence/local-target-builds.json`](evidence/local-target-builds.json).
+That is build/link/UF2 evidence only. It does not execute firmware, and it does
+not establish USB enumeration, radio behavior, HFP/SCO, microphone liveness or
+the physical left/right symptom.
+
 ### What this pass establishes offline
 
 - The USB capture path cannot request playback work: `usb_capture_lifecycle.c`

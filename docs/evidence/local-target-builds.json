@@ -1,0 +1,210 @@
+{
+  "schema": "usbpods-local-target-builds/v1",
+  "recorded_at": "2026-11-03T18:56:00-07:00",
+  "purpose": "Offline reproduction of the three CI target-compatibility matrix builds and both SCO diagnostic probes on the local Ubuntu 26.04 host using project-local toolchains. Build/link/UF2 verification only: no hardware run, no flashing, no HFP/SCO or left/right routing claim.",
+  "base_commit": "a0532e50d5785132aca49f08358b75d394ddd7bd",
+  "base_branch": "work/local-mic-routing",
+  "handoff_source_commit": "7de213042d82367401aedef3a0e9a864f9ab6773",
+  "ci_reference": ".github/workflows/pico-firmware.yml (Ubuntu 24.04 runner; same matrix and command order)",
+  "environment": {
+    "os": "Ubuntu 26.04.1 LTS",
+    "python": "3.14.4",
+    "cmake": "4.2.3",
+    "ninja": "system",
+    "host_cc": "gcc-14 (Ubuntu 14.3.0-14ubuntu1) for host tools (pioasm/elf2uf2)",
+    "host_cxx": "g++-14 (Ubuntu 14.3.0-14ubuntu1)",
+    "arm_gcc": "Arm GNU Toolchain 13.2.rel1 (arm-13.7) 13.2.1 20231009, local .tools/arm-gnu",
+    "rust": "rustc 1.85.1 (4eb161250 2025-03-15), target thumbv8m.main-none-eabi, local .tools/rustup",
+    "env": {
+      "PATH": "project .tools/arm-gnu/bin + host",
+      "PICO_SDK_PATH": "project-local .tools/pico-sdk (ignored by .gitignore rule .*)",
+      "RUSTUP_HOME": "project-local .tools/rustup",
+      "CARGO_HOME": "project-local .tools/cargo",
+      "RUSTUP_TOOLCHAIN": "1.85.1",
+      "USBPODS_EDITION": "lite",
+      "CC": "/usr/bin/gcc-14",
+      "CXX": "/usr/bin/g++-14"
+    }
+  },
+  "pico_sdk": {
+    "revision": "bddd20f928ce76142793bef434d4f75f4af6e433",
+    "submodules": {
+      "lib/btstack": "501e6d2b86e6c92bfb9c390bcf55709938e25ac1",
+      "lib/cyw43-driver": "c1075d4bc440422cf2b2fd12c64a1f53f77660ee",
+      "lib/lwip": "0a0452b2c39bdd91e252aef045c115f88f6ca773",
+      "lib/mbedtls": "5a764e5555c64337ed17444410269ff21cb617b1",
+      "lib/tinyusb": "86ad6e56c1700e85f1c5678607a762cfe3aa2f47"
+    },
+    "fetch": "git init + git fetch --depth 1 origin bddd20f... + submodule update --init --depth 1 (CI recipe)",
+    "patches_applied": [
+      "sdk-patches/btstack-usbpods.patch",
+      "sdk-patches/tinyusb-usbpods.patch"
+    ],
+    "patch_application": "git -C <sdk>/lib/btstack apply ...; git -C <sdk>/lib/tinyusb apply ... (checked with git apply --check first)"
+  },
+  "deviations_from_ci": [
+    "CI runs Ubuntu 24.04; this run is Ubuntu 26.04.1 with CMake 4.2.3, so -DCMAKE_POLICY_VERSION_MINIMUM=3.5 is required (legacy cmake_minimum_required in 3rd-party/ldacBT/CMakeLists.txt). No repo source changed for this.",
+    "Host tools pioasm/elf2uf2 were built with gcc-14/g++-14: /usr/bin/c++ points at clang 22.1.2, which breaks pinned SDK 2.1.1 tools/pioasm/output_format.h (missing <cstdint>) under -Werror-free host C++ compile; CI's gcc did not hit it.",
+    "Arm toolchain is the official Arm GNU Toolchain 13.2.rel1 tarball from developer.arm.com, installed under the git-ignored project .tools/ directory. CI uses the Ubuntu noble package gcc-arm-none-eabi 15:13.2.rel1-2 (same major).",
+    "ccache, GitHub Actions caches, cache-apt-pkgs installation and sudo-run package scripts were not reproduced. The optional CI 32-bit codec-allocation audit was not run (host lacks 32-bit multilib and sudo).",
+    "btfw.py and audit_hcd.py fetched their pinned inputs from raw.githubusercontent.com as CI does; hashes are verified by those tools."
+  ],
+  "variants": [
+    {
+      "firmware": "rpi0065",
+      "mic": "aaceld",
+      "decode": "ON",
+      "build_dir": "build-local-rpi0065-aaceld",
+      "configure_command": "cmake -S . -B build-local-rpi0065-aaceld -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=rpi0065 -DUSBPODS_MIC_DECODE=ON -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "build_command": "cmake --build build-local-rpi0065-aaceld --parallel 4 -- -k 0",
+      "evidence_command": "python3 tools/btfw.py --sdk \"$PICO_SDK_PATH\" --image rpi0065 --output build-local-evidence-rpi0065-aaceld",
+      "verify_command": "stem=\"$(cat build-local-rpi0065-aaceld/usbpods-output-name.txt)\"; python3 tools/verify_build.py --build build-local-rpi0065-aaceld --evidence build-local-evidence-rpi0065-aaceld --stem \"$stem\"",
+      "stem": "USBPods_Pico2W_Reconstructed_AACELD_Mic",
+      "artifacts": {
+        "elf": {
+          "bytes": 14254608,
+          "sha256": "2445287802e412cc2f86f1fa6a783feee1dbb9b6d7239989a306390ff5867300"
+        },
+        "bin": {
+          "bytes": 1808000,
+          "sha256": "d3eae33bb5ac1a1ed12bb0e0c3d408db7e4f11458440fda38bcff766b988eba1"
+        },
+        "uf2": {
+          "bytes": 3616256,
+          "sha256": "804d3991b2cf1701e066f4c548b1b43616fb5f9b3bc7956b6420217f19b6bb7f"
+        }
+      },
+      "radio_firmware": {
+        "selection": "rpi0065",
+        "version": "CYW4343A2_001.003.016.0065.0000_Generic_SDIO_37MHz_wlbga_BU_RPI_dl_signed",
+        "payload_bytes": 6970,
+        "payload_sha256": "d974384d0aa8124d30084f30d13519a3ed3b9f759f7ddd6a34ef3dcf1441bcf7",
+        "runtime_tested": false,
+        "sco_fix_verified": false
+      },
+      "verification": {
+        "verify_build_rc": 0,
+        "uf2_families": [
+          "0xe48bff59"
+        ],
+        "uf2_blocks": 7063,
+        "build_verified": true
+      }
+    },
+    {
+      "firmware": "stock0031",
+      "mic": "transport",
+      "decode": "OFF",
+      "build_dir": "build-local-stock0031-transport",
+      "configure_command": "cmake -S . -B build-local-stock0031-transport -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=stock0031 -DUSBPODS_MIC_DECODE=OFF -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "build_command": "cmake --build build-local-stock0031-transport --parallel 4 -- -k 0",
+      "evidence_command": "python3 tools/btfw.py --sdk \"$PICO_SDK_PATH\" --image stock0031 --output build-local-evidence-stock0031-transport",
+      "verify_command": "stem=\"$(cat build-local-stock0031-transport/usbpods-output-name.txt)\"; python3 tools/verify_build.py --build build-local-stock0031-transport --evidence build-local-evidence-stock0031-transport --stem \"$stem\"",
+      "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
+      "artifacts": {
+        "elf": {
+          "bytes": 14234824,
+          "sha256": "9dac2a305d1a0870ccb9dfa27fea19f5388c4a1fc8957f7e3fdf3c64dc52b8c7"
+        },
+        "bin": {
+          "bytes": 1806400,
+          "sha256": "b87aba8a6f2d20f1a8d378138eaf5469222c1a47f1ed4c4ec293a909c421fd9e"
+        },
+        "uf2": {
+          "bytes": 3613184,
+          "sha256": "c85219e43c6a6d616dfb829e29cfb4596f7ba6a36331d7b46b43273551940b2a"
+        }
+      },
+      "radio_firmware": {
+        "selection": "stock0031",
+        "version": "CYW4343A2_001.003.016.0031.0000_Generic_SDIO_37MHz_wlbga_BU_RPI_dl_signed",
+        "payload_bytes": 6164,
+        "payload_sha256": "ce1992c1a6a16ae51bc012439486e9fb212623eca92d9e82a8090c2acf7ef1df",
+        "runtime_tested": false,
+        "sco_fix_verified": false
+      },
+      "verification": {
+        "verify_build_rc": 0,
+        "uf2_families": [
+          "0xe48bff59"
+        ],
+        "uf2_blocks": 7057,
+        "build_verified": true
+      }
+    },
+    {
+      "firmware": "rpi0065",
+      "mic": "transport",
+      "decode": "OFF",
+      "build_dir": "build-local-rpi0065-transport",
+      "configure_command": "cmake -S . -B build-local-rpi0065-transport -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=rpi0065 -DUSBPODS_MIC_DECODE=OFF -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "build_command": "cmake --build build-local-rpi0065-transport --parallel 4 -- -k 0",
+      "evidence_command": "python3 tools/btfw.py --sdk \"$PICO_SDK_PATH\" --image rpi0065 --output build-local-evidence-rpi0065-transport",
+      "verify_command": "stem=\"$(cat build-local-rpi0065-transport/usbpods-output-name.txt)\"; python3 tools/verify_build.py --build build-local-rpi0065-transport --evidence build-local-evidence-rpi0065-transport --stem \"$stem\"",
+      "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
+      "artifacts": {
+        "elf": {
+          "bytes": 14250860,
+          "sha256": "8c6f23ee960ee8d7e0f287e6b9efd896083cb357cbdacf93c32c3c684a89e9a0"
+        },
+        "bin": {
+          "bytes": 1807216,
+          "sha256": "1fdbf8dca21d7ed24c55f3ee2b83b6784e16d45b2a07c7bded92817a0f607dc0"
+        },
+        "uf2": {
+          "bytes": 3614720,
+          "sha256": "c66d470a056809e637055f797925028b114f6cbb28f7d9e182f708eee4bffe45"
+        }
+      },
+      "radio_firmware": {
+        "selection": "rpi0065",
+        "version": "CYW4343A2_001.003.016.0065.0000_Generic_SDIO_37MHz_wlbga_BU_RPI_dl_signed",
+        "payload_bytes": 6970,
+        "payload_sha256": "d974384d0aa8124d30084f30d13519a3ed3b9f759f7ddd6a34ef3dcf1441bcf7",
+        "runtime_tested": false,
+        "sco_fix_verified": false
+      },
+      "verification": {
+        "verify_build_rc": 0,
+        "uf2_families": [
+          "0xe48bff59"
+        ],
+        "uf2_blocks": 7060,
+        "build_verified": true
+      }
+    }
+  ],
+  "sco_probes": [
+    {
+      "board": "pico_w",
+      "build_dir": "build-local-sco-probe-pico_w",
+      "configure_command": "cmake -S tests/sco_probe -B build-local-sco-probe-pico_w -G Ninja -DPICO_BOARD=pico_w -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "verify_command": "python3 tools/verify_build.py --build build-local-sco-probe-pico_w --evidence <copied aaceld evidence>/pico_w --stem usbpods_sco_probe",
+      "verify_build_rc": 0,
+      "stem": "usbpods_sco_probe",
+      "uf2_bytes": 1008640,
+      "uf2_sha256": "f6332740cb0eb36a30a7290354b1a8c3beeec01cda2601e4049cc7e3007c3265"
+    },
+    {
+      "board": "pico2_w",
+      "build_dir": "build-local-sco-probe-pico2_w",
+      "configure_command": "cmake -S tests/sco_probe -B build-local-sco-probe-pico2_w -G Ninja -DPICO_BOARD=pico2_w -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+      "verify_command": "python3 tools/verify_build.py --build build-local-sco-probe-pico2_w --evidence <copied aaceld evidence>/pico2_w --stem usbpods_sco_probe",
+      "verify_build_rc": 0,
+      "stem": "usbpods_sco_probe",
+      "uf2_bytes": 979968,
+      "uf2_sha256": "adfdd021896dfaa1fd0d2eabcf08977ee802c3ee734efb50c94e3fafdba6404e"
+    }
+  ],
+  "verification_method": [
+    "tools/btfw.py selects and hash-verifies the pinned CYW43439 SDIO image; tests/test_btfw.py rejects truncations; tools/audit_hcd.py records the rejected UART candidate.",
+    "tools/verify_build.py checks ELF/BIN/UF2 structure, UF2 family 0xe48bff59 (RP2350), the linked radio-image payload and the SHA-256 of every artifact (it does not execute firmware).",
+    "All three matrix builds used the same pinned SDK, Rust toolchain and tree at base commit a0532e5.",
+    "Host suite at the same tree separately passes 56/56 with native FDK (see the handoff and build-offline-evidence/summary.json in the local worktree)."
+  ],
+  "limitations": [
+    "No device was flashed or run; runtime behavior, USB enumeration, radio bring-up, HFP/SCO, microphone liveness and the physical left/right symptom remain unverified here.",
+    "The optional 32-bit codec-allocation audit and CI cache/ccache path were not reproduced.",
+    "Artifacts are reproducible only with the stated toolchain approximation; hashes are not expected to equal CI artifact hashes."
+  ]
+}
