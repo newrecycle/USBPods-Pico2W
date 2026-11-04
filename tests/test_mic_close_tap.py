@@ -27,6 +27,7 @@ fixture = r"""
 #include <string.h>
 static uint32_t simulated_ms;
 static bool capture_on;
+static bool usb_pcm_tap=true;
 static uint32_t get_absolute_time(void) { return simulated_ms; }
 static uint32_t to_ms_since_boot(uint32_t t) { return t; }
 bool usb_capture_running(void) { return capture_on; }
@@ -36,7 +37,8 @@ int main(void) {
     const int16_t left[] = {1200,0,1000,0};
     const int16_t right[] = {0,900,0,1100};
 
-    capture_on=true;simulated_ms=100;
+    capture_on=true;simulated_ms=50;usb_pcm_tap_tick(); // idle tap tick starts t0 first
+    simulated_ms=100;
     usb_pcm_tap_feed(left,sizeof left);
     simulated_ms=600;usb_pcm_tap_feed(left,sizeof left); // stable open
 
@@ -61,7 +63,8 @@ with tempfile.TemporaryDirectory() as temp:
     exe = directory / "mic_tap"
     c.write_text(
         fixture + "\n" + declaration + "\n"
-        + function("src/tinyusb/uac.c", "usb_pcm_tap_feed") + "\n" + tests
+        + function("src/tinyusb/uac.c", "usb_pcm_tap_feed") + "\n"
+        + function("src/tinyusb/uac.c", "usb_pcm_tap_tick") + "\n" + tests
     )
     subprocess.run(
         ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
