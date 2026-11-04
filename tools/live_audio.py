@@ -18,13 +18,33 @@ PROFILES = [
 ]
 
 def profile_matches(state, profile):
-    _,_,_,_,bitrate,vbr,sbr,slots=profile
-    if state.get('negotiated_vbr')==0 or state.get('duplex_cbr')==1:vbr=sbr=0
-    return (state.get('ready')==1 and not state.get('pending') and
-            state.get('transition')=='ready' and state.get('input_rate')==48000 and
-            state.get('requested_revision')==state.get('built_revision') and
-            all(state.get(k)==v for k,v in [('active_bitrate',bitrate),('active_vbr',vbr),
-                                          ('active_sbr',sbr),('active_slots',slots)]))
+    """Require the selected preference AND the applied, rebuilt codec policy.
+
+    Normal 192 CBR and game-standard share 192 kbps and six slots; the active
+    jitter policy (150 vs 90 ms) is necessary to distinguish them. This is
+    firmware-selected policy, not proof the peer acknowledged an AACP write.
+    Missing diagnostics fail closed instead of accepting stale profiles.
+    """
+    _, rate, game, level, bitrate, vbr, sbr, slots = profile
+    if state.get('negotiated_vbr') == 0 or state.get('duplex_cbr') == 1:
+        vbr = sbr = 0
+    jitter = 60 if game and level == 2 else 90 if game else 150
+    revision = state.get('requested_revision')
+    expected = (
+        ('selected_rate', rate), ('game', int(game)), ('gamelevel', level),
+        ('desired_bitrate', bitrate), ('active_bitrate', bitrate),
+        ('active_vbr', vbr), ('active_sbr', sbr), ('active_slots', slots),
+        ('active_jitter', jitter), ('desired_jitter', jitter),
+    )
+    return (
+        state.get('ready') == 1 and state.get('pending') == 0
+        and state.get('transition') == 'ready'
+        and state.get('input_rate') == 48000
+        and isinstance(revision, int) and revision == state.get('built_revision')
+        and isinstance(state.get('negotiated_bitrate'), int)
+        and state['negotiated_bitrate'] >= bitrate
+        and all(state.get(key) == value for key, value in expected)
+    )
 
 def await_profile(link, profile, timeout=15):
     deadline=time.monotonic()+timeout;last={}
@@ -322,7 +342,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             try:
                 prompt('Pair/play a phone now; leave PC playback and microphone capture running. Press Enter when playing:')
                 state=link.wait(lambda s:s.get('relay_connected') and s.get('relay_streaming'),60)
-                await_profile(link,('relay',2,False,2,164000,0,0,6));dwell(3,'relay_settle')
+                await_profile(link,('relay',*baseline[1:4],164000,0,0,6));dwell(3,'relay_settle')
                 before=snapshot(link,recorder,'phone_relay_duplex_begin');dwell(15,'phone_relay_duplex')
                 after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after)
                 heard=prompt('Was the mixed phone/PC audio clear? Type yes/no, or Enter for unverified:')

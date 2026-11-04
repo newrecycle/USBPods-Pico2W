@@ -81,7 +81,11 @@ class MatrixReplay(unittest.TestCase):
                     p=self.profile
                     return dict(ready=int(self.connected),pending=0,transition='off' if self.failed else 'ready',
                         input_rate=48000,requested_revision=self.revision,built_revision=self.revision,
+                        selected_rate=self.settings['eldrate'],game=int(bool(self.settings['usbset']&128)),
+                        gamelevel=self.settings['gamelevel'],desired_bitrate=p[4],
                         active_bitrate=p[4],active_vbr=p[5],active_sbr=p[6],active_slots=p[7],
+                        active_jitter=60 if p[2] and p[3]==2 else 90 if p[2] else 150,
+                        desired_jitter=60 if p[2] and p[3]==2 else 90 if p[2] else 150,
                         negotiated_bitrate=0 if self.failed else 256000,negotiated_vbr=1,
                         error_stage=2 if self.failed else 0,last_error=263 if self.failed else 0)
                 if cmd=='telemetry':

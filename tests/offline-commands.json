@@ -864,5 +864,13 @@
       "tests/test_dualcore_mic_wiring.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "duplex-profile-applied-policy",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_duplex_profile_contract.py"
+    ],
+    "timeout": 120
   }
 ]

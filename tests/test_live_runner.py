@@ -70,8 +70,10 @@ class Contracts(unittest.TestCase):
         class Link:
             def request(self,command):
                 if command=='eldstatus':return dict(ready=1,pending=0,transition='ready',input_rate=48000,
+                    selected_rate=2,game=0,gamelevel=1,desired_bitrate=256000,
                     requested_revision=1,built_revision=1,active_bitrate=256000,active_vbr=0,active_sbr=0,
-                    active_slots=6,duplex_cbr=1)
+                    active_slots=6,active_jitter=150,desired_jitter=150,
+                    duplex_cbr=1,negotiated_bitrate=256000)
                 return dict(connected=1,confirmed=1,capture=1,codec=4,streaming=int(clock.now>=2),
                     mic_started=int(clock.now>=3),mic_recovery_pending=0,tx_packets=int(clock.now*50))
         with mock.patch.object(live_audio,'time',clock):
