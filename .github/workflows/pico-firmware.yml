@@ -160,6 +160,7 @@ jobs:
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
           python3 tests/test_usb_control_boundaries.py
+          python3 tests/test_mic_close_tap.py
           python3 tests/test_uac1_controls.py
           python3 tests/test_mic_recovery_integration.py
           python3 tests/test_live_runner.py
