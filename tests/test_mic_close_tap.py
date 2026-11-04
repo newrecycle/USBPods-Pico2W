@@ -29,7 +29,7 @@ static uint32_t simulated_ms;
 static bool capture_on;
 static uint32_t get_absolute_time(void) { return simulated_ms; }
 static uint32_t to_ms_since_boot(uint32_t t) { return t; }
-static bool usb_capture_running(void) { return capture_on; }
+bool usb_capture_running(void) { return capture_on; }
 """
 tests = r"""
 int main(void) {
