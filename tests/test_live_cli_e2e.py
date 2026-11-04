@@ -96,7 +96,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
             return dict(kind='eldstatus',ready=int(self.connected),pending=0,
                 transition='failed' if self.failed else 'ready',requested_revision=self.revision,
                 built_revision=self.revision,active_bitrate=p[0],active_vbr=p[1],active_sbr=p[2],
-                active_slots=p[3],input_rate=p[4],negotiated_bitrate=ceiling,negotiated_vbr=1,
+                active_slots=p[3],input_rate=p[4],negotiated_bitrate=ceiling,negotiated_vbr=1,duplex_cbr=1,
                 error_stage=2 if self.failed else 0,last_error=263 if self.failed else 0)
         def reply(self,raw):
             c=(ctypes.c_uint8*5)();assert parser(raw,len(raw),c),'Production C parser rejected '+repr(raw)
@@ -139,6 +139,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     class Port:
         def __init__(self,*args,**kwargs):self.rx=queue.Queue();self.closed=False;ports.append(self)
         def write(self,raw):
+            if case=='usb-lost' and device.opened_at is not None and clock.now-device.opened_at>=5:
+                raise OSError('simulated USB device removed')
             objects=device.reply(raw)
             data=b'[diag] simulated application/AACP/HID log\r\n'+b''.join((' [control] '+json.dumps(o)+'\r\n').encode() for o in objects)
             for off in range(0,len(data),37):self.rx.put(data[off:off+37])
@@ -182,11 +184,14 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     root=next(output.glob('USBPods-results-*'))
     if root.suffix=='.zip':root=root.with_suffix('')
     summary=json.loads((root/'summary.json').read_text());tests=summary['tests']
-    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize')
+    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost')
     assert code==(2 if failed else 0),(case,code,log.getvalue()[-1200:])
     assert summary['automated_pass']==(not failed)
     assert not summary['complete'] # Physical observations remain UNVERIFIED.
-    assert not summary['collector_errors'] and not summary.get('restore_errors')
+    if case=='usb-lost':
+        assert summary.get('restore_errors') and tests['run']['status']=='FAIL'
+        assert all('simulated USB device removed' in e for e in summary['collector_errors'])
+    else:assert not summary['collector_errors'] and not summary.get('restore_errors')
     assert all(p.closed for p in ports) and all(h.closed for h in handles) and not streams
     if not failed:
         for key in ('eld256','eld192','game_stable','game_latency','restore256','duplex_soak','capture_reconnect_1','capture_reconnect_2','capture_reconnect_3'):
@@ -227,13 +232,13 @@ if __name__=='__main__':
         live=load_module('e2e_live_test',runner_dir/'live_test.py');audio=load_module('e2e_live_audio',runner_dir/'live_audio.py')
         manifest_path=candidate/'candidate.json';manifest=json.loads(manifest_path.read_text());live.verify_manifest(candidate,manifest)
         (base/'shim.c').write_text(SHIM)
-        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-shared','-fPIC','-I',str(ROOT/'src'),'-I',str(ROOT/'src/btstack'),
+        subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-DUSBPODS_MIC_DECODE=1','-shared','-fPIC','-I',str(ROOT/'src'),'-I',str(ROOT/'src/btstack'),
                         str(base/'shim.c'),str(ROOT/'src/control_command.c'),str(ROOT/'src/btstack/eld_profile.c'),'-o',str(base/'parser.so')],check=True)
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
         for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),
-                             ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000)]:
+                             ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)
             results.append(result);print('PASS '+case,flush=True)

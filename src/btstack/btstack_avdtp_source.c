@@ -1229,6 +1229,7 @@ static void src_stream_start_accepted(void);
 static void src_eld_initialize(void);
 static uint8_t src_eld_error_stage;
 static uint32_t src_eld_last_error,src_eld_max_rebuild_us;
+static uint32_t src_encode_last_us,src_encode_max_us; /* wall time, includes USB IRQs */
 static uint32_t src_suspend_ms;
 static void src_eld_abort(uint8_t stage,uint32_t rc);
 static void src_eld_execute(unsigned actions);
@@ -1286,8 +1287,14 @@ void a2dp_source_eld_status(eld_runtime_status *out) {
  out->phase=src_eld_change.phase;out->error_stage=src_eld_error_stage;out->last_error=src_eld_last_error;
  out->requested_revision=src_eld_change.requested;out->built_revision=src_eld_change.built;
  out->max_rebuild_us=src_eld_max_rebuild_us;
+ out->encode_last_us=src_encode_last_us;out->encode_max_us=src_encode_max_us;
  out->failures=src_eld_failures;out->rebuilds=src_eld_rebuilds;
  out->negotiated_bitrate=codec_aaceld_max_bitrate();out->negotiated_vbr=codec_aaceld_vbr_allowed();
+#ifdef USBPODS_MIC_DECODE
+ out->duplex_cbr=true;
+#else
+ out->duplex_cbr=false;
+#endif
 }
 
 /* Live on-air bitrate of the CURRENT codec, kbps (0 = unknown/not streaming).
@@ -1421,7 +1428,10 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
         AACENC_ERROR err;
 
         watchdog_hw->scratch[7] = 0x3B;   /* entering aacEncEncode */
+        const uint32_t encode_started=time_us_32();
         err = aacEncEncode(handleAAC, &in_buf, &out_buf, &in_args, &out_args);
+        src_encode_last_us=time_us_32()-encode_started;
+        if(src_encode_last_us>src_encode_max_us)src_encode_max_us=src_encode_last_us;
         watchdog_hw->scratch[7] = 0x3C;   /* encode returned */
         if (err != AACENC_OK) {
             printf("Error in AAC encoding %d, storage=%d/%d, out_size=%d\n",

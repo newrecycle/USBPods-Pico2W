@@ -81,15 +81,33 @@ int main(void) {
  assert(aacp_mic_audio_read(p,64)==64); for(int i=0;i<64;i++) assert(!p[i]); drain();
  info.sampleRate=48000; fail=true; enqueue(10); aacp_mic_audio_work();
  assert(aacp_mic_audio_read(p,64)==64 && !p[0]); drain(); fail=false;
- // Fill both queues past capacity; bounded dropping must preserve valid data.
+ // A full PCM queue must backpressure decode, preserving compressed AUs.
  for(int i=0;i<100;i++) enqueue(12);
  for(int i=0;i<5;i++) aacp_mic_audio_work();
  aacp_mic_audio_get_stats(&s);
  assert(s.au_high_water==32 && s.au_overflows>=68);
- assert(s.pcm_high_water==16 && s.pcm_overflows>=16);
+ assert(s.pcm_high_water==16 && s.pcm_overflows==0 && s.au_depth==16);
+ assert(!aacp_mic_audio_pending());
+ uint32_t decoded_before=s.decoded;int16_t frame[480];
+ assert(aacp_mic_audio_read(frame,480)==480 && frame[0]==12);
+ assert(aacp_mic_audio_pending());aacp_mic_audio_work();aacp_mic_audio_get_stats(&s);
+ assert(s.decoded==decoded_before+1 && s.au_depth==15 && s.pcm_depth==16);
+ assert(!aacp_mic_audio_pending());
  assert(s.decode_max_us>=325 && s.decode_last_us>=325);
  assert(s.decoded_rate==48000 && s.decoded_channels==1 && s.decoded_frame_samples==480);
- while(aacp_mic_audio_read(p,64)) for(int i=0;i<64;i++) assert(p[i]==12);
+ do {
+  while(aacp_mic_audio_read(p,64)) for(int i=0;i<64;i++) assert(p[i]==12);
+  aacp_mic_audio_work();aacp_mic_audio_get_stats(&s);
+ } while(s.au_depth || s.pcm_depth);
+ // Repeated fill/drain cycles must retain order without decoded-frame drops.
+ for(unsigned i=0;i<32;i++)enqueue((uint8_t)(64+i));
+ aacp_mic_audio_work();aacp_mic_audio_work();
+ for(unsigned i=0;i<32;i++) {
+  assert(aacp_mic_audio_read(frame,480)==480);
+  for(unsigned n=0;n<480;n++)assert(frame[n]==64+(int)i);
+  if(aacp_mic_audio_pending())aacp_mic_audio_work();
+ }
+ aacp_mic_audio_get_stats(&s);assert(!s.au_depth && !s.pcm_depth && !s.pcm_overflows);
  // A full queue of stale AUs must be discarded in one bounded work call.
  aacp_mic_discontinuity();
  for (unsigned i=0;i<32;i++) enqueue(45);

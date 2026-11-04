@@ -8,7 +8,11 @@ int main(void){
    eld_profile p=eld_profile_select(rate,game,level,r44,relay,5,1);
    assert(p.input_rate==(r44?44100:48000)&&p.input_frames==(r44?441:480));
    assert(p.bitrate==(relay?164000:r44||game||rate==1?192000:rate==3?320000:256000));
+#ifdef USBPODS_MIC_DECODE
+   assert(!p.vbr && !p.sbr);
+#else
    assert(p.vbr==(!relay&&!r44&&!game&&rate!=1&&rate!=3?5:0));
+#endif
    assert(p.sbr==(p.vbr?1:0));assert(p.slots==(game?(level==2?4:6):rate==3?9:6));
    assert(p.jitter==(game?(level==2?60:90):150));count++;
  }

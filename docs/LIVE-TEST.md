@@ -98,6 +98,11 @@ feature changes. Unsupported negotiated bitrates are explicitly skipped.
 Microphone cadence must match the 64 kHz PCM timeline; return failed results too. Configuration readback does not measure
 end-to-end acoustic latency or actual average VBR throughput.
 
+The microphone-decoder candidate uses CBR/core-only AAC-ELD at the supported
+rates. The 035227 capture exposed severe microphone starvation with the earlier
+256 kbps VBR+SBR profile. Peer VBR permission remains visible separately from
+the applied `duplex_cbr` policy; transport-only builds retain their VBR policy.
+
 Diagnostics use **USB CDC only**. Leave COM3 open through the runner; do not
 open another terminal on it. Application, codec, AACP and firmware HID logs are
 recorded while playback and capture are active. Raw HID access may be blocked
@@ -110,10 +115,10 @@ that host format. Firmware microphone cadence still measures the independent
 meter before starting and close other microphone previews/dictation while the
 runner owns capture. No recorded clip means the runner skips the pitch prompt.
 
-The added channel check keeps playback open while closing and reopening only
-microphone capture, with isolated left/right listening prompts. A familiar-music
-comparison checks bass/depth against Full while recording continues. The
-script's tone is silent during that comparison; stop your music when prompted.
+The channel check keeps playback open while closing and reopening only
+microphone capture, with isolated left/right listening prompts. Keep this
+firmware plugged in throughout the run. The earlier bass comparison was
+withdrawn; this run proceeds directly to capture close/reopen and reconnects.
 
 Control writes are checked against actual L2CAP submission counters. A new
 per-control notification sequence is required for automated readback PASS.

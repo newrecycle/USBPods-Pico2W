@@ -305,6 +305,14 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+The physical 035227 capture supersedes the earlier offline throughput optimism:
+pairing and mic-active stereo checks passed, but 256 kbps VBR+SBR lost over
+80% of USB samples, and CBR/game modes still lost about 6–7%. USB disappeared
+before capture-close/reconnect/soak coverage. Read
+[DUPLEX-THROUGHPUT-035227.md](DUPLEX-THROUGHPUT-035227.md) for sanitized evidence,
+the CBR mic-build policy, PCM backpressure and catch-up servicing repairs,
+matching runner changes, and the remaining physical limits.
+
 The cloud independent review of main `6be2889` found and reproduced three more
 defects: a PCM queue reset/USB producer race, stale deferred START after SUSPEND,
 and an ineffective empty-input FDK mic history clear. The subsequent repairs,

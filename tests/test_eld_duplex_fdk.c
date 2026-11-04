@@ -35,6 +35,31 @@ static void mic_fixture(void) {
  }
  assert(mic_count>=28);aacEncClose(&h);
 }
+static void mic_burst_check(void) {
+ HANDLE_AACDECODER fresh=aacDecoder_Open(TT_MP4_RAW,1);assert(fresh);
+ UCHAR asc[]={0xf8,0xe6,0x30,0},*conf[]={asc};UINT size=sizeof asc;
+ assert(aacDecoder_ConfigRaw(fresh,conf,&size)==AAC_DEC_OK);
+ INT_PCM expected[32][480],scratch[960],actual[480];
+ for(unsigned i=0;i<mic_count;i++) {
+   UCHAR *data[]={mic_au[i]};UINT n=mic_len[i],valid=n;
+   assert(aacDecoder_Fill(fresh,data,&n,&valid)==AAC_DEC_OK && !valid);
+   assert(aacDecoder_DecodeFrame(fresh,scratch,960,0)==AAC_DEC_OK);
+   memcpy(expected[i],scratch,sizeof expected[i]);
+ }
+ aacDecoder_Close(fresh);aacp_mic_discontinuity();
+ assert(!aacp_mic_audio_read(actual,480));aacp_mic_audio_work();
+ for(unsigned i=0;i<mic_count;i++)aacp_mic_audio_enqueue(mic_au[i],(uint8_t)mic_len[i]);
+ for(unsigned i=0;i<5;i++){fdk_alloc_begin();aacp_mic_audio_work();fdk_alloc_end();}
+ aacp_mic_audio_stats s;aacp_mic_audio_get_stats(&s);
+ assert(s.pcm_depth==16 && s.au_depth==mic_count-16 && !s.pcm_overflows);
+ assert(!aacp_mic_audio_pending());
+ for(unsigned i=0;i<mic_count;i++) {
+   assert(aacp_mic_audio_read(actual,480)==480 && !memcmp(expected[i],actual,sizeof actual));
+   fdk_alloc_begin();aacp_mic_audio_work();fdk_alloc_end();
+ }
+ aacp_mic_audio_get_stats(&s);assert(!s.au_depth && !s.pcm_depth && !s.pcm_overflows);
+ puts("Real FDK mic burst: 32 queued AUs retained across full PCM backpressure, in order");
+}
 static void mic_restart_check(void) {
  // A fresh reference decoder must match every generation of the production
  // decoder exactly; otherwise old overlap/concealment history has leaked.
@@ -134,6 +159,6 @@ int main(void){
    fdk_alloc_begin();fdk_alloc_end(); /* Include any lazy mic allocation. */
    printf("ELD duplex transition %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",transition,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
  }
- assert(mic_peak>1000);mic_restart_check();fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
+ assert(mic_peak>1000);mic_restart_check();mic_burst_check();fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
  printf("ELD rate/game transitions with active mic queue: %u playback frames, mic peak=%d\n",all_frames,mic_peak);
 }

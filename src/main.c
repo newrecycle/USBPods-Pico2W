@@ -697,7 +697,10 @@ int main() {
            the Pico — "aac-lc no longer stable"). Sleep 10 under relay:
            6/(108+10) ~= 51 pkt/s with margin. The earlier revert to a flat
            50 ms used ceiling math that ignored decode time — wrong. */
-        sleep_ms(aacp_mic_capture() ? 2 : 10); /* keep the 20 ms button poll serviced */
+        /* A bounded decode pass may leave runnable AUs behind. Service the
+           normal loop/watchdog again immediately in that case, rather than
+           adding 2 ms to every catch-up batch. Full PCM queues still sleep. */
+        if (!aacp_mic_audio_pending()) sleep_ms(aacp_mic_capture() ? 2 : 10);
     }
 
 }

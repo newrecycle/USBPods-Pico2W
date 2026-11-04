@@ -1,0 +1,111 @@
+{
+  "capture": "USBPods-results-20261104T035227Z.zip",
+  "capture_sha256": "0010bade77dd7dd6c5655d15c01916995144ce77209e25a4486b84e13339918c",
+  "tested_source": "5a4ea5e7f72b0208c060d5621678e51abff6383f",
+  "physical_run": {
+    "identity": "PASS",
+    "connection": "PASS",
+    "aacp_handshake": "PASS",
+    "active_mic_left": "PASS",
+    "active_mic_right": "PASS",
+    "negotiated_ceiling": 256000,
+    "320000": "SKIP",
+    "steady_profiles": [
+      {
+        "profile": "eld256",
+        "status": "FAIL",
+        "mic_decoded": 432,
+        "au_dropped": 2308,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_delivered_fraction": 0.156934,
+        "usb_missing_samples": 1108800,
+        "generation_stable": true
+      },
+      {
+        "profile": "eld192",
+        "status": "FAIL",
+        "mic_decoded": 2610,
+        "au_dropped": 153,
+        "pcm_dropped": 57,
+        "decode_errors": 0,
+        "usb_delivered_fraction": 0.928898,
+        "usb_missing_samples": 93568,
+        "generation_stable": true
+      },
+      {
+        "profile": "game_stable",
+        "status": "FAIL",
+        "mic_decoded": 2643,
+        "au_dropped": 139,
+        "pcm_dropped": 54,
+        "decode_errors": 0,
+        "usb_delivered_fraction": 0.935646,
+        "usb_missing_samples": 85120,
+        "generation_stable": true
+      },
+      {
+        "profile": "game_latency",
+        "status": "FAIL",
+        "mic_decoded": 2630,
+        "au_dropped": 139,
+        "pcm_dropped": 53,
+        "decode_errors": 0,
+        "usb_delivered_fraction": 0.936378,
+        "usb_missing_samples": 83776,
+        "generation_stable": true
+      },
+      {
+        "profile": "restore256",
+        "status": "FAIL",
+        "mic_decoded": 390,
+        "au_dropped": 2346,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_delivered_fraction": 0.143198,
+        "usb_missing_samples": 1125824,
+        "generation_stable": true
+      }
+    ],
+    "reset_or_usb_loss_cause": "UNRESOLVED",
+    "mic_closed_routing": "NOT_REACHED",
+    "reconnects": "NOT_REACHED",
+    "soak": "NOT_REACHED"
+  },
+  "repairs": [
+    "Mic builds use CBR/core-only profiles; transport builds preserve VBR.",
+    "Backpressure current AUs before decode when PCM is full.",
+    "Skip main idle sleep while mic decode is runnable.",
+    "Expose codec wall-time and saved reset forensics over USB.",
+    "Remove historical Full comparison interruption; add USB-loss runner replay."
+  ],
+  "offline": {
+    "passed": 63,
+    "failed": 0,
+    "skipped": []
+  },
+  "negative_control": {
+    "baseline": "5a4ea5e mic decoder",
+    "result": "runtime assertion fails at full PCM queue: 16 decoded frames discarded instead of retaining 16 AUs",
+    "stub": "Only the new pending-query symbol is supplied for linking; old decode is unchanged."
+  },
+  "real_fdk": "32-AU burst matches a fresh decoder, with zero PCM drops and preserved order; 12 capture/discontinuity restart generations still pass.",
+  "cli_replays": 10,
+  "source_sha256": {
+    "src/btstack/aacp_mic_audio.c": "8e7b271251e13271f9d8fe28257e6726c165ac3228abe923c1cc3195cafecf80",
+    "src/btstack/eld_profile.c": "d2eb221368bda2df34677a6008a1959c3bbc539c78c53db3f060447a2aac6aa0",
+    "src/btstack/btstack_avdtp_source.c": "bd864815292c9d48c5b27eb4d4f8cb811e4ac711e2ae94c7191a915dd77ae10c",
+    "src/main.c": "33f9945c51a03a12007fc8c398dbc1b81296ff6cbca6ab0f5295c8e17b68b282",
+    "src/device_control.c": "402d36fb4b8e47b9a336cf16d65f8a860454ba38e4ff0355c6774366bb6a4d01",
+    "tools/live_audio.py": "903b6cc145efedc9593bef59133c48888305f3f02c58a052300b39520d11b2e7",
+    "tools/live_test.py": "024f9ce1dd53a6f26a3bf333bc23ddaa1315c8ab6109e13b348c83a5bf72db0a"
+  },
+  "target_ci": "pending push",
+  "remaining_physical": [
+    "Throughput and voice quality under all supported CBR profiles and both game modes",
+    "Stereo independence across mic close/reopen",
+    "Reconnects and 10-minute duplex soak",
+    "USB-loss cause; no reset banner in prior capture"
+  ],
+  "raw_capture_published": false
+}

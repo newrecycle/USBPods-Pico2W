@@ -190,6 +190,12 @@ void aacp_mic_audio_work(void) {
             atomic_store_explicit(&ar,r+1,memory_order_release);
             continue;
         }
+        /* Do not consume/decode a current AU unless its PCM can be retained.
+           USB is the only consumer, so it can only increase available space
+           during DecodeFrame. Stale AUs above are still drained when full. */
+        uint32_t w=atomic_load_explicit(&pw,memory_order_relaxed);
+        uint32_t pr_now=atomic_load_explicit(&pr,memory_order_acquire);
+        if (w-pr_now>=PCM_SLOTS) break;
         processed++;
         /* FDK reads an AU before applying CLRHIST/INTR: an empty DecodeFrame
            only returns NOT_ENOUGH_BITS and never clears ELD history. Discard
@@ -230,18 +236,17 @@ void aacp_mic_audio_work(void) {
         else atomic_fetch_add_explicit(&errors,1,memory_order_relaxed);
         if (epoch!=aacp_mic_generation() || !aacp_mic_capture()) continue;
 
-        uint32_t w=atomic_load_explicit(&pw,memory_order_relaxed);
-        uint32_t pr_now=atomic_load_explicit(&pr,memory_order_acquire);
-        if (w-pr_now>=PCM_SLOTS) {
-            atomic_fetch_add_explicit(&pcm_overflows,1,memory_order_relaxed);
-            continue;
-        }
         pcm[w%PCM_SLOTS].epoch=epoch;
         if (ok) memcpy(pcm[w%PCM_SLOTS].data,scratch,sizeof(pcm[0].data));
         else memset(pcm[w%PCM_SLOTS].data,0,sizeof(pcm[0].data));
         atomic_store_explicit(&pw,w+1,memory_order_release);
         sample_max(&pcm_high,w-pr_now+1);
     }
+}
+bool aacp_mic_audio_pending(void) {
+    return aacp_mic_capture() && aacp_mic_audio_ready() &&
+        atomic_load_explicit(&aw,memory_order_acquire)!=atomic_load_explicit(&ar,memory_order_relaxed) &&
+        atomic_load_explicit(&pw,memory_order_relaxed)-atomic_load_explicit(&pr,memory_order_acquire)<PCM_SLOTS;
 }
 uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
     uint32_t done=0,epoch=aacp_mic_generation();
@@ -293,6 +298,7 @@ void aacp_mic_audio_init(void) {
 bool aacp_mic_audio_ready(void) { return true; }
 void aacp_mic_audio_enqueue(const uint8_t *au,uint8_t len) { (void)au; (void)len; }
 void aacp_mic_audio_work(void) {}
+bool aacp_mic_audio_pending(void) { return false; }
 uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
     (void)dst; (void)count; return 0;
 }

@@ -18,5 +18,7 @@ typedef struct {
  uint32_t failures,rebuilds,requested_revision,built_revision,last_error,max_rebuild_us;
  uint32_t negotiated_bitrate;
  bool negotiated_vbr;
+ bool duplex_cbr;
+ uint32_t encode_last_us,encode_max_us;
 } eld_runtime_status;
 void a2dp_source_eld_status(eld_runtime_status*);

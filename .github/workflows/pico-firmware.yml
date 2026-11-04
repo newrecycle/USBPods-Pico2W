@@ -135,6 +135,8 @@ jobs:
           python3 tests/test_relay_lifecycle.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_profile.c src/btstack/eld_profile.c -o /tmp/test-eld-profile
           /tmp/test-eld-profile
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I src/btstack tests/test_eld_profile.c src/btstack/eld_profile.c -o /tmp/test-eld-profile-mic
+          /tmp/test-eld-profile-mic
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I tests/encoder_mocks -I src/btstack tests/test_eld_encoder.c src/btstack/eld_encoder.c src/btstack/eld_profile.c -o /tmp/test-eld-encoder
           /tmp/test-eld-encoder
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_transition.c src/btstack/eld_transition.c -o /tmp/test-eld-transition

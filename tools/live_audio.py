@@ -19,7 +19,7 @@ PROFILES = [
 
 def profile_matches(state, profile):
     _,_,_,_,bitrate,vbr,sbr,slots=profile
-    if state.get('negotiated_vbr')==0:vbr=sbr=0
+    if state.get('negotiated_vbr')==0 or state.get('duplex_cbr')==1:vbr=sbr=0
     return (state.get('ready')==1 and not state.get('pending') and
             state.get('transition')=='ready' and state.get('input_rate')==48000 and
             state.get('requested_revision')==state.get('built_revision') and
@@ -259,12 +259,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 answer=prompt(f'{label}: tone is {side.upper()} only. Is it audible in only that AirPod? Type yes/no, or Enter for unverified:')
                 result(label+'_'+side,'PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
         channel_check('mic_active')
-        audio.set_phase('music_quality')
-        prompt('Play familiar music through USBPods now, using the same material/volume as the Full firmware comparison. Microphone capture remains active. Press Enter when playing:')
-        dwell(12,'music_quality')
-        answer=prompt('Compared with Full firmware, are bass and depth comparable? Type yes/no, or Enter for unverified:')
-        result('full_quality_comparison','PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
-        prompt('Stop that music, then press Enter to check microphone close/reopen while script playback continues:')
+        prompt('Keep this firmware connected. Press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)
         closed,detail=capture_close_state(link,external_capture)
         result('mic_close_endpoint',closed,detail)

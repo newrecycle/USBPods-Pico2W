@@ -8,6 +8,13 @@ eld_profile eld_profile_select(uint8_t rate,bool game,uint8_t level,bool rate44,
  if(relay && p.bitrate>164000)p.bitrate=164000;
  p.vbr=!game&&!rate44&&!relay&&rate!=1&&rate!=3?vbr:0;
  p.sbr=p.vbr?sbr:0;
+#ifdef USBPODS_MIC_DECODE
+ /* Target capture 035227: VBR+SBR playback starved foreground mic decode,
+    losing >80% of USB samples. Keep peer-permitted rates, but use the CBR
+    core-only encoder for the mic-capable build. A host codec round trip is
+    not evidence of a target CPU budget. Do not switch profiles on mic open. */
+ p.vbr=0;p.sbr=0;
+#endif
  p.slots=game?(level==2?4:6):rate==3?9:6;
  p.jitter=game?(level==2?60:90):150;
  return p;
