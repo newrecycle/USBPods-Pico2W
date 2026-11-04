@@ -35,13 +35,13 @@
       {
         "sha": "104132a7b9fad9265fdaca39bf94f354aa9785e3",
         "date": "2026-07-11T06:21:21Z",
-        "title": "Phase 4: USB microphone path — VERIFIED on hardware (end-to-end mic works)",
+        "title": "Phase 4: USB microphone path \u2014 VERIFIED on hardware (end-to-end mic works)",
         "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/104132a7b9fad9265fdaca39bf94f354aa9785e3"
       },
       {
         "sha": "9185bd86838189d024f0f474287f9bd5abc7c75a",
         "date": "2026-07-11T06:02:01Z",
-        "title": "Phase 3: AAC-ELD mic decoder — VERIFIED on hardware (decode + A2DP coexist)",
+        "title": "Phase 3: AAC-ELD mic decoder \u2014 VERIFIED on hardware (decode + A2DP coexist)",
         "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/9185bd86838189d024f0f474287f9bd5abc7c75a"
       },
       {
@@ -53,13 +53,13 @@
       {
         "sha": "fbe93e77b9ad5f9d3ff83f963a076f25db6a6a10",
         "date": "2026-07-11T05:10:12Z",
-        "title": "Remove blocking UART stdout — CDC ring becomes the only printf path",
+        "title": "Remove blocking UART stdout \u2014 CDC ring becomes the only printf path",
         "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/fbe93e77b9ad5f9d3ff83f963a076f25db6a6a10"
       },
       {
         "sha": "90d583f5c30d9ed4cd541a3f68d4f45dcc79bcf7",
         "date": "2026-07-11T04:55:28Z",
-        "title": "Gate AACP RX logging behind FORENSICS_DISABLED — fixes ~30s audio stall",
+        "title": "Gate AACP RX logging behind FORENSICS_DISABLED \u2014 fixes ~30s audio stall",
         "url": "https://github.com/han-um/USBPods-Pico2W-2-way-audio-implement/commit/90d583f5c30d9ed4cd541a3f68d4f45dcc79bcf7"
       },
       {
@@ -567,5 +567,9 @@
     "Source and author reports are evidence, not physical verification of our implementation.",
     "Original left/right symptom predates our automatic reset policy.",
     "Only public snapshots are vendored; non-public supplied input is indexed separately."
-  ]
+  ],
+  "apple_microphone_reference": {
+    "url": "https://support.apple.com/guide/airpods/change-settings-for-airpods-or-airpods-pro-dev57e5b7e58/web",
+    "finding": "Apple documents automatic, always-left and always-right microphone selection. This does not establish separate playback connections to individual buds."
+  }
 }

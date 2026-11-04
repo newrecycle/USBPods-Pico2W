@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "handoff_source_commit": "pending publication",
+  "handoff_source_commit": "7de213042d82367401aedef3a0e9a864f9ab6773",
   "host": {
     "passed": 56,
     "failed": 0,
@@ -9,10 +9,48 @@
     "results": "offline-host-results.json"
   },
   "target_ci": {
-    "status": "pending",
-    "baseline_code_commit": "b683ef44a17f5cc8ad037a50b2e5beea1e1dc12b",
-    "baseline_run": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41741937531",
-    "baseline_conclusion": "success"
+    "status": "completed",
+    "conclusion": "success",
+    "source_commit": "7de213042d82367401aedef3a0e9a864f9ab6773",
+    "run_id": 41746700880,
+    "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41746700880",
+    "jobs": [
+      {
+        "id": 126301395880,
+        "name": "Pico 2 W - rpi0065 - transport",
+        "conclusion": "success"
+      },
+      {
+        "id": 126301396442,
+        "name": "Pico 2 W - stock0031 - transport",
+        "conclusion": "success"
+      },
+      {
+        "id": 126301396492,
+        "name": "Pico 2 W - rpi0065 - aaceld",
+        "conclusion": "success"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": 13284037389,
+        "name": "pico2w-lite-rpi0065-aaceld",
+        "bytes": 13458236,
+        "expired": false
+      },
+      {
+        "id": 13283753025,
+        "name": "pico2w-lite-rpi0065-transport",
+        "bytes": 13449688,
+        "expired": false
+      },
+      {
+        "id": 13283523466,
+        "name": "pico2w-lite-stock0031-transport",
+        "bytes": 13442825,
+        "expired": false
+      }
+    ]
   },
   "live_packaging_paused": true,
   "physical_left_right_fix_verified": false,
@@ -23,5 +61,10 @@
     "Live RF and clock drift",
     "Hardware effectiveness of the new lifecycle policy"
   ],
-  "ci_source_note": "A later documentation-only commit may have a different SHA from the verified firmware source."
+  "ci_source_note": "A later documentation-only commit may have a different SHA from the verified firmware source.",
+  "usb_host_ci": {
+    "run_id": 41746700738,
+    "conclusion": "success",
+    "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41746700738"
+  }
 }

@@ -103,6 +103,17 @@ playback and 48 kHz coding / 64 kHz mono PCM microphone consumption.
   physical limits. A documentation-only commit may be newer than the tested
   source commit; use this record rather than guessing from the latest title.
 
+## Handoff validation result
+
+The firmware source at `7de213042d82367401aedef3a0e9a864f9ab6773` passed all three
+[target compatibility jobs](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41746700880)
+and the separate
+[USB host job](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41746700738).
+The portable local suite passed 56 commands with zero failures/skips. References,
+archive member hashes and local documentation links were also checked. A later
+handoff-record commit changes documentation/metadata only. These results do not
+prove the physical left/right symptom fixed; no live package is requested.
+
 ## Safe local checkout
 
 If starting fresh, run from a directory that does not contain the user's
