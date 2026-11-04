@@ -1,0 +1,53 @@
+{
+  "reviewed_commit": "6be28899efba385d805e1c7c7cd3c3041b562b5b",
+  "baseline_commit": "2503a52c1b8d3c3cc65b165e453bebe4dcd5131e",
+  "hardware_run": false,
+  "firmware_changed_by_review": false,
+  "offline_checks": {
+    "total": 59,
+    "passed": 59,
+    "failed": 0
+  },
+  "target_ci": {
+    "result": "success",
+    "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41762239867"
+  },
+  "independent_probes": [
+    {
+      "name": "queue-reset",
+      "status": "FAIL",
+      "returncode": -6,
+      "log": "queue-reset.txt"
+    },
+    {
+      "name": "pending-start",
+      "status": "FAIL",
+      "returncode": -6,
+      "log": "pending-start.txt"
+    },
+    {
+      "name": "mic-history",
+      "status": "FAIL",
+      "returncode": -6,
+      "log": "mic-history.txt"
+    }
+  ],
+  "observations": {
+    "queue_reset": "slot 1 has 2 owners after USB interrupt during reset",
+    "pending_start": "predicate true after SUSPEND has moved ELD owner to REBUILD",
+    "mic_history": {
+      "decoded_frames": 3072,
+      "decode_errors": 0,
+      "flush_errors": 3072,
+      "cleared_epoch": 4294967295,
+      "active_epoch": 1,
+      "first_clear_return": "0x1002"
+    }
+  },
+  "compile_logs_empty": true,
+  "limits": [
+    "Queue interrupt and AVDTP ordering use mocks around production functions.",
+    "Microphone decode uses real in-tree FDK in a host fixture.",
+    "No physical stereo routing or AirPods validation performed."
+  ]
+}
