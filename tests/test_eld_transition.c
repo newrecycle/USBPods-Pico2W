@@ -68,5 +68,24 @@ int main(void) {
  eld_transition_request(&state,false);assert(!eld_transition_retry_start(&state));
  assert(eld_transition_started(&state)==(ELD_STOP|ELD_SUSPEND));
  eld_transition_failed(&state);assert(!eld_transition_retry_start(&state));
- puts("ELD transition ordering, superseded requests, stale events and failure actions passed");
+
+ // Replayed K refresh: unanswered first START, exactly one same-channel retry,
+ // then a second unanswered START must expose terminal failure, not a third
+ // attempt, an implicit rebuild, or a manufactured RUN permission.
+ ready();assert(eld_transition_request(&state,true)==(ELD_STOP|ELD_SUSPEND));
+ assert(eld_transition_suspended(&state)==ELD_BUILD);
+ assert(eld_transition_built(&state,true)==ELD_START);
+ assert(eld_transition_begin_start(&state));
+ assert(eld_transition_retry_start(&state)==ELD_START);
+ assert(!state.start_inflight && state.start_retries==1);
+ assert(eld_transition_begin_start(&state));
+ assert(!eld_transition_retry_start(&state));
+ assert(eld_transition_failed(&state)==(ELD_STOP|ELD_DROP));
+ assert(state.phase==ELD_FAILED && !eld_transition_started(&state));
+ assert(!eld_transition_request(&state,true) && !eld_transition_retry_start(&state));
+
+ // A delayed/duplicate ACCEPT cannot revive a torn-down generation.
+ eld_transition_reset(&state);assert(!eld_transition_started(&state));
+ assert(!eld_transition_retry_start(&state));
+ puts("ELD transition ordering, bounded START retry, stale events and failure actions passed");
 }
