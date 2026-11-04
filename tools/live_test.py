@@ -17,7 +17,6 @@ import time
 import traceback
 import wave
 import zipfile
-from live_audio import observation_status
 
 PREFIX = '[control] '
 IDS = dict(zip('info scan scanlist scanstop pair connect disconnect settings uart debug game earpause stem gamelevel eldrate usbvol phvol connmode slot savedconnect saveddelete phonepair phonedisc phoneconnect relayaac uac1 rate44 bootconn pausedc swvol btnmode ldacq lhdcrate reboot telemetry savedlist'.split(), range(128,164)))
@@ -274,6 +273,8 @@ def collect_hid(recorder, cdc):
     return opened
 
 def main():
+    # Keep imported runner modules injectable for compiler-backed CLI fixtures.
+    from live_audio import observation_status
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest',type=Path,default=Path(__file__).with_name('candidate.json'))
     parser.add_argument('--cdc',help='USB CDC diagnostic/control port; no UART adapter is used')
