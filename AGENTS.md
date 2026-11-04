@@ -24,9 +24,10 @@ implementation, evidence, references, build setup and unresolved physical issue.
   recovery while keeping normal microphone lifecycle independent of playback.
 - `references/` contains pinned, licensed comparison sources, not build inputs
   or replacement implementations. Use `references/manifest.json` for provenance.
-- `docs/validation-status.json` currently pauses live packaging. This handoff is
-  for offline work; it does not request a hardware run. Keep actual physical
-  findings distinct from simulated results.
+- `docs/validation-status.json` records authorization for controlled live
+  verification. Obey its packaging gates and the current user request; do not
+  infer physical success from authorization or simulated checks. Keep actual
+  physical findings distinct from simulated results.
 - Do not publish raw captures, keys or the non-public supplied reference bundle.
   `docs/evidence/external-inputs.json` inventories those separate local inputs.
 - Keep command output bounded. Save long logs to files, show compact summaries,

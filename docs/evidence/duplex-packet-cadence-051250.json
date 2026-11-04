@@ -155,5 +155,46 @@
     "source_sha": "2911a824d5a44d126234d4f63545a37051d71d5f",
     "test": "test_pcm_packet_path.py --mic-build --source-file archived.c",
     "expected_failure": "ctx.codec_ready_to_send after the second staged AU"
+  },
+  "repair_source_sha": "241dc1863b96c9f79ac39c6469005c9bc2c8b190",
+  "windows_launcher": {
+    "run_id": 41781368550,
+    "job_id": 126413787316,
+    "passed": true,
+    "simulated_usb": true
+  },
+  "target_ci": {
+    "run_id": 41781368550,
+    "conclusion": "success",
+    "jobs": [
+      "stock0031/transport",
+      "rpi0065/transport",
+      "rpi0065/aaceld",
+      "Windows launcher"
+    ],
+    "artifact_id": 13298843487,
+    "artifact_sha256": "614312a1b0bd17a1908cee8babd8eb1d5ac04e1c967f2a58a840896f805cecde"
+  },
+  "release": {
+    "source_sha": "241dc1863b96c9f79ac39c6469005c9bc2c8b190",
+    "ci_run_id": 41781368550,
+    "sha256": "a68a95c951aa0609540141d5c860509e1445e45f3f506ed3de6fc5b336ff0ffb",
+    "bytes": 1444633,
+    "uf2_sha256": "41d51105cc451307392b84a21db1aef8f4afb2a4f268bd368db5bcfcbc7305bb",
+    "packaged_cli_scenarios": 12
+  },
+  "packaged_cli": {
+    "scenarios": 12,
+    "passed": 12,
+    "failed": 0,
+    "simulated": true,
+    "physical_acceptance": false
+  },
+  "heap_audit": {
+    "pointer_bytes": 4,
+    "heap_region": 337420,
+    "host_codec_requested_peak": 215676,
+    "remaining_before_allocator_and_other_heap_users": 121744,
+    "physical_runtime_measurement": false
   }
 }

@@ -316,6 +316,14 @@ physical findings, not demonstrated fixes. The launcher attempts picotool
 forced reset, uses the existing CDC 1200-baud fallback for legacy firmware,
 verifies/boots the packaged UF2 and follows the returning COM port.
 
+The delivered source is `241dc1863b96c9f79ac39c6469005c9bc2c8b190`.
+CI run `41781368550` passed three target variants plus the actual Windows
+PowerShell launcher test. The packaged CLI passed 12 simulated scenarios.
+The ZIP SHA-256 is `a68a95c951aa0609540141d5c860509e1445e45f3f506ed3de6fc5b336ff0ffb`;
+the matching UF2 hash and all evidence are in
+`docs/evidence/duplex-packet-cadence-051250.json`. Later documentation changes
+do not change the firmware/runner identity. No new hardware run is implied.
+
 Capture 042523 validates zero-loss 256 kbps playback/mic intervals on `a952fa9`,
 but lower-rate/game batches still lost AUs, the mic-closed right-channel check
 failed, and the second reconnect hit a media OPEN timeout. Read

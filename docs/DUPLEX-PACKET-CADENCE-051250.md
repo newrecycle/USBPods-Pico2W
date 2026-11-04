@@ -72,8 +72,14 @@ The maintained native suite passes 65 checks with zero failures/skips, including
 real ASan FDK packet/decode paths and simulated flash states/failures. The
 PowerShell launcher has a Windows CI execution test with argument/path quoting,
 changed COM, flash-failure stop and propagation of test failure exit codes.
-Target CI, the allocation audit and the immutable package's CLI scenarios are
-recorded with the final release identity in the evidence record after building.
+Target CI [41781368550](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41781368550)
+passed all three Pico variants and the Windows launcher on source
+`241dc1863b96c9f79ac39c6469005c9bc2c8b190`. The 32-bit host codec-allocation
+audit requested a 215,676-byte peak against the linked 337,420-byte heap region,
+leaving 121,744 bytes before allocator/other users; this is not target runtime
+measurement. The exact delivered `USBPods-Live-Verification-241dc18.zip` then
+passed 12 CLI scenarios. Its archive/UF2 hashes, CI artifact identity and
+sanitized physical evidence are recorded in the evidence record.
 Host/backend simulations do not establish physical USB reset or flash behavior.
 
 Closing capture still failed the left playback-channel check in this run;
