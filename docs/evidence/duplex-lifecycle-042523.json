@@ -123,7 +123,30 @@
     "tools/live_audio.py": "0644e40f102ddc9da64d8077155fe5fbcd868540a3fad7b51095d7d724187a1a",
     "tools/live_test.py": "2fea41a52029163fa091f07d457ac237149bb91eb57a746d149360e69530dc09"
   },
-  "target_ci": "pending push",
+  "target_ci": {
+    "state": "success",
+    "run_id": 41775668083,
+    "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41775668083",
+    "variants": [
+      "stock0031/transport",
+      "rpi0065/transport",
+      "rpi0065/aaceld"
+    ],
+    "usb_hid_host": "success",
+    "memory": {
+      "heap_region_bytes": 337420,
+      "heap_start": "0x200279f4",
+      "heap_limit": "0x2007a000",
+      "runtime_allocation_verified": true,
+      "host_codec_estimate": {
+        "pointer_bytes": 4,
+        "codec_requested_peak": 215676,
+        "runtime_allocation_verified": false,
+        "remaining_before_allocator_and_other_heap_users": 121744
+      }
+    },
+    "target_runtime_measured": false
+  },
   "physical_repair_validation": false,
   "remaining": [
     "Lower-rate and both game-mode loss under actual radio/USB scheduling",
@@ -131,5 +154,14 @@
     "Three complete reconnects and ten-minute soak",
     "Acoustic mic latency with larger buffering target"
   ],
-  "raw_voice_or_peer_keys_published": false
+  "raw_voice_or_peer_keys_published": false,
+  "repaired_source": "2911a824d5a44d126234d4f63545a37051d71d5f",
+  "release": {
+    "name": "USBPods-Live-Verification-2911a82.zip",
+    "source": "2911a824d5a44d126234d4f63545a37051d71d5f",
+    "zip_sha256": "c01ce4516c8be643c40af8a9f99d265064f5dc2eb23546d8ffda07ec260a2620",
+    "uf2_sha256": "b9fde448cc790321f4d3c477947d76d2dda4e10b40cf47b7722c668ba63506fb",
+    "exact_packaged_cli_scenarios_passed": 11,
+    "hardware_tested": false
+  }
 }

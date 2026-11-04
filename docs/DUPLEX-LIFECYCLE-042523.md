@@ -105,8 +105,14 @@ The maintained offline suite passes 64 checks with no failures/skips. Eleven
 complete CLI scenarios cover success, policy/ownership, transport errors and
 reconnect faults. New assertions exercise production bodies and include old
 source negative controls for packet batching and service-gap buffering.
-Target CI, candidate identity and sanitized live deltas are recorded in
-[the evidence record](evidence/duplex-lifecycle-042523.json).
+All three target builds passed for source
+`2911a824d5a44d126234d4f63545a37051d71d5f` in
+[run 41775668083](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41775668083),
+as did the separate USB/HID host job. The exact packaged runner passed all
+eleven CLI replays. The 32-bit codec audit requested a peak of 215,676 bytes
+against a linked 337,420-byte heap region; this excludes allocator/other heap
+users and is not a target runtime measurement. Candidate identity and sanitized
+live deltas are recorded in [the evidence record](evidence/duplex-lifecycle-042523.json).
 
 ```sh
 python3 tools/run_offline_checks.py --fdk-lib /absolute/path/to/asan/libfdk-aac.a
