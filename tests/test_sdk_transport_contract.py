@@ -115,6 +115,18 @@ with tempfile.TemporaryDirectory() as temp:
     before_state=reference.split('void avdtp_initiator_stream_config_subsm(',1)[1].split(
         '    if (connection->initiator_connection_state ==',1)[0]
     assert 'initiator_signaling_packet.transaction_label !=' not in before_state
+    # A reentrant application callback can submit the next transaction.
+    # Retire the old response label before emitting acceptance, or the SDK
+    # overwrites that new transaction's label after returning from the callback.
+    initiator=read_sdk('avdtp_initiator.c')
+    accept_section=initiator.split('case AVDTP_RESPONSE_ACCEPT_MSG:',1)[1].split(
+        'case AVDTP_RESPONSE_REJECT_MSG:',1)[0]
+    advance='connection->initiator_transaction_label = avdtp_get_next_transaction_label();'
+    emit='avdtp_signaling_emit_accept_for_stream_endpoint('
+    assert accept_section.index(advance)<accept_section.index(emit)
+    old_accept=reference.split('case AVDTP_RESPONSE_ACCEPT_MSG:',1)[1].split(
+        'case AVDTP_RESPONSE_REJECT_MSG:',1)[0]
+    assert old_accept.index(advance)>old_accept.index(emit)
     code=fixture+'static void check_late_response(label_connection_t *connection) {\n'+guard+' accepted_responses++;\n}\n'
     code+=extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
     code+=extract('avdtp_initiator.c','avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint')+tests
