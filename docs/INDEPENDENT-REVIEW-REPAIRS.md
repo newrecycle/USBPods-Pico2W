@@ -32,6 +32,13 @@ errors and an uncleared epoch. The enhanced PCM restart fixture also fails
 against the unchanged pre-repair production decoder, establishing a negative
 control independent of the mock decoder.
 
+The repaired source at `5a4ea5e7f72b0208c060d5621678e51abff6383f` also passed all three
+[Pico target CI jobs](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41766248409)
+and the [USB/HID CI job](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41766248265).
+The 32-bit codec audit passed with a requested peak of 303,110 bytes, excluding
+allocator and BT overhead. Target builds, linked-image/UF2 verification and the
+SCO diagnostic probe builds passed; no target execution is claimed.
+
 Portable commands:
 
 ```sh

@@ -61,11 +61,60 @@
   },
   "fdk_archive_sha256": "2ba460d08c66d086844e9ea0cbc834405b2f5f86a6e04eb23075ade7dbaa874f",
   "target_ci": {
-    "state": "pending push"
+    "state": "success",
+    "runs": [
+      {
+        "id": 41766248409,
+        "name": "Pico firmware build",
+        "status": "completed",
+        "conclusion": "success",
+        "sha": "5a4ea5e7f72b0208c060d5621678e51abff6383f",
+        "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41766248409"
+      },
+      {
+        "id": 41766248265,
+        "name": "USB capture and HID host tests",
+        "status": "completed",
+        "conclusion": "success",
+        "sha": "5a4ea5e7f72b0208c060d5621678e51abff6383f",
+        "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41766248265"
+      }
+    ],
+    "jobs": [
+      {
+        "name": "Pico 2 W - rpi0065 - transport",
+        "conclusion": "success",
+        "id": 126365200709
+      },
+      {
+        "name": "Pico 2 W - rpi0065 - aaceld",
+        "conclusion": "success",
+        "id": 126365201219
+      },
+      {
+        "name": "Pico 2 W - stock0031 - transport",
+        "conclusion": "success",
+        "id": 126365201236
+      }
+    ],
+    "codec_heap32": {
+      "pointer_bytes": 4,
+      "requested_peak": 303110,
+      "linked_heap_region_bytes": 337432,
+      "target_runtime_measured": false,
+      "limit": "Host allocation-request audit; allocator/BT overhead excluded."
+    },
+    "log_highlights": [
+      "2026-11-04T03:18:57.0427286Z PCM reset ownership: 640 IRQ/state interleavings passed",
+      "2026-11-04T03:19:08.8527788Z Real FDK mic reset: 12 capture/reconnect generations match fresh decoder PCM",
+      "2026-11-04T03:19:27.0971779Z Real FDK mic reset: 12 capture/reconnect generations match fresh decoder PCM",
+      "2026-11-04T03:19:27.3002307Z ELD codec allocation audit: pointer_bytes=4 requested_peak=303110 (allocator/BT overhead excluded)"
+    ]
   },
   "limits": [
     "No hardware validation, flashing, or RF timing measurement.",
     "Physical left/right AirPod symptom remains unverified.",
     "Queue and signaling schedules are mocked; FDK audio runs the actual in-tree codec."
-  ]
+  ],
+  "repaired_source_commit": "5a4ea5e7f72b0208c060d5621678e51abff6383f"
 }
