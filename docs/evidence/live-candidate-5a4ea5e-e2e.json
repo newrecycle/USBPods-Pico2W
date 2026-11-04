@@ -1,0 +1,139 @@
+{
+  "candidate_source": "5a4ea5e7f72b0208c060d5621678e51abff6383f",
+  "hardware_validation_performed_here": false,
+  "package": {
+    "name": "USBPods-Live-Verification-5a4ea5e.zip",
+    "zip_sha256": "58a76de5c453389d611fd37bc6e8ba650a34217d0b1a2043d31682bb7ee0828b",
+    "uf2_sha256": "48c6f8a5f53961bca4f2dff1885cedc86519984796d1443b6e18230f051bc8d9",
+    "ci_artifact_id": 13292103239,
+    "ci_artifact_sha256": "0fa4c592d5775eaaaa99f534637878c0e265dcb4a1e32817e730359e0423d7bc",
+    "ci_run": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41766248409",
+    "verified": [
+      "artifact digest",
+      "runner-file hashes",
+      "source identity",
+      "binary hash",
+      "UF2 structure",
+      "build and codec-heap audit"
+    ]
+  },
+  "offline_checks": {
+    "passed": 61,
+    "failed": 0,
+    "skipped": []
+  },
+  "delivered_runner_simulation": {
+    "simulated": true,
+    "physical_acceptance": false,
+    "candidate_sha": "5a4ea5e7f72b0208c060d5621678e51abff6383f",
+    "results": [
+      {
+        "case": "complete",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 0,
+        "commands": 359,
+        "result_entries": 41,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "complete-320",
+        "negotiated_ceiling": 320000,
+        "runner_exit": 0,
+        "commands": 374,
+        "result_entries": 41,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "external-capture",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 0,
+        "commands": 343,
+        "result_entries": 38,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "no-control-echo",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 0,
+        "commands": 480,
+        "result_entries": 41,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "identity-mismatch",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 2,
+        "commands": 5,
+        "result_entries": 1,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "pair-rejected",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 2,
+        "commands": 16,
+        "result_entries": 4,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "start-rejected",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 2,
+        "commands": 96,
+        "result_entries": 11,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "mic-watchdog",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 2,
+        "commands": 83,
+        "result_entries": 10,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      },
+      {
+        "case": "normalize",
+        "negotiated_ceiling": 256000,
+        "runner_exit": 2,
+        "commands": 10,
+        "result_entries": 2,
+        "simulated": true,
+        "physical_acceptance": false,
+        "passed": true
+      }
+    ]
+  },
+  "production_source_sha256": {
+    "src/control_command.c": "838a29ad29049cecb77ef4cb157030eb5b8540d2ea954a39a018c8c7bcad4eb7",
+    "src/control_command.h": "947ba689984d6ca3d2a3786ddef702dd6c9175ede1e7240fdbc02f7682eca00c",
+    "src/btstack/eld_profile.c": "28fddc9b25e8522af1186689f064175417dd5093fbd3d509b142dd84c9664826",
+    "src/btstack/aacp_mic_audio.c": "e3d8866e1e096fcb523cef2e0fa710bfc921f8bdefeb28fcb2b8a546d28b196f",
+    "src/btstack/btstack_avdtp_source.c": "05ff95643e6d55740f4294e8faa4d7ac97de613d566644eb2d5955a10ad7fa24"
+  },
+  "scope": "Actual packaged Python CLI, collector, Link, AudioSession and WAV/ZIP output run against simulated CDC/HID/PortAudio and compiled production command-parser/profile modules. Physical acceptance is excluded.",
+  "firmware_and_packaged_runner_changed": false,
+  "new_production_blockers_reproduced": [],
+  "remaining": [
+    "Physical bonding/radio negotiation",
+    "Left/right output when mic closes/reopens",
+    "Actual speech pitch and audio quality",
+    "RF timing, USB drift and sustained target resource behavior",
+    "Windows media-key actions and physical stem gestures"
+  ]
+}

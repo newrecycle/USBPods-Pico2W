@@ -762,5 +762,14 @@
     ],
     "timeout": 120,
     "requires_fdk": false
+  },
+  {
+    "name": "live-cli-e2e",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_live_cli_e2e.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]
