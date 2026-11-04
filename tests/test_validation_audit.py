@@ -5,6 +5,7 @@ as hardware acceptance. Run with python3 tests/test_validation_audit.py.
 """
 import hashlib
 import json
+import struct
 from pathlib import Path
 import sys
 import tempfile
@@ -169,6 +170,48 @@ class RunnerAudit(unittest.TestCase):
                   'Build verification')
             check({'build_verified':True,'memory':{'runtime_allocation_verified':False}},
                   'codec-heap32')
+
+
+    def test_real_package_pins_sanitized_audit_files_and_valid_uf2(self):
+        """Package production source/docs with a valid synthetic UF2, then tamper it.
+
+        This uses actual package() and verify_manifest() bodies, not fixture
+        copies of their implementation or a mocked UF2 checker.
+        """
+        with tempfile.TemporaryDirectory() as temp:
+            base=Path(temp);build=base/'build';evidence=base/'evidence';out=base/'candidate'
+            build.mkdir();evidence.mkdir()
+            stem='USBPods_Pico2W_Lite_AACELD_Mic';source_sha='a'*40
+            binary=source_sha.encode()+b'\0'
+            binary=binary.ljust(256,b'\0')
+            block=bytearray(512)
+            struct.pack_into('<8I',block,0,0x0a324655,0x9e5d5157,
+                             0x2000,0x10000000,256,0,1,0xe48bff59)
+            block[32:288]=binary
+            struct.pack_into('<I',block,508,0x0ab16f30)
+            (build/(stem+'.bin')).write_bytes(binary)
+            (build/(stem+'.uf2')).write_bytes(block)
+            def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+            report={'build_verified':True,'memory':{'runtime_allocation_verified':True},
+                    'artifacts':{stem+'.bin':{'sha256':digest(build/(stem+'.bin'))},
+                                 stem+'.uf2':{'sha256':digest(build/(stem+'.uf2'))}}}
+            (evidence/'verification.json').write_text(json.dumps(report))
+            (evidence/'firmware.json').write_text(json.dumps({'schema':1}))
+            manifest=package(ROOT,build,evidence,out,stem,source_sha,123)
+            self.assertTrue(manifest['mic_decode'])
+            self.assertFalse(manifest['hardware_tested'])
+            for name in ('LOCAL-WINDOWS-20261104.md',
+                         'local-windows-20261104.json',
+                         'VALIDATION-AUDIT-INITIAL-20261104.md',
+                         'VALIDATION-AUDIT-REPORT-20261104.md'):
+                with self.subTest(name=name):
+                    self.assertTrue((out/name).exists())
+                    self.assertEqual(manifest['runner_files'][name],digest(out/name))
+            live_test.verify_manifest(out,manifest)
+            audit=out/'VALIDATION-AUDIT-REPORT-20261104.md'
+            audit.write_text(audit.read_text()+'\nchanged after verification\n')
+            with self.assertRaisesRegex(ValueError,'Bundle file'):
+                live_test.verify_manifest(out,manifest)
 
 
 if __name__=='__main__':
