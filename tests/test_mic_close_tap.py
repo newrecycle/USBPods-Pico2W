@@ -28,7 +28,7 @@ declaration = structure.group(0)
 # opening brace. The production timer has a trailing C comment on its signature.
 # Extract that same production body, including the comment, without rewriting it.
 def tap_tick_source(text):
-    match = re.search(r"(?m)^[ \\t]*void usb_pcm_tap_tick\\(void\\)", text)
+    match = re.search(r"(?m)^[ \t]*void usb_pcm_tap_tick\(void\)", text)
     assert match, "Missing production tap tick definition"
     start = match.start()
     brace = text.index("{", start)
