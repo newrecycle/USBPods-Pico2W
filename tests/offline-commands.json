@@ -797,5 +797,17 @@
       "{TMP}/eld-profile-mic"
     ],
     "requires_fdk": false
+  },
+  {
+    "name": "pcm-packet-mic",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_pcm_packet_path.py",
+      "--fdk-lib",
+      "{FDK}",
+      "--mic-build"
+    ],
+    "requires_fdk": true,
+    "timeout": 120
   }
 ]

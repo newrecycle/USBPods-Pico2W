@@ -80,7 +80,7 @@
     "Remove historical Full comparison interruption; add USB-loss runner replay."
   ],
   "offline": {
-    "passed": 63,
+    "passed": 64,
     "failed": 0,
     "skipped": []
   },
@@ -100,12 +100,35 @@
     "tools/live_audio.py": "903b6cc145efedc9593bef59133c48888305f3f02c58a052300b39520d11b2e7",
     "tools/live_test.py": "024f9ce1dd53a6f26a3bf333bc23ddaa1315c8ab6109e13b348c83a5bf72db0a"
   },
-  "target_ci": "pending push",
+  "target_ci": {
+    "state": "success",
+    "run_id": 41771697614,
+    "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41771697614",
+    "variants": [
+      "stock0031/transport",
+      "rpi0065/transport",
+      "rpi0065/aaceld"
+    ],
+    "build_and_heap_audit": true,
+    "hardware_tested": false,
+    "codec_requested_peak": 215676,
+    "linked_heap_region_bytes": 337424,
+    "target_runtime_measured": false
+  },
   "remaining_physical": [
     "Throughput and voice quality under all supported CBR profiles and both game modes",
     "Stereo independence across mic close/reopen",
     "Reconnects and 10-minute duplex soak",
     "USB-loss cause; no reset banner in prior capture"
   ],
-  "raw_capture_published": false
+  "raw_capture_published": false,
+  "repaired_source": "a952fa9256e0128c8010bfb69642b8ea3be5f1ca",
+  "release": {
+    "source": "a952fa9256e0128c8010bfb69642b8ea3be5f1ca",
+    "zip": "USBPods-Live-Verification-a952fa9.zip",
+    "zip_sha256": "1be0077a2f7f9ea687bfeddb1516517329a2e8bf914549b31182047cd7f80f24",
+    "uf2_sha256": "abe4a2fa837a573ed270388a879654c551b4e9cffc2b4c8b4d1d316fc1bdb700",
+    "exact_packaged_cli_scenarios_passed": 10,
+    "firmware_live_tested": false
+  }
 }

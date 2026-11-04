@@ -5,7 +5,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 from test_source_boundaries import ROOT,function
-p=argparse.ArgumentParser(description=__doc__);p.add_argument('--fdk-lib',type=Path,required=True);a=p.parse_args()
+p=argparse.ArgumentParser(description=__doc__);p.add_argument('--fdk-lib',type=Path,required=True)
+p.add_argument('--mic-build',action='store_true',help='Exercise the mic-capable CBR encoder policy')
+a=p.parse_args()
 body=r'''
 #define PI 3.14159265358979323846
 int main(void) {
@@ -81,6 +83,7 @@ with tempfile.TemporaryDirectory() as temp:
  path=Path(temp)
  (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function('src/btstack/btstack_avdtp_source.c',n) for n in names)+body)
  args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
+ if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]
  args+=[str(path/'pipeline.c'),str(ROOT/'src/btstack/eld_profile.c'),str(ROOT/'src/btstack/eld_encoder.c'),str(ROOT/'src/resamp44.c'),str(a.fdk_lib.resolve()),'-lstdc++','-lm','-o',str(path/'pipeline')]
  subprocess.run(args,check=True)

@@ -76,7 +76,7 @@ does not enlarge any audio queue or add allocations to the audio path.
 
 ## Verification and next physical run
 
-The maintained offline suite passes 63 checks with zero failures/skips,
+The maintained offline suite passes 64 checks with zero failures/skips,
 including ten complete CLI scenarios. The real-FDK test fills the PCM queue
 from 32 queued AUs, then verifies every retained frame against fresh-decoder
 PCM in order. The old decoder fails the new zero-drop/backlog assertion.
@@ -87,7 +87,13 @@ in the suite. Both transport and mic profile-policy variants are tested.
 python3 tools/run_offline_checks.py --fdk-lib /absolute/path/to/asan/libfdk-aac.a
 ```
 
-Target CI and exact next-candidate identity are recorded in the evidence file.
+All three target CI variants and the 32-bit codec allocation audit passed for
+source `a952fa9256e0128c8010bfb69642b8ea3be5f1ca` in
+[run 41771697614](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41771697614).
+The exact packaged runner also passed all ten CLI replays. The requested codec
+heap peak was 215,676 bytes against a linked 337,424-byte heap region; allocator
+and other heap users are excluded, and no target runtime measurement is claimed.
+The released ZIP identity is recorded in the evidence file.
 These changes address demonstrated configuration and queue defects; they do
 not establish target schedulability or explain the previous USB loss. The next
 live run must still prove low/drop-free mic delivery under all supported CBR
