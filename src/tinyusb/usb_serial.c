@@ -63,10 +63,15 @@ static void cdc_out_chars(const char *buf, int len)
 
 static int cdc_in_chars(char *buf, int len)
 {
-    /* UART RX first: the hardware UART (debug-probe bridge) is a full
-       console — same debug keys as the CDC terminal — when the web
-       "UART serial console" switch is on. Non-blocking: only drains what
-       already sits in the FIFO. */
+    /* CDC is the documented diagnostic transport and has priority. The UART
+       (debug-probe bridge) mirrors the same console when the web switch is on,
+       but a noisy/floating UART RX must not starve CDC keystrokes: service CDC
+       first on every call, then fall back to already-buffered UART bytes. */
+    if (tud_cdc_connected()) {
+        uint32_t u = tud_cdc_read(buf, (uint32_t)len);
+        if (u) return (int)u;
+    }
+
     if (settings()->usbset & USBSET_UART) {
         int n = 0;
         while (n < len && uart_is_readable(uart_default)) {
@@ -74,12 +79,7 @@ static int cdc_in_chars(char *buf, int len)
         }
         if (n) return n;
     }
-
-    if (!tud_cdc_connected()) {
-        return PICO_ERROR_NO_DATA;
-    }
-    uint32_t u = tud_cdc_read(buf, (uint32_t)len);
-    return u ? (int)u : PICO_ERROR_NO_DATA;
+    return PICO_ERROR_NO_DATA;
 }
 
 /* Input is EVENT-DRIVEN on pico stdio: consumers (btstack_stdin) register a

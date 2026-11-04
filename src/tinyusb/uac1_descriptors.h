@@ -69,7 +69,7 @@ enum {
     7, TUSB_DESC_CS_INTERFACE, 0x01, UAC1_ENT_SPK_IT, 1, U16_TO_U8S_LE(0x0001), \
     /* Type I format: stereo, 2 B/sample, 16-bit, 1 rate */ \
     11, TUSB_DESC_CS_INTERFACE, 0x02, 1, 2, 2, 16, 1, _rate3b, \
-    /* ISO OUT data EP: adaptive, 192 B, 1 ms (9-byte UAC1 EP descriptor) */ \
+    /* ISO OUT data EP: adaptive, _epsz (48 kHz 192 / 44.1 kHz 180), 1 ms */ \
     9, TUSB_DESC_ENDPOINT, (_epout), 0x09, U16_TO_U8S_LE(_epsz), 1, 0, 0, \
     /* CS ISO EP: sampling-freq control supported, lock delay 1 ms */ \
     7, TUSB_DESC_CS_ENDPOINT, 0x01, 0x01, 1, U16_TO_U8S_LE(1)

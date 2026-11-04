@@ -94,7 +94,7 @@ contain these fields. This is evidence collection, not a transport fix.
 | Boot/board/radio | Board/variant guards, source SHA, unchanged radio image and UF2 checks | Physical startup/USB recovery and RF behavior |
 | Discovery/authentication/favorites | Captured real authentication; bounded discovery and production favorite/teardown regressions | New bond creation, occupied favorites on real devices, inbound reconnect hold |
 | Playback/ELD/game modes | Production transition adapter failures/deadlines, encoder fault injection, real FDK profile cycle | Actual SDK/peer startup sequence, negotiation ceiling, target deadlines and acoustics |
-| AAC-LC/LDAC/LHDC | Source/dispatch/configuration review and target compilation | Non-ELD setup still allocates in Bluetooth callbacks; needs the same allocator-context audit/defer policy before broad headset testing. Hardware codec quality is unverified |
+| AAC-LC/LDAC/LHDC | Source/dispatch/configuration review and target compilation | Codec setup/allocation is deferred from the Bluetooth callback to main-loop work under the CYW43 async lock (`src_schedule_codec_setup`/`src_codec_setup_main`, source-boundary tested). Hardware codec quality is unverified |
 | AACP/control/microphone | Bounds, session ownership, stale epochs, queue/telemetry and real FDK decoding tests | AACP interoperability with this headset and 48/64 kHz mapping |
 | USB capture | Alt/mount/suspend/close state tests; callback wiring and linked descriptors | Windows stream behavior, clock drift and physical suspend/re-enumeration |
 | HID | Bounded queue, press/release retry/epoch tests, four-thread stress fixture | Host application action; opening a HID handle is not delivery evidence |

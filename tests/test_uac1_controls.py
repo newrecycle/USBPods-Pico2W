@@ -71,6 +71,13 @@ int main(void){
  r.wValue=UAC1_FU_MUTE<<8;r.wLength=1;
  assert(fu_request(0,&r,CONTROL_STAGE_SETUP));s_u1.ctrl_buf[0]=1;
  assert(fu_request(0,&r,CONTROL_STAGE_DATA) && mute[0]==1);
+ // All-channels GET_CUR must read back the master value, not the right one.
+ volume[0]=-256; volume[1]=-512; volume[2]=-768;
+ r.bRequest=UAC1_GET_CUR; r.wValue=(UAC1_FU_VOLUME<<8)|0xFF;
+ r.wIndex=(UAC1_ENT_SPK_FU<<8); r.wLength=2;
+ assert(fu_request(0,&r,CONTROL_STAGE_SETUP));
+ assert((int16_t)(s_u1.ctrl_buf[0]|(s_u1.ctrl_buf[1]<<8))==volume[0]);
+ r.bRequest=UAC1_SET_CUR; r.wValue=UAC1_FU_MUTE<<8;
  r.wValue=99<<8;assert(!fu_request(0,&r,CONTROL_STAGE_SETUP));
  r.wValue=UAC1_FU_MUTE<<8;r.wIndex=(UAC1_ENT_SPK_FU<<8)|UAC1_ITF_SPK;
  assert(!fu_request(0,&r,CONTROL_STAGE_SETUP));

@@ -118,8 +118,13 @@ static uint16_t uac1_open(uint8_t rhport, tusb_desc_interface_t const *itf, uint
 static void spk_arm(void)
 {
     if (s_u1.alt_spk && !usbd_edpt_busy(s_u1.rhport, s_ep_out_desc.bEndpointAddress)) {
+        /* Arm exactly one packet at the active personality's advertised max:
+           192 B at 48 kHz, 180 B at 44.1 kHz. Arming the 192-byte buffer for
+           the 44.1 personality would split the ISO transfer into 180+12 B
+           fragments and push a spurious 3-frame chunk into the PCM path.
+           The buffer itself stays at the 192-byte capacity. */
         usbd_edpt_xfer(s_u1.rhport, s_ep_out_desc.bEndpointAddress,
-                       s_u1.spk_buf, UAC1_EP_OUT_SZ);
+                       s_u1.spk_buf, tu_edpt_packet_size(&s_ep_out_desc));
     }
 }
 
@@ -225,7 +230,13 @@ static bool fu_request(uint8_t rhport, tusb_control_request_t const *req, uint8_
     switch (req->bRequest) {
     case UAC1_GET_CUR:
         if (sel == UAC1_FU_MUTE)        { s_u1.ctrl_buf[0] = (uint8_t)mute[ch <= 2 ? ch : 0]; len = 1; }
-        else if (sel == UAC1_FU_VOLUME) v16 = volume[ch <= 2 ? ch : 1];
+        else if (sel == UAC1_FU_VOLUME) {
+            /* ch 0 = master (mirrors channel 1 here), 0xFF = all channels:
+               both must read back the master value, not the right channel. */
+            if (ch == 0xFF || ch == 0) v16 = volume[0];
+            else if (ch <= 2) v16 = volume[ch];
+            else return false;
+        }
         else return false;
         break;
     case UAC1_GET_MIN: TU_VERIFY(sel == UAC1_FU_VOLUME); v16 = UAC1_VOL_MIN_256DB; break;
@@ -301,9 +312,15 @@ static bool uac1_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_req
 static bool uac1_xfer_cb(uint8_t rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred)
 {
     (void)rhport;
-    (void)result;
 
     if (ep_addr == s_ep_out_desc.bEndpointAddress) {
+        /* A failed/cancelled ISO transfer may still report a non-zero length;
+           publishing that buffer would inject stale audio. Keep the endpoint
+           armed, but only completed transfers reach the PCM path. */
+        if (result != XFER_RESULT_SUCCESS) {
+            spk_arm();
+            return true;
+        }
         /* Deliver to the BT pipeline (same sinks as the UAC2 rx callback),
            then immediately re-arm. Guard 4-byte frame alignment. */
         if (xferred > 0 && (xferred & 0x3) == 0) {

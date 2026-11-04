@@ -95,3 +95,22 @@ usbd = Path("src/tinyusb/usb_descriptors.c").read_text()
 assert "UAC1_RATE_48_3B, UAC1_EP_OUT_SZ_48" in usbd
 assert "UAC1_RATE_44_3B, UAC1_EP_OUT_SZ_44" in usbd
 print("TinyUSB production callback wiring verified")
+
+# UAC1 must arm one packet at the active personality's advertised max size
+# (192 B at 48 kHz, 180 B at 44.1 kHz), not always the 192-byte buffer size.
+u1 = Path("src/tinyusb/uac1_device.c").read_text()
+arm = u1.split("static void spk_arm(void)", 1)[1].split("\n}", 1)[0]
+assert "tu_edpt_packet_size(&s_ep_out_desc)" in arm
+assert "UAC1_EP_OUT_SZ" not in arm
+xfer = u1.split("static bool uac1_xfer_cb", 1)[1]
+assert xfer.find("XFER_RESULT_SUCCESS") < xfer.find("audio_slot_push_samples"), \
+    "failed ISO transfer must not publish its stale buffer"
+guard = xfer.split("XFER_RESULT_SUCCESS", 1)[1]
+assert "spk_arm();" in guard.split("audio_slot_push_samples", 1)[0]
+
+# CDC input is the documented diagnostic transport: service it before UART so
+# a noisy UART RX cannot starve console commands.
+serial = Path("src/tinyusb/usb_serial.c").read_text()
+block = serial.split("static int cdc_in_chars", 1)[1].split("PICO_ERROR_NO_DATA;\n}", 1)[0]
+assert block.find("tud_cdc_read") < block.find("USBSET_UART")
+print("TinyUSB production callback wiring verified")
