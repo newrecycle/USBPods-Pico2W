@@ -17,6 +17,7 @@ import time
 import traceback
 import wave
 import zipfile
+from live_audio import observation_status
 
 PREFIX = '[control] '
 IDS = dict(zip('info scan scanlist scanstop pair connect disconnect settings uart debug game earpause stem gamelevel eldrate usbvol phvol connmode slot savedconnect saveddelete phonepair phonedisc phoneconnect relayaac uac1 rate44 bootconn pausedc swvol btnmode ldacq lhdcrate reboot telemetry savedlist'.split(), range(128,164)))
@@ -422,16 +423,16 @@ def main():
                     try:link.request(f'{command} {original[field]}')
                     except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
             heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')
-            result('playback_quality','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+            result('playback_quality',observation_status(heard),heard)
             wavs=sorted(root.glob('*.wav'))
             if wavs:
                 print('Recorded clips:',', '.join(p.name for p in wavs),flush=True)
                 heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
-                result('microphone_pitch','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+                result('microphone_pitch',observation_status(heard),heard)
             else:result('microphone_pitch','UNVERIFIED','Audio capture produced no WAV files; no listening prompt was presented')
             link.request('earpause 1');link.request('stem 1')
             note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
-            result('ear_and_stem','UNVERIFIED',note or 'No physical observation supplied; see firmware HID and raw HID logs')
+            result('ear_and_stem',observation_status(note,'gestures'),note or 'No physical observation supplied; see firmware HID and raw HID logs')
         else:
             result('post_audio_controls','SKIP','Session-only diagnostic scope' if args.session_only else 'Audio matrix failed; no further control mutations or physical prompts')
         if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
