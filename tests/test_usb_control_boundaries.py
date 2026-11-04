@@ -196,6 +196,16 @@ int main(int argc,char **argv){
   assert(apply_host_fu_volume());
   assert(!need_change_bt_volume && volume0_last==-512);
   assert(bt_volume_arg==-50+50/2);
+  // Host mute is a STATE, not a toggle: mute -> unmute -> mute must map.
+  mute[0]=1; need_change_bt_volume=true; bt_volume_arg=999;
+  assert(apply_host_fu_volume() && bt_volume_arg==-50);
+  mute[0]=0; need_change_bt_volume=true; bt_volume_arg=999;
+  assert(apply_host_fu_volume() && bt_volume_arg==-50+50/2);
+  mute[0]=1; need_change_bt_volume=true; bt_volume_arg=999;
+  assert(apply_host_fu_volume() && bt_volume_arg==-50);   // old toggle inverted this
+  // A first mute at a volume that was never applied must still mute.
+  volume[0]=-384; mute[0]=1; need_change_bt_volume=true; bt_volume_arg=999;
+  assert(apply_host_fu_volume() && bt_volume_arg==-50);
  }else assert(!"unknown case");
  printf("Production UAC2 %s boundaries and state isolation passed\n",which);
 }

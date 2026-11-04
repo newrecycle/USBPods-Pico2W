@@ -239,7 +239,9 @@ void settings_init(void) {
         }
         s_seq = 0;
         s_sector = 0;
-        s_page = PAGES_PER_SEC;        /* force erase of sector 0 on first commit */
+        s_page = PAGES_PER_SEC;        /* force the first commit onto sector 1
+                                          (commit() flips the sector before
+                                          erasing), leaving sector 0 untouched */
         s_dirty = true;                /* persist the migrated snapshot soon */
         s_dirty_ms = to_ms_since_boot(get_absolute_time())-1000u;
         return;

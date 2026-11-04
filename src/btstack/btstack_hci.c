@@ -231,6 +231,18 @@ static void hci_packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *p
     hci_packet_handler_inner(packet_type, channel, packet, size);
     watchdog_hw->scratch[7] = 0x7F;   /* exited cleanly */
 }
+/* Copy an EIR/inquiry name of untrusted length into a fixed buffer.
+   The GAP response name can be up to 255 bytes; all three consumers in this
+   file must bound it. Returns the copied length and always NUL-terminates. */
+static uint8_t inquiry_name_copy(char *dst, uint8_t cap, const char *src, int len){
+    if (!dst || cap == 0) return 0;
+    if (len < 0) len = 0;
+    if (len > (int)(cap - 1)) len = cap - 1;
+    memcpy(dst, src, (size_t)len);
+    dst[len] = 0;
+    return (uint8_t)len;
+}
+
 static void hci_packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size){
     UNUSED(channel);
     UNUSED(size);
@@ -433,9 +445,9 @@ static void hci_packet_handler_inner(uint8_t packet_type, uint16_t channel, uint
             }
             if (gap_event_inquiry_result_get_name_available(packet)){
                 char name_buffer[240];
-                int name_len = gap_event_inquiry_result_get_name_len(packet);
-                memcpy(name_buffer, gap_event_inquiry_result_get_name(packet), name_len);
-                name_buffer[name_len] = 0;
+                inquiry_name_copy(name_buffer, sizeof(name_buffer),
+                                   gap_event_inquiry_result_get_name(packet),
+                                   gap_event_inquiry_result_get_name_len(packet));
                 printf(", name '%s'", name_buffer);
             }
             printf("\n");

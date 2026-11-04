@@ -52,7 +52,7 @@ def verify_microphone_descriptors(binary, symbols):
         data = binary[address:address+size]
         if len(data) != size or data[:2] != bytes([9,2]) or int.from_bytes(data[2:4],"little") != size:
             raise ValueError("invalid configuration descriptor length")
-        off=0; endpoints=[]; interfaces=set(); current=None; clocks=[]; iad=None
+        off=0; endpoints=[]; interfaces=set(); current=None; clocks=[]; iad=None; rates=[]
         while off<len(data):
             n,kind=data[off:off+2]
             if n<2 or off+n>len(data): raise ValueError("invalid USB descriptor boundary")
@@ -62,6 +62,8 @@ def verify_microphone_descriptors(binary, symbols):
                 interfaces.add(d[2]); current=(d[2],d[3],d[5],d[6])
             if kind==0x24 and current and current[2:]==(1,1) and d[2]==10:
                 clocks.append(d[3])
+            if kind==0x24 and current and current[2:]==(1,2) and d[2]==2 and len(d)>=11:
+                rates.append(int.from_bytes(d[8:11],"little"))  # UAC1 Type I rate (AS iface)
             if kind==5 and (d[3]&3)==1:
                 endpoints.append((d[2],int.from_bytes(d[4:6],"little"),current))
             off+=n
@@ -74,7 +76,10 @@ def verify_microphone_descriptors(binary, symbols):
                 raise ValueError("missing/incorrect UAC2 microphone or speaker endpoint")
             if iad!=3 or clocks!=[4,0x14]:
                 raise ValueError("invalid audio function or microphone clock topology")
-        elif ins or len(outs)!=1 or outs[0][:2]!=(1,192):
+        elif name.endswith("uac1_44"):
+            if ins or len(outs)!=1 or outs[0][:2]!=(1,180) or rates!=[44100]:
+                raise ValueError("UAC1 44.1 kHz speaker rate/endpoint mismatch")
+        elif ins or len(outs)!=1 or outs[0][:2]!=(1,192) or rates!=[48000]:
             raise ValueError("UAC1 speaker personality changed unexpectedly")
         configs[name]={"interfaces":len(interfaces),"iso_endpoints":[{"address":hex(e[0]),"max_bytes":e[1]} for e in endpoints]}
     return configs

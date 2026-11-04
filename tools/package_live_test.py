@@ -7,12 +7,24 @@ from pathlib import Path
 import shutil
 from verify_build import verify_uf2
 
+def require_codec_heap_audit(report, stem):
+    """A USBPods candidate must carry a positive 32-bit codec-heap audit.
+
+    verify_build.py can only *run* the audit when evidence/codec-heap32.json
+    exists; without this gate a candidate whose audit was silently skipped
+    would still package. Kept separate so the rule is unit-testable while
+    live packaging stays paused.
+    """
+    if stem.startswith('USBPods_') and report.get('memory',{}).get('runtime_allocation_verified') is not True:
+        raise ValueError('codec-heap32 allocation audit is required for a USBPods candidate')
+
 def package(root,build,evidence,out,stem,source_sha,run_id):
     validation=json.loads((root/'docs/validation-status.json').read_text())
     if not validation.get('live_test_authorized') or validation.get('blockers'):
         raise ValueError('Live packaging is paused for offline triage')
     report=json.loads((evidence/'verification.json').read_text())
     if report.get('build_verified') is not True:raise ValueError('Build verification missing')
+    require_codec_heap_audit(report,stem)
     firmware=build/(stem+'.uf2')
     binary=build/(stem+'.bin')
     actual=hashlib.sha256(firmware.read_bytes()).hexdigest()

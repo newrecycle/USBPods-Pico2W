@@ -117,11 +117,19 @@ int main(void) {
   assert((i==0)==(n<=sizeof remote_seps[0].media_codec_event));
   assert(source_cache_capability(63,packet,n)==-1);
  }
+ // An inquiry/EIR name is untrusted (up to 255 B): copying it must clamp.
+ for(int n=-2;n<=300;n++){
+  char nb[8];
+  memset(nb,0x5a,sizeof nb);
+  uint8_t got=inquiry_name_copy(nb,(uint8_t)sizeof nb,"abcdefghijklmnop",n);
+  assert(got<=7 && nb[got]==0 && strlen(nb)<=7);
+ }
+ { char nb[1]; assert(inquiry_name_copy(nb,0,"x",1)==0); }
  puts("Source discovery bounds and favorite reuse/replacement passed");
 }
 '''
 names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing','set_bt_volume','src_volume_seed_needed','src_pump_start_pending')]
-names += [('src/btstack/btstack_hci.c',n) for n in ('slot_mac_valid','bt_pair_to')]
+names += [('src/btstack/btstack_hci.c',n) for n in ('slot_mac_valid','bt_pair_to','inquiry_name_copy')]
 # The disconnect/pairing helpers call audio_slot_queue_init() from the
 # BTstack IRQ; queue_init() allocates through the SDK malloc mutex, so the
 # production helper must allocate only once (boot path) and reset afterwards.

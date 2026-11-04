@@ -269,7 +269,7 @@ uint8_t const desc_hid_report[] = {
         HID_REPORT_COUNT(24),
         HID_FEATURE(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
 
-        HID_REPORT_ID(11)                      /* license (GET/SET 188 B):
+        HID_REPORT_ID(11)                      /* license (GET/SET 189 B):
                                                   GET  [state][key_id]
                                                        [features u32 LE]
                                                        [blob 118][email 64]
@@ -310,7 +310,7 @@ _Static_assert(sizeof(desc_configuration_uac2) == CONFIG_UAC2_TOTAL_LEN,
 uint8_t const desc_configuration_uac1[] =
 {
     TUD_CONFIG_DESCRIPTOR(CFGNUM_UAC1, UAC1_ITF_TOTAL, 0, CONFIG_UAC1_TOTAL_LEN, 0x00, 100),
-    UAC1_FUNC_DESCRIPTOR(/*stridx*/ 2, EPNUM_AUDIO_OUT, UAC1_RATE_48_3B),
+    UAC1_FUNC_DESCRIPTOR(/*stridx*/ 2, EPNUM_AUDIO_OUT, UAC1_RATE_48_3B, UAC1_EP_OUT_SZ_48),
     TUD_HID_DESCRIPTOR(UAC1_ITF_HID, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 16, 10),
     TUD_CDC_DESCRIPTOR(UAC1_ITF_CDC, 6, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
 #ifndef USBPODS_LITE
@@ -323,7 +323,7 @@ _Static_assert(sizeof(desc_configuration_uac1) == CONFIG_UAC1_TOTAL_LEN,
 uint8_t const desc_configuration_uac1_44[] =
 {
     TUD_CONFIG_DESCRIPTOR(CFGNUM_UAC1, UAC1_ITF_TOTAL, 0, CONFIG_UAC1_TOTAL_LEN, 0x00, 100),
-    UAC1_FUNC_DESCRIPTOR(/*stridx*/ 2, EPNUM_AUDIO_OUT, UAC1_RATE_44_3B),
+    UAC1_FUNC_DESCRIPTOR(/*stridx*/ 2, EPNUM_AUDIO_OUT, UAC1_RATE_44_3B, UAC1_EP_OUT_SZ_44),
     TUD_HID_DESCRIPTOR(UAC1_ITF_HID, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), EPNUM_HID, 16, 10),
     TUD_CDC_DESCRIPTOR(UAC1_ITF_CDC, 6, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
 #ifndef USBPODS_LITE

@@ -40,8 +40,18 @@
  #include "../btstack/btstack_avdtp_source.h"
 #include "../btstack/btstack_sink_relay.h"   /* relay forces swvol */
  #include "pico/cyw43_arch.h"                 /* async-context lock for BT calls */
+ #include "hardware/sync.h"                    /* usb_tx_irq_save for TinyUSB */
  #include "pico/flash.h"
  #include "pico/time.h"
+
+/* TinyUSB is serviced from a 500 us repeating timer IRQ (tinyusb_task() ->
+   tud_task()), so main-loop calls into TinyUSB (interrupt endpoint writes,
+   HID reports) must be mutually exclusive with that IRQ. A short
+   interrupt-disabled section around the call is enough on this single-core
+   build and avoids introducing a second task queue. */
+static uint32_t usb_tx_irq_save(void) { return save_and_disable_interrupts(); }
+static void usb_tx_irq_restore(uint32_t state) { restore_interrupts(state); }
+
 
 
  
@@ -162,7 +172,10 @@
  /* Queue all media keys, including repeated presses, without invoking TinyUSB
     from the BT producer context. USB task owns press/release sequencing. */
 static bool usb_hid_send_report(uint16_t usage) {
- if(!tud_hid_report(1, &usage, sizeof(usage)))return false;
+ uint32_t irq = usb_tx_irq_save();
+ bool ok = tud_hid_report(1, &usage, sizeof(usage));
+ usb_tx_irq_restore(irq);
+ if(!ok)return false;
  printf("[hid] sent usage=0x%04x phase=%s\n",usage,usage?"press":"release");
  return true;
 }
@@ -1033,18 +1046,16 @@ static bool apply_host_fu_volume(void)
     int16_t const vol = volume[0];
     int8_t const mute_now = mute[0];
 
-    if (mute_now == 1 && volume0_last == vol) {
-        if (mute0_last == 1) {
-            set_bt_volume(-50 + host_fu_to_pct(vol) / 2);   /* cubic-corrected */
-            mute0_last = 0;
-            mute[0] = 0;
-        } else {
-            mute0_last = 1;
-            set_bt_volume(-50);
-        }
+    /* The host's mute field is a STATE, not a toggle. The old code toggled on
+       mute0_last/volume0_last, which inverted the second mute in a
+       mute -> unmute -> mute sequence and ignored a first mute issued at a
+       new volume. Apply the requested state directly. */
+    if (mute_now) {
+        set_bt_volume(-50);
     } else {
         set_bt_volume(-50 + host_fu_to_pct(vol) / 2);       /* cubic-corrected */
     }
+    mute0_last = mute_now ? 1 : 0;
     volume0_last = vol;
     bt_async_lock_give();
     return true;
@@ -1117,7 +1128,9 @@ void audio_control_task(void)
      if (usb_uac1_active()) {
        vol_nudge_start(bt_level);    /* UAC1: walk the host there with vol keys */
      } else if (usb_desc_audio_exposed()) {
+       uint32_t irq = usb_tx_irq_save();
        tud_audio_int_write(&data);   /* UAC2 interrupt EP: tell the host */
+       usb_tx_irq_restore(irq);
      }
      *get_is_bt_sink_volume_changed_ptr() = false;
    }
@@ -1133,7 +1146,9 @@ void audio_control_task(void)
      };
 
      if (!usb_uac1_active() && usb_desc_audio_exposed()) {
+       uint32_t irq = usb_tx_irq_save();
        tud_audio_int_write(&data);
+       usb_tx_irq_restore(irq);
      }
      //*get_is_bt_sink_volume_changed_ptr() = false;
    }

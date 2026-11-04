@@ -197,6 +197,16 @@ class Contracts(unittest.TestCase):
                 package(root,root/'build',root/'evidence',out,'fixture','a'*40,1)
             self.assertFalse(out.exists())
 
+    def test_packaging_requires_codec_heap_audit(self):
+        from package_live_test import require_codec_heap_audit
+        with self.assertRaises(ValueError):
+            require_codec_heap_audit({}, 'USBPods_Pico2W_Lite')
+        with self.assertRaises(ValueError):
+            require_codec_heap_audit({'memory': {'runtime_allocation_verified': False}},
+                                     'USBPods_Pico2W_Lite')
+        require_codec_heap_audit({'memory': {'runtime_allocation_verified': True}},
+                                 'USBPods_Pico2W_Lite')
+        require_codec_heap_audit({}, 'fixture')  # non-USBPods stems unchanged
     def test_manifest_gate(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);(root/'test.uf2').write_bytes(b'fixture')

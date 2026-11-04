@@ -71,3 +71,27 @@ console_key_block = console.split("void console_key(char cmd){", 1)[1].split("sw
 assert "radio_is_absent()" in console_key_block
 assert console_key_block.index("radio_is_absent()") < console_key_block.index("a2dp_source_console_key")
 print("TinyUSB production callback wiring verified")
+
+# Main-loop TinyUSB writes are serialized against the timer-IRQ tud_task with
+# a short interrupt-disabled section (single core: no other writer can enter).
+assert "usb_tx_irq_save()" in source and "save_and_disable_interrupts()" in source
+assert "restore_interrupts(" in source
+hid_block = source.split("static bool usb_hid_send_report", 1)[1].split("}", 1)[0]
+assert "usb_tx_irq_save()" in hid_block and "usb_tx_irq_restore(" in hid_block
+assert "tud_hid_report(1, &usage, sizeof(usage))" in hid_block
+int_writes = [i for i in range(len(source)) if source.startswith("tud_audio_int_write", i)]
+assert len(int_writes) == 2  # both call sites must be IRQ-serialized
+for pos in int_writes:
+    saved = source.rfind("usb_tx_irq_save()", 0, pos)
+    assert saved != -1 and pos - saved < 220, "main-loop tud_audio_int_write is not IRQ-serialized"
+    closed = source.find("usb_tx_irq_restore(", pos)
+    assert closed != -1 and closed - pos < 160
+
+# UAC1 endpoint max packet must follow the advertised rate (44.1 -> 180).
+uac1 = Path("src/tinyusb/uac1_descriptors.h").read_text()
+assert "#define UAC1_EP_OUT_SZ_44   180" in uac1
+assert "U16_TO_U8S_LE(_epsz)" in uac1
+usbd = Path("src/tinyusb/usb_descriptors.c").read_text()
+assert "UAC1_RATE_48_3B, UAC1_EP_OUT_SZ_48" in usbd
+assert "UAC1_RATE_44_3B, UAC1_EP_OUT_SZ_44" in usbd
+print("TinyUSB production callback wiring verified")

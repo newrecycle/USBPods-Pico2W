@@ -28,8 +28,14 @@ enum {
 #define UAC1_ENT_SPK_FU  0x02   /* feature unit (mute + volume) */
 #define UAC1_ENT_SPK_OT  0x03   /* headphones output terminal   */
 
-/* Full-speed 48 kHz/16-bit/stereo: 48 samples x 4 B per 1 ms frame. */
-#define UAC1_EP_OUT_SZ   192
+/* Full-speed 16-bit/stereo maxima per 1 ms frame: 48 samples x 4 B = 192,
+   44.1 samples x 4 B = 177 (rounded to the next whole sample-safe bound the
+   wave devices use, 180). The advertised endpoint size must match the
+   advertised rate, or a host that trusts wMaxPacketSize can send a 48-sample
+   frame under a 44.1 kHz clock. UAC1_EP_OUT_SZ is the buffer/EP-open size. */
+#define UAC1_EP_OUT_SZ      192   /* local buffer and endpoint open size */
+#define UAC1_EP_OUT_SZ_48   192
+#define UAC1_EP_OUT_SZ_44   180
 #define UAC1_RATE_48_3B  0x80, 0xBB, 0x00   /* 48000, 3-byte LE */
 #define UAC1_RATE_44_3B  0x44, 0xAC, 0x00   /* 44100, 3-byte LE */
 
@@ -40,7 +46,7 @@ enum {
 #define UAC1_AS_LEN      (9 + 9 + 7 + 11 + 9 + 7)
 #define UAC1_FUNC_LEN    (8 + 9 + UAC1_AC_CS_LEN + UAC1_AS_LEN)
 
-#define UAC1_FUNC_DESCRIPTOR(_stridx, _epout, _rate3b...) \
+#define UAC1_FUNC_DESCRIPTOR(_stridx, _epout, _rate3b, _epsz...) \
     /* IAD: groups AC + AS so usbd binds both interfaces to the app driver */ \
     8, TUSB_DESC_INTERFACE_ASSOCIATION, UAC1_ITF_AC, 2, TUSB_CLASS_AUDIO, 0x00, 0x00, 0x00, \
     /* Standard AC interface (UAC1: protocol 0x00, no class EPs) */ \
@@ -64,7 +70,7 @@ enum {
     /* Type I format: stereo, 2 B/sample, 16-bit, 1 rate */ \
     11, TUSB_DESC_CS_INTERFACE, 0x02, 1, 2, 2, 16, 1, _rate3b, \
     /* ISO OUT data EP: adaptive, 192 B, 1 ms (9-byte UAC1 EP descriptor) */ \
-    9, TUSB_DESC_ENDPOINT, (_epout), 0x09, U16_TO_U8S_LE(UAC1_EP_OUT_SZ), 1, 0, 0, \
+    9, TUSB_DESC_ENDPOINT, (_epout), 0x09, U16_TO_U8S_LE(_epsz), 1, 0, 0, \
     /* CS ISO EP: sampling-freq control supported, lock delay 1 ms */ \
     7, TUSB_DESC_CS_ENDPOINT, 0x01, 0x01, 1, U16_TO_U8S_LE(1)
 

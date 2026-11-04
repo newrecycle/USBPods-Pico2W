@@ -63,8 +63,11 @@
                                    Zero on existing records -> default AAC. */
 #define USBSET_UART      0x40   /* hardware UART console (debug-probe bridge):
                                    printf mirror + debug-key input on the UART
-                                   pins. Default OFF (a floating RX pin can
-                                   inject garbage keystrokes). */
+                                   pins. Fresh flash defaults it ON (debug-
+                                   pinless boards need it); build with
+                                   -DUSBPODS_UART_DEFAULT_ON=0 for a cased
+                                   product (a floating RX pin can inject
+                                   garbage keystrokes). */
 #define USBSET_GAME      0x80   /* gaming mode: 90/60 ms jitter, ELD forced to
                                    192k / 4 slots. Default OFF. */
 
@@ -138,8 +141,9 @@ typedef struct __attribute__((packed)) {
                                                Applies at the next connection. */
     uint8_t lhdc_rate;                      /* LHDC V5 bitrate: 0/2 = 400 kbps
                                                (default; zero-fill compat),
-                                               1 = 256, 3 = 500. Retuned live
-                                               on a running stream. */
+                                               1 = 256, 3 = 500, 4 = 900.
+                                               Retuned live on a running
+                                               stream. */
     uint8_t hfp_en;                         /* 1 = run the HFP-AG battery SLC.
                                                0 = OFF, and off is the DEFAULT
                                                on purpose - the polarity is
