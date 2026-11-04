@@ -24,6 +24,20 @@ structure = re.search(r"static struct\s*\{[^}]*\}\s*tap;", src[start:], re.S)
 assert structure, "Missing production tap counters"
 declaration = structure.group(0)
 
+# test_source_boundaries.function() only permits whitespace before a function's
+# opening brace. The production timer has a trailing C comment on its signature.
+# Extract that same production body, including the comment, without rewriting it.
+def tap_tick_source(text):
+    start = text.index("void usb_pcm_tap_tick(void)")
+    brace = text.index("{", start)
+    depth = 1
+    end = brace + 1
+    while depth:
+        assert end < len(text), "Unterminated production tap tick"
+        depth += (text[end] == "{") - (text[end] == "}")
+        end += 1
+    return text[start:end]
+
 fixture = r"""
 #include <assert.h>
 #include <stdbool.h>
@@ -69,7 +83,7 @@ with tempfile.TemporaryDirectory() as temp:
     c.write_text(
         fixture + "\n" + declaration + "\n"
         + function(options.source_file.resolve(), "usb_pcm_tap_feed") + "\n"
-        + function(options.source_file.resolve(), "usb_pcm_tap_tick") + "\n" + tests
+        + tap_tick_source(src) + "\n" + tests
     )
     subprocess.run(
         ["cc", "-std=c11", "-Wall", "-Wextra", "-Werror", "-O1",
