@@ -139,6 +139,53 @@ int main(void) {
  src_stream_start_accepted();assert(pumps==2); // A late duplicate cannot run twice.
  advance(6000);assert(!disconnects);
 
+ // On a second missing response, fail with the original stage/phase
+ // evidence; coalescing during either wait must not indefinitely extend it.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ uint32_t first_deadline=src_eld_change_timer.deadline;
+ advance(2500);request(1,true,2);assert(src_eld_change_timer.deadline==first_deadline);
+ advance(500);assert(starts==3 && rebuild_calls==1 && !disconnects);
+ uint32_t second_deadline=src_eld_change_timer.deadline;
+ advance(2500);request(2,false,1);assert(src_eld_change_timer.deadline==second_deadline);
+ advance(500);assert(disconnects==1 && src_eld_error_stage==4 &&
+                      src_eld_last_error==ELD_WAIT_START && !is_streaming);
+ assert(src_eld_change.phase==ELD_FAILED && starts==3 && rebuild_calls==1);
+ src_stream_start_accepted();assert(!is_streaming && pumps==1);
+ request(3,true,2);assert(!src_eld_change_timer.active && starts==3);
+
+ // A second-submission immediate SDK failure must abort immediately instead
+ // of incorrectly treating zero prior returns as proof of radio TX.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ start_rc=12;advance(3000);
+ assert(disconnects==1 && src_eld_error_stage==2 && src_eld_last_error==12);
+ assert(starts==3 && rebuild_calls==1 && !is_streaming);
+
+ // An explicit START rejection after the one retry is terminal; late and
+ // duplicate accepts have no permission to revive the stopped pump.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ advance(3000);assert(starts==3 && !disconnects);
+ assert(src_eld_signaling_rejected(AVDTP_SI_START));
+ assert(disconnects==1 && src_eld_error_stage==2 && src_eld_last_error==(0x100u|AVDTP_SI_START));
+ src_stream_start_accepted();src_stream_start_accepted();
+ assert(!is_streaming && pumps==1);
+
+ // A superseding request arriving during the unanswered START retry may
+ // not run the obsolete profile after its eventual ACCEPT.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ advance(3000);assert(starts==3 && rebuild_calls==1);
+ request(1,true,2);assert(suspends==1 && !is_streaming);
+ src_stream_start_accepted();assert(suspends==2 && pumps==1 && !is_streaming);
+ src_stream_suspend_accepted();a2dp_source_main_work();
+ assert(starts==4 && rebuild_calls==2 && !disconnects);
+ src_stream_start_accepted();assert(is_streaming && pumps==2 && !disconnects);
+
+ // Teardown during WAIT_START invalidates the pending retry and callbacks.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ uint32_t old_rebuilds=rebuild_calls,old_pumps=pumps,old_starts=starts;
+ src_eld_link_reset();a2dp_is_connected_flag=false;src_stream_start_accepted();
+ advance(7000);a2dp_source_main_work();
+ assert(rebuild_calls==old_rebuilds && pumps==old_pumps && starts==old_starts && !disconnects);
+
  // Channel-late jitter reapply and new requests supersede old settle timers.
  connected();a2dp_source_queue_jitter(90);advance(200);request(3,true,2);advance(500);
  assert(!jitters);src_stream_suspend_accepted();a2dp_source_main_work();src_stream_start_accepted();
