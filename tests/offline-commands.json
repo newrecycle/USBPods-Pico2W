@@ -825,5 +825,13 @@
       "tests/test_aacp_session_telemetry.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "eld-foreground",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_foreground.py"
+    ],
+    "timeout": 120
   }
 ]

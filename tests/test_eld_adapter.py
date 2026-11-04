@@ -125,9 +125,19 @@ int main(void) {
    connected();request(3,false,1);src_stream_suspend_accepted();if(failure==0)start_rc=12;
    a2dp_source_main_work();
    if(failure==1)assert(src_eld_signaling_rejected(AVDTP_SI_START));
-   if(failure==2)advance(3000);
+   if(failure==2)advance(6000);
    assert(disconnects==1 && !is_streaming && !jitters && pumps==1);
  }
+
+ // The local manual-refresh trace accepted SUSPEND/rebuilt, but the first
+ // START was unanswered. One signaling retry must not reopen the encoder.
+ connected();a2dp_source_recover_eld_stream();src_stream_suspend_accepted();a2dp_source_main_work();
+ assert(starts==2 && rebuild_calls==1 && !is_streaming);
+ advance(3000);assert(starts==3 && rebuild_calls==1 && !disconnects && !is_streaming);
+ assert(src_eld_change.start_retries==1);
+ src_stream_start_accepted();assert(is_streaming && pumps==2 && !disconnects);
+ src_stream_start_accepted();assert(pumps==2); // A late duplicate cannot run twice.
+ advance(6000);assert(!disconnects);
 
  // Channel-late jitter reapply and new requests supersede old settle timers.
  connected();a2dp_source_queue_jitter(90);advance(200);request(3,true,2);advance(500);
@@ -228,7 +238,7 @@ names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer'
          'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
          'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
          'src_jitter_handler', 'a2dp_source_queue_jitter', 'src_request_eld_change', 'a2dp_source_apply_eld_rate', 'a2dp_source_recover_eld_stream',
-         'src_eld_initialize', 'a2dp_source_main_work', 'src_pump_start', 'src_pump_start_pending', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
+         'src_eld_initialize', 'src_eld_encode_work', 'a2dp_source_main_work', 'src_pump_start', 'src_pump_start_pending', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)
     (path / 'test.c').write_text((ROOT / 'tests/eld_adapter_mocks.h').read_text() + '\n' + '\n'.join(function(n) for n in names) + tests)

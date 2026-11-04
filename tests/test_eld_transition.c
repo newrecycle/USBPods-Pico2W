@@ -57,5 +57,16 @@ int main(void) {
  ready();assert(eld_transition_suspended(&state)==(ELD_STOP|ELD_BUILD));
  assert(eld_transition_built(&state,true)==ELD_START);
  eld_transition_reset(&state);assert(!eld_transition_started(&state));
+ // Retry exactly one unanswered managed START, never initial OPEN/START,
+ // failure, another phase, or a second request in the same built revision.
+ eld_transition_configured(&state);assert(eld_transition_begin_start(&state));
+ assert(!eld_transition_retry_start(&state));
+ ready();eld_transition_request(&state,true);eld_transition_suspended(&state);
+ eld_transition_built(&state,true);assert(eld_transition_begin_start(&state));
+ assert(eld_transition_retry_start(&state)==ELD_START && state.start_retries==1);
+ assert(eld_transition_begin_start(&state));
+ eld_transition_request(&state,false);assert(!eld_transition_retry_start(&state));
+ assert(eld_transition_started(&state)==(ELD_STOP|ELD_SUSPEND));
+ eld_transition_failed(&state);assert(!eld_transition_retry_start(&state));
  puts("ELD transition ordering, superseded requests, stale events and failure actions passed");
 }
