@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #define CODEC_ID_AACELD 4
+#define CODEC_ID_NONE 0
 #define ERROR_CODE_SUCCESS 0
 #define ERROR_CODE_COMMAND_DISALLOWED 12
 #define AVDTP_SI_START 7

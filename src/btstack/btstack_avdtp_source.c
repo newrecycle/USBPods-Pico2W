@@ -786,23 +786,31 @@ static void suspend_recovery_handler(btstack_timer_source_t *timer) {
    as the codec-release note above). Later calls only drain and repopulate the
    existing storage, so no heap work happens in interrupt context. */
 static bool slot_queue_storage_ready;
+static volatile bool slot_pool_frozen;   /* USB producer drops during a reset */
 
 void audio_slot_queue_init(void) {
+    const bool was_frozen = slot_pool_frozen;
+    slot_pool_frozen = true;
     if (!slot_queue_storage_ready) {
         queue_init(&free_queue,  sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
         queue_init(&ready_queue, sizeof(uint8_t), AUDIO_SLOT_COUNT_MAX);
         slot_queue_storage_ready = true;
-    } else {
-        uint8_t idx;
-        while (queue_try_remove(&ready_queue, &idx)) {}
-        while (queue_try_remove(&free_queue, &idx)) {}
     }
+    /* USB runs on this core at a higher IRQ priority than BTstack. Freeze
+       before allocating at boot, then exclude interrupts across the bounded
+       ownership reset. No allocation or logging occurs in this window. */
+    const uint32_t irq_state = save_and_disable_interrupts();
+    uint8_t idx;
+    while (queue_try_remove(&ready_queue, &idx)) {}
+    while (queue_try_remove(&free_queue, &idx)) {}
     active_slot_count = AUDIO_SLOT_COUNT_SBC;  // default
     for (uint8_t i = 0; i < active_slot_count; i++) {
         queue_try_add(&free_queue, &i);
     }
     filling_slot_valid = false;
     filling_offset = 0;
+    slot_pool_frozen = was_frozen;
+    restore_interrupts(irq_state);
 }
 
 /* Drop all STAGED host PCM + the pacing credit, keep the configuration.
@@ -862,10 +870,6 @@ static void audio_slot_flush_exec(bool live) {
         }
     }
 }
-
-static volatile bool slot_pool_frozen;   /* reconfigure in flight: USB pushes
-                                            drop instead of racing the drain/
-                                            repopulate (bounded, counted) */
 
 void audio_slot_queue_configure_with_count(uint16_t samples_per_slot, uint8_t slot_count) {
     slot_pool_frozen = true;
@@ -2859,6 +2863,7 @@ static void a2dp_demo_timer_pause(a2dp_media_sending_context_t * context){
    finish_scan_avdtp_codec was already set; a START accepted during the scan
    left AVDTP "streaming" with the pump off until the peer suspended). */
 static void src_pump_start(void) {
+    src_start_accepted_pending = false; /* consume this START exactly once */
     a2dp_demo_timer_start(&media_tracker);
     is_streaming = true;
     src_session_streamed = true;  /* audio: not a wedged peer */
@@ -2869,8 +2874,12 @@ static void src_pump_start(void) {
 
 /* The scan finished after a START was already accepted: start the pump now. */
 static bool src_pump_start_pending(void) {
-    return src_start_accepted_pending && src_stream_established &&
-           !is_streaming && cur_codec != CODEC_ID_NONE;
+    return src_start_accepted_pending && finish_scan_avdtp_codec &&
+           a2dp_is_connected_flag && src_stream_established &&
+           !src_fault_hold && !src_user_dc_hold && !src_codec_setup_pending &&
+           !is_streaming && cur_codec != CODEC_ID_NONE &&
+           (cur_codec != CODEC_ID_AACELD ||
+            (!src_eld_setup_pending && src_eld_change.phase == ELD_READY));
 }
 
 static void src_stream_start_accepted(void) {
@@ -2903,6 +2912,7 @@ static void src_stream_start_accepted(void) {
 
 }
 static void src_stream_suspend_accepted(void) {
+    src_start_accepted_pending = false; /* a later scan cannot revive old START */
     if(src_codec_setup_pending)src_codec_early_start=false;
     if(cur_codec==CODEC_ID_AACELD && src_eld_setup_pending)src_eld_early_start=false;
     printf("Stream paused.\n");

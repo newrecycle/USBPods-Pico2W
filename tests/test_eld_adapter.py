@@ -187,6 +187,32 @@ int main(void) {
  assert(disconnects==1 && src_eld_error_stage==6);
  connected();src_stream_established=false;src_eld_schedule_setup();a2dp_source_main_work();advance(3000);
  assert(disconnects==1 && src_eld_error_stage==6);
+ // Early START is deferred until the scan completes, then consumed once.
+ connected();finish_scan_avdtp_codec=false;is_streaming=false;
+ eld_transition_configured(&src_eld_change);before=pumps;
+ src_stream_start_accepted();assert(src_start_accepted_pending && pumps==before);
+ assert(!src_pump_start_pending());finish_scan_avdtp_codec=true;
+ assert(src_pump_start_pending());src_pump_start();
+ assert(is_streaming && pumps==before+1 && !src_start_accepted_pending);
+ assert(!src_pump_start_pending());
+ // A crossed SUSPEND invalidates the old permission before scan completion.
+ connected();finish_scan_avdtp_codec=false;is_streaming=false;
+ eld_transition_configured(&src_eld_change);src_stream_start_accepted();before=pumps;
+ src_stream_suspend_accepted();assert(src_eld_change.phase==ELD_REBUILD);
+ finish_scan_avdtp_codec=true;
+ assert(!src_start_accepted_pending && !src_pump_start_pending() && pumps==before);
+ // Even a surviving flag cannot bypass the current owner or session gates.
+ src_start_accepted_pending=true;assert(!src_pump_start_pending());
+ src_eld_change.phase=ELD_READY;assert(src_pump_start_pending());
+ src_fault_hold=true;assert(!src_pump_start_pending());src_fault_hold=false;
+ src_user_dc_hold=true;assert(!src_pump_start_pending());src_user_dc_hold=false;
+ a2dp_is_connected_flag=false;assert(!src_pump_start_pending());a2dp_is_connected_flag=true;
+ src_stream_established=false;assert(!src_pump_start_pending());src_stream_established=true;
+ src_codec_setup_pending=true;assert(!src_pump_start_pending());src_codec_setup_pending=false;
+ src_eld_setup_pending=true;assert(!src_pump_start_pending());src_eld_setup_pending=false;
+ // SBC still honors a current START and also cancels it on SUSPEND.
+ cur_codec=1;src_eld_change.phase=ELD_REBUILD;assert(src_pump_start_pending());
+ src_stream_suspend_accepted();assert(!src_pump_start_pending() && !src_start_accepted_pending);
  puts("Production ELD adapter: suspend/build/START/jitter, coalescing, deadlines and failure teardown passed");
 }
 '''
@@ -196,7 +222,7 @@ names = ['a2dp_demo_timer_stop', 'a2dp_demo_timer_pause', 'src_eld_cancel_timer'
          'src_eld_change_timeout', 'src_eld_arm_timer', 'src_eld_abort',
          'src_start_stream', 'src_eld_execute', 'src_eld_signaling_rejected',
          'src_jitter_handler', 'a2dp_source_queue_jitter', 'src_request_eld_change', 'a2dp_source_apply_eld_rate', 'a2dp_source_recover_eld_stream',
-         'src_eld_initialize', 'a2dp_source_main_work', 'src_pump_start', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
+         'src_eld_initialize', 'a2dp_source_main_work', 'src_pump_start', 'src_pump_start_pending', 'src_stream_start_accepted', 'src_stream_suspend_accepted']
 with tempfile.TemporaryDirectory() as temp:
     path = Path(temp)
     (path / 'test.c').write_text((ROOT / 'tests/eld_adapter_mocks.h').read_text() + '\n' + '\n'.join(function(n) for n in names) + tests)

@@ -305,6 +305,14 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+The cloud independent review of main `6be2889` found and reproduced three more
+defects: a PCM queue reset/USB producer race, stale deferred START after SUSPEND,
+and an ineffective empty-input FDK mic history clear. The subsequent repairs,
+60-check offline result, real-FDK restart comparison and reproduction commands
+are recorded in [INDEPENDENT-REVIEW-REPAIRS.md](INDEPENDENT-REVIEW-REPAIRS.md).
+Use its source hashes and target CI record when identifying the repaired tree.
+The physical left/right symptom remains unverified.
+
 1. Read `current-validation.json`, inspect local state and run applicable checks.
    The host suite and the three target matrix builds have both been reproduced
    offline; `docs/evidence/local-target-builds.json` records the local toolchain,

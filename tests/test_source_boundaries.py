@@ -58,7 +58,9 @@ static uint8_t src_last_avrcp_volume;
 static void avrcp_controller_set_absolute_volume(uint16_t c,uint8_t v){(void)c;src_last_avrcp_volume=v;}
 static bool is_streaming,src_stream_established;
 static bool finish_scan_avdtp_codec,src_start_accepted_pending;
-enum {CODEC_ID_NONE=0,CODEC_ID_SBC=1};
+static bool a2dp_is_connected_flag,src_fault_hold,src_codec_setup_pending,src_eld_setup_pending;
+enum {CODEC_ID_NONE=0,CODEC_ID_SBC=1,CODEC_ID_AACELD=4,ELD_READY=1};
+static struct {unsigned phase;} src_eld_change;
 static int cur_codec;
 static void btstack_run_loop_remove_timer(unsigned *t){assert(t==&src_dial_retry_timer);}
 static void a2dp_demo_timer_stop(void *context){assert(context==&media_tracker);}
@@ -103,6 +105,7 @@ int main(void) {
  assert(!src_volume_seed_needed());
  // A START accepted during the capability scan starts the pump once ready.
  src_start_accepted_pending=true;src_stream_established=true;is_streaming=false;cur_codec=CODEC_ID_SBC;
+ finish_scan_avdtp_codec=a2dp_is_connected_flag=true;src_user_dc_hold=false;
  assert(src_pump_start_pending());
  is_streaming=true;assert(!src_pump_start_pending());
  is_streaming=false;src_stream_established=false;assert(!src_pump_start_pending());
@@ -138,11 +141,11 @@ init_body = function('src/btstack/btstack_avdtp_source.c', 'audio_slot_queue_ini
 assert 'slot_queue_storage_ready' in init_body, 'queue init must be allocation-once'
 assert init_body.count('queue_init(&') == 2, init_body
 guard = init_body.index('if (!slot_queue_storage_ready)')
-else_branch = init_body.index('} else {')
+reset = init_body.index('const uint32_t irq_state')
 assert init_body.index('queue_init(&') > guard
-assert init_body.index('queue_init(&') < else_branch
-assert init_body.index('queue_try_remove(&ready_queue') > else_branch
-assert init_body.index('queue_try_remove(&free_queue') > else_branch
+assert init_body.index('queue_init(&') < reset
+assert init_body.index('queue_try_remove(&ready_queue') > reset
+assert init_body.index('queue_try_remove(&free_queue') > reset
 
 if __name__=='__main__':
     with tempfile.TemporaryDirectory() as temp:

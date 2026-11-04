@@ -1,0 +1,71 @@
+{
+  "baseline_main": "6be28899efba385d805e1c7c7cd3c3041b562b5b",
+  "review_commit": "2b974bc8feda9f7496f87781668a0524f51ca494",
+  "hardware_run": false,
+  "offline_checks": {
+    "passed": 60,
+    "failed": 0,
+    "skipped": []
+  },
+  "independent_probes": {
+    "regression_baseline": "6be28899efba385d805e1c7c7cd3c3041b562b5b",
+    "source_sha256": {
+      "src/btstack/btstack_avdtp_source.c": "05ff95643e6d55740f4294e8faa4d7ac97de613d566644eb2d5955a10ad7fa24",
+      "src/btstack/aacp_mic_audio.c": "e3d8866e1e096fcb523cef2e0fa710bfc921f8bdefeb28fcb2b8a546d28b196f"
+    },
+    "hardware_run": false,
+    "results": [
+      {
+        "name": "queue-reset",
+        "status": "PASS",
+        "returncode": 0,
+        "log": "queue-reset.txt"
+      },
+      {
+        "name": "pending-start",
+        "status": "PASS",
+        "returncode": 0,
+        "log": "pending-start.txt"
+      },
+      {
+        "name": "mic-history",
+        "status": "PASS",
+        "returncode": 0,
+        "log": "mic-history.txt"
+      }
+    ]
+  },
+  "queue_reset": {
+    "state_combinations": 640,
+    "ownership_invariant": "Each active PCM slot has exactly one owner after reset and pending IRQ delivery.",
+    "allocations_over_repeated_resets": 2
+  },
+  "real_fdk_mic": {
+    "duplex_playback_frames": 3072,
+    "decoded_mic_frames": 3468,
+    "decode_errors": 0,
+    "history_clear_errors": 0,
+    "restart_generations_matching_fresh_decoder_pcm": 12,
+    "cleared_epoch": 19,
+    "active_epoch": 19
+  },
+  "negative_control": {
+    "implementation": "unchanged baseline aacp_mic_audio.c",
+    "fixture": "enhanced test_eld_duplex_fdk.c",
+    "result": "FAIL as expected: fresh-reference PCM comparison assertion",
+    "returncode": -6
+  },
+  "source_sha256": {
+    "src/btstack/btstack_avdtp_source.c": "05ff95643e6d55740f4294e8faa4d7ac97de613d566644eb2d5955a10ad7fa24",
+    "src/btstack/aacp_mic_audio.c": "e3d8866e1e096fcb523cef2e0fa710bfc921f8bdefeb28fcb2b8a546d28b196f"
+  },
+  "fdk_archive_sha256": "2ba460d08c66d086844e9ea0cbc834405b2f5f86a6e04eb23075ade7dbaa874f",
+  "target_ci": {
+    "state": "pending push"
+  },
+  "limits": [
+    "No hardware validation, flashing, or RF timing measurement.",
+    "Physical left/right AirPod symptom remains unverified.",
+    "Queue and signaling schedules are mocked; FDK audio runs the actual in-tree codec."
+  ]
+}

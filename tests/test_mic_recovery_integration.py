@@ -48,6 +48,14 @@ void fixture_source_work(void){a2dp_source_main_work();}
 void fixture_source_defer(void){src_eld_schedule_setup();}
 void fixture_source_reject(void){assert(src_eld_signaling_rejected(AVDTP_SI_START));}
 void fixture_source_force(void){a2dp_source_recover_eld_stream();}
+void fixture_source_early_start(void){
+ is_streaming=false;finish_scan_avdtp_codec=false;
+ eld_transition_configured(&src_eld_change);src_stream_start_accepted();
+ assert(src_start_accepted_pending && !src_pump_start_pending());
+}
+void fixture_source_finish_scan(void){
+ finish_scan_avdtp_codec=true;if(src_pump_start_pending())src_pump_start();
+}
 bool a2dp_source_is_playing(void){return is_streaming;}
 void a2dp_source_on_aap_wake(void){}
 uint32_t fixture_source_get(unsigned field){
@@ -88,6 +96,8 @@ void fixture_source_work(void);
 void fixture_source_defer(void);
 void fixture_source_reject(void);
 void fixture_source_force(void);
+void fixture_source_early_start(void);
+void fixture_source_finish_scan(void);
 uint32_t fixture_source_get(unsigned);
 void fixture_jitter(uint8_t v){aap_set_jitter_raw(v);}
 void aacp_mic_set_capture(bool on){if(capture!=on)epochs++;capture=on;}
@@ -211,6 +221,12 @@ int main(int argc,char **argv){
  // Main owns initial allocation; mic START does not schedule a second rebuild.
  setup();fixture_source_defer();start_mic();audio();fixture_source_work();fixture_source_start();
  assert(get(BUILDS)==1 && !get(SUSPENDS) && get(STREAMING));
+ // Active mic traffic cannot revive a pre-scan START canceled by SUSPEND.
+ setup();start_mic();audio();fixture_source_early_start();unsigned before_pumps=get(PUMPS);
+ fixture_source_suspend();fixture_source_finish_scan();audio();
+ assert(!get(STREAMING) && get(PUMPS)==before_pumps && get(PHASE)==ELD_REBUILD);
+ fixture_source_work();fixture_source_start();
+ assert(get(STREAMING) && get(PUMPS)==before_pumps+1 && get(BUILDS)==1);
  // Explicit playback recovery remains available, independently of capture.
  setup();start_mic();audio();fixture_source_force();finish_recovery();
  assert(get(SUSPENDS)==1 && get(BUILDS)==1);

@@ -7,23 +7,30 @@
 #include <stdio.h>
 uint32_t mock_time_us;
 static int16_t value;
-static bool fail,flush_fail;
-static unsigned flush_calls;
+static bool fail,flush_fail,clear_fail,fill_fail,supplied;
+static unsigned flush_calls,clear_calls;
 static CStreamInfo info={48000,1,480};
 HANDLE_AACDECODER aacDecoder_Open(int a,int b) { (void)a;(void)b;return &info; }
 AAC_DECODER_ERROR aacDecoder_ConfigRaw(HANDLE_AACDECODER d,UCHAR **p,UINT *n) {
  (void)d; assert(*n==4 && p[0][0]==0xf8 && p[0][1]==0xe6); return AAC_DEC_OK;
 }
 void aacDecoder_Close(HANDLE_AACDECODER d) { (void)d; }
+AAC_DECODER_ERROR aacDecoder_SetParam(HANDLE_AACDECODER d,int param,int v) {
+ (void)d;assert(param==AAC_TPDEC_CLEAR_BUFFER && v==1);clear_calls++;
+ if(clear_fail){clear_fail=false;return AAC_DEC_UNKNOWN;}
+ supplied=false;return AAC_DEC_OK;
+}
 AAC_DECODER_ERROR aacDecoder_Fill(HANDLE_AACDECODER d,UCHAR **p,UINT *n,UINT *valid) {
- (void)d; assert(*n==1); value=p[0][0]; *valid=0; return AAC_DEC_OK;
+ (void)d; assert(*n==1);
+ if(fill_fail){fill_fail=false;return AAC_DEC_UNKNOWN;}
+ value=p[0][0];supplied=true;*valid=0;return AAC_DEC_OK;
 }
 AAC_DECODER_ERROR aacDecoder_DecodeFrame(HANDLE_AACDECODER d,INT_PCM *p,int n,int flags) {
- (void)d; assert(n>=480);
+ (void)d; assert(n>=480 && supplied);supplied=false;
  if(flags) {
+  assert(flags==(AACDEC_CLRHIST|AACDEC_INTR));
   flush_calls++;
   if(flush_fail){flush_fail=false;return AAC_DEC_UNKNOWN;}
-  return AAC_DEC_OK;
  }
  mock_time_us+=325; /* simulated Fill+Decode duration */
  for(int i=0;i<480;i++) p[i]=value;
@@ -93,14 +100,26 @@ int main(void) {
  assert(!aacp_mic_audio_read(p,64));
  enqueue(46); aacp_mic_audio_work();
  assert(aacp_mic_audio_read(p,64)==64 && p[0]==46);
- // F6: a failed CLRHIST|INTR flush must not mark the generation done, and the
- // next AU must retry it; the current AU still decodes normally.
+ // Reset flags apply to supplied data, not an empty extra DecodeFrame call.
+ // A failed first decode publishes silence, and the next AU retries reset.
  aacp_mic_discontinuity();flush_calls=0;flush_fail=true;
  enqueue(47);aacp_mic_audio_work();
- assert(flush_calls==1 && aacp_mic_audio_read(p,64)==64 && p[0]==47);
+ assert(flush_calls==1 && aacp_mic_audio_read(p,64)==64 && !p[0]);
  drain(); /* leave the failed-flush generation's PCM before the retry AU */
  enqueue(48);aacp_mic_audio_work();
  assert(flush_calls==2 && aacp_mic_audio_read(p,64)==64 && p[0]==48);
+ drain();enqueue(49);aacp_mic_audio_work();
+ assert(flush_calls==2 && aacp_mic_audio_read(p,64)==64 && p[0]==49);drain();
+ // Failed transport reset or Fill cannot mark history cleared or emit old PCM.
+ aacp_mic_discontinuity();unsigned clears_before=clear_calls;clear_fail=true;
+ enqueue(60);aacp_mic_audio_work();assert(clear_calls==clears_before+1 && flush_calls==2);
+ assert(aacp_mic_audio_read(p,64)==64 && !p[0]);drain();
+ fill_fail=true;enqueue(61);aacp_mic_audio_work();
+ assert(clear_calls==clears_before+2 && flush_calls==2);
+ assert(aacp_mic_audio_read(p,64)==64 && !p[0]);drain();
+ enqueue(62);aacp_mic_audio_work();
+ assert(clear_calls==clears_before+3 && flush_calls==3);
+ assert(aacp_mic_audio_read(p,64)==64 && p[0]==62);drain();
  // Decode and PCM high-water never increase past fixed queue capacities.
  aacp_mic_audio_get_stats(&s);
  assert(s.au_high_water<=32 && s.pcm_high_water<=16);

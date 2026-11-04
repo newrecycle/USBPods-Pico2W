@@ -191,21 +191,25 @@ void aacp_mic_audio_work(void) {
             continue;
         }
         processed++;
-        /* Flush history only for the first accepted AU of each generation.
-           A failed flush must not mark the generation done: keep last_epoch
-           behind so the next AU retries, and count the error. */
-        if (last_epoch!=epoch) {
-            AAC_DECODER_ERROR flush=aacDecoder_DecodeFrame(decoder,scratch,960,AACDEC_CLRHIST|AACDEC_INTR);
-            if (flush==AAC_DEC_OK) last_epoch=epoch;
-            else atomic_fetch_add_explicit(&flush_errors,1,memory_order_relaxed);
-        }
+        /* FDK reads an AU before applying CLRHIST/INTR: an empty DecodeFrame
+           only returns NOT_ENOUGH_BITS and never clears ELD history. Discard
+           any old compressed input, then apply the flags while decoding the
+           first supplied AU. Retry on failure without publishing stale PCM. */
+        const bool reset_history = last_epoch!=epoch;
         UCHAR *input[]={aus[r%AU_SLOTS].data};
         UINT size=aus[r%AU_SLOTS].len, valid=size;
         uint32_t t=time_us_32();
-        AAC_DECODER_ERROR err=aacDecoder_Fill(decoder,input,&size,&valid);
+        AAC_DECODER_ERROR err=reset_history ?
+            aacDecoder_SetParam(decoder,AAC_TPDEC_CLEAR_BUFFER,1) : AAC_DEC_OK;
+        if (err==AAC_DEC_OK) err=aacDecoder_Fill(decoder,input,&size,&valid);
         if (err==AAC_DEC_OK && !valid)
-            err=aacDecoder_DecodeFrame(decoder,scratch,960,0);
-        else err=AAC_DEC_UNKNOWN;
+            err=aacDecoder_DecodeFrame(decoder,scratch,960,
+                                      reset_history ? AACDEC_CLRHIST|AACDEC_INTR : 0);
+        else if (err==AAC_DEC_OK) err=AAC_DEC_UNKNOWN;
+        if (reset_history) {
+            if (err==AAC_DEC_OK) last_epoch=epoch;
+            else atomic_fetch_add_explicit(&flush_errors,1,memory_order_relaxed);
+        }
         uint32_t dt=time_us_32()-t;
         atomic_store_explicit(&last_us,dt,memory_order_relaxed);
         sample_max(&max_us,dt);

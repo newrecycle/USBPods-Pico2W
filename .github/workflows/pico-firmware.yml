@@ -154,6 +154,7 @@ jobs:
           /tmp/test-media-input
           python3 tests/test_media_input_wiring.py
           python3 tests/test_source_boundaries.py
+          python3 tests/test_pcm_queue_reset.py
           python3 tests/test_control_records.py
           python3 tests/test_control_status.py
           python3 tests/test_settings_timing.py

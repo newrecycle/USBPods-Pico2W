@@ -753,5 +753,14 @@
     ],
     "timeout": 120,
     "requires_fdk": false
+  },
+  {
+    "name": "pcm-queue-reset",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_pcm_queue_reset.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]

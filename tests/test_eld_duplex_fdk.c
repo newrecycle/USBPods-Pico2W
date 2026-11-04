@@ -35,6 +35,44 @@ static void mic_fixture(void) {
  }
  assert(mic_count>=28);aacEncClose(&h);
 }
+static void mic_restart_check(void) {
+ // A fresh reference decoder must match every generation of the production
+ // decoder exactly; otherwise old overlap/concealment history has leaked.
+ for(unsigned cycle=0;cycle<12;cycle++) {
+   if(cycle&1)aacp_mic_discontinuity(); // AACP reconnect/wire transition
+   else {aacp_mic_set_capture(false);aacp_mic_set_capture(true);} // USB STOP/START
+   HANDLE_AACDECODER fresh=aacDecoder_Open(TT_MP4_RAW,1);assert(fresh);
+   UCHAR asc[]={0xf8,0xe6,0x30,0},*conf[]={asc};UINT size=sizeof asc;
+   assert(aacDecoder_ConfigRaw(fresh,conf,&size)==AAC_DEC_OK);
+   INT_PCM expected[32][480];
+   // Generate reference PCM before measuring production allocations, so the
+   // extra host-only decoder is excluded from the target heap estimate.
+   for(unsigned frame=0;frame<mic_count;frame++) {
+     unsigned m=(frame+cycle*3)%mic_count;
+     INT_PCM scratch[960];UCHAR *au[]={mic_au[m]};
+     UINT length=mic_len[m],valid=length;
+     assert(aacDecoder_Fill(fresh,au,&length,&valid)==AAC_DEC_OK && !valid);
+     assert(aacDecoder_DecodeFrame(fresh,scratch,960,0)==AAC_DEC_OK);
+     memcpy(expected[frame],scratch,sizeof expected[frame]);
+   }
+   aacDecoder_Close(fresh);
+   for(unsigned frame=0;frame<mic_count;frame++) {
+     unsigned m=(frame+cycle*3)%mic_count;INT_PCM actual[480];
+     aacp_mic_audio_enqueue(mic_au[m],(uint8_t)mic_len[m]);
+     fdk_alloc_begin();aacp_mic_audio_work();fdk_alloc_end();
+     assert(aacp_mic_audio_read(actual,480)==480);
+     assert(!memcmp(expected[frame],actual,sizeof actual));
+   }
+   // Leave PCM and a queued AU behind so the next epoch must discard both.
+   unsigned m=(cycle+9)%mic_count;
+   aacp_mic_audio_enqueue(mic_au[m],(uint8_t)mic_len[m]);
+   fdk_alloc_begin();aacp_mic_audio_work();fdk_alloc_end();
+   aacp_mic_audio_enqueue(mic_au[m],(uint8_t)mic_len[m]);
+ }
+ aacp_mic_audio_stats s;aacp_mic_audio_get_stats(&s);
+ assert(!s.decode_errors && s.au_stale>=11 && s.pcm_stale>=11);
+ puts("Real FDK mic reset: 12 capture/reconnect generations match fresh decoder PCM");
+}
 int main(void){
  setvbuf(stdout,NULL,_IONBF,0);
  mic_fixture();aacp_mic_audio_init();assert(aacp_mic_audio_ready());aacp_mic_set_capture(true);
@@ -96,6 +134,6 @@ int main(void){
    fdk_alloc_begin();fdk_alloc_end(); /* Include any lazy mic allocation. */
    printf("ELD duplex transition %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",transition,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
  }
- assert(mic_peak>1000);fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
+ assert(mic_peak>1000);mic_restart_check();fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
  printf("ELD rate/game transitions with active mic queue: %u playback frames, mic peak=%d\n",all_frames,mic_peak);
 }

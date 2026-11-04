@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independent regressions for main 6be2889. The reviewed tree fails all three.
+"""Independent regressions: main 6be2889 fails all three; repaired source passes.
 
 Linux/WSL: python3 tools/review_regressions_6be2889.py --fdk-lib PATH
 Exit 1 means an invariant failed; compilation failures are recorded separately.
@@ -8,6 +8,7 @@ No hardware, network, flashing or production source mutation is performed.
 """
 import argparse
 import ast
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -35,6 +36,9 @@ static uint8_t filling_slot_idx;
 static uint16_t filling_offset,slot_frame_int16=960,usb_sw_gain_q15=32768;
 static uint32_t usb_slot_push_drops,usb_slot_ready_full_drops;
 static bool inject;
+static uint32_t irq_mask;
+static uint32_t save_and_disable_interrupts(void){uint32_t old=irq_mask;irq_mask=1;return old;}
+static void restore_interrupts(uint32_t old){irq_mask=old;}
 void audio_slot_push_samples(const int16_t*,uint16_t);
 static void queue_init(queue_t*q,unsigned size,unsigned cap){assert(size==1&&cap==6);memset(q,0,sizeof *q);}
 static bool queue_try_add(queue_t*q,const uint8_t*v){if(q->count==6)return false;q->data[q->write]=*v;q->write=(q->write+1)%6;q->count++;return true;}
@@ -99,7 +103,7 @@ def main():
     assert tests!=v['tests'],'Adapter test anchor changed; update the review fixture'
     c=out/'pending-start.c'
     c.write_text((ROOT/'tests/eld_adapter_mocks.h').read_text()+'\n#define CODEC_ID_NONE 0\n'+
-                 '\n'.join(function(src,n) for n in v['names']+['src_pump_start_pending'])+tests)
+                 '\n'.join(function(src,n) for n in dict.fromkeys(v['names']+['src_pump_start_pending']))+tests)
     cmd=flags+['-O1','-I','tests/encoder_mocks','-I','src/btstack',str(c),
                'src/btstack/eld_transition.c','src/btstack/eld_profile.c','-o',str(out/'pending-start')]
     compile_run('pending-start',cmd,out/'pending-start')
@@ -119,7 +123,10 @@ def main():
         cmd=[x.replace('{FDK}',str(a.fdk_lib.resolve())).replace('{TMP}',str(out)).replace('tests/test_eld_duplex_fdk.c',str(c)).replace('src/btstack/aacp_mic_audio.c',str(wrapper)) for x in cmd]
         binary=out/'eld-duplex';compile_run('mic-history',cmd,binary)
     else:results.append(dict(name='mic-history',status='SKIP',reason='Supply an ASan-instrumented native FDK archive'))
-    summary={'reviewed_commit':'6be28899efba385d805e1c7c7cd3c3041b562b5b','hardware_run':False,'results':results}
+    summary={'regression_baseline':'6be28899efba385d805e1c7c7cd3c3041b562b5b',
+             'source_sha256':{f:hashlib.sha256((ROOT/f).read_bytes()).hexdigest()
+                              for f in (src,'src/btstack/aacp_mic_audio.c')},
+             'hardware_run':False,'results':results}
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     for r in results:print(r['status']+' '+r['name'])
     print(out/'summary.json')
