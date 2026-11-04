@@ -185,8 +185,14 @@ int main(void) {
  assert(disconnects==1 && src_eld_error_stage==5 && !opens);
  connected();src_stream_established=false;src_eld_schedule_setup();open_rc=12;a2dp_source_main_work();
  assert(disconnects==1 && src_eld_error_stage==6);
- connected();src_stream_established=false;src_eld_schedule_setup();a2dp_source_main_work();advance(3000);
+ connected();src_stream_established=false;src_eld_schedule_setup();a2dp_source_main_work();
+ advance(3000);assert(!disconnects && src_eld_change.phase==ELD_WAIT_START);
+ advance(7000);
  assert(disconnects==1 && src_eld_error_stage==6);
+ // A late media OPEN gets its own full START window, not the remainder of OPEN.
+ connected();src_stream_established=false;src_eld_schedule_setup();a2dp_source_main_work();
+ advance(9000);assert(!disconnects);src_stream_established=true;src_start_stream(0x42,1);
+ advance(2999);assert(!disconnects);src_stream_start_accepted();assert(is_streaming);
  // Early START is deferred until the scan completes, then consumed once.
  connected();finish_scan_avdtp_codec=false;is_streaming=false;
  eld_transition_configured(&src_eld_change);before=pumps;

@@ -1,0 +1,135 @@
+{
+  "capture": "USBPods-results-20261104T042523Z.zip",
+  "capture_sha256": "d67aea7abc7a42bf3425d02303c5c9a925f77c7d0d830c64caf253d0210aee01",
+  "tested_source": "a952fa9256e0128c8010bfb69642b8ea3be5f1ca",
+  "physical_results": {
+    "steady_deltas": [
+      {
+        "test": "eld256",
+        "status": "PASS",
+        "au_dropped": 0,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 0,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "eld192",
+        "status": "FAIL",
+        "au_dropped": 65,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 33088,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "game_stable",
+        "status": "FAIL",
+        "au_dropped": 88,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 43328,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "game_latency",
+        "status": "FAIL",
+        "au_dropped": 61,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 29120,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "restore256",
+        "status": "PASS",
+        "au_dropped": 0,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 0,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "mic_close_reopen_duplex",
+        "status": "PASS",
+        "au_dropped": 0,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 0,
+        "usb_short_writes": 0
+      },
+      {
+        "test": "capture_reconnect_1",
+        "status": "FAIL",
+        "au_dropped": 0,
+        "pcm_dropped": 0,
+        "decode_errors": 0,
+        "usb_missing_samples": 2240,
+        "usb_short_writes": 0
+      }
+    ],
+    "mic_closed_left": "PASS",
+    "mic_closed_right": "FAIL: no; failure direction unspecified",
+    "mic_reopened_left": "PASS",
+    "mic_reopened_right": "PASS",
+    "usb_collector_errors": [],
+    "restoration_errors": [],
+    "second_reconnect": {
+      "stage": 6,
+      "error": 518,
+      "meaning": "local media OPEN deadline, not peer reject"
+    },
+    "soak": "NOT_REACHED"
+  },
+  "repairs": [
+    "Two-AU encode batch cap in mic-capable ELD builds.",
+    "75 ms mic prefill/target, previously 45 ms; same 16-frame ring and 64 kHz timeline.",
+    "Explicit ACL teardown and queued dial released by matching HCI event.",
+    "Ten-second media OPEN budget and separate three-second START budget.",
+    "Remove playback-jitter write from mic START/STOP.",
+    "Prompt failure observations and stop waits promptly on firmware fault."
+  ],
+  "offline": {
+    "passed": 64,
+    "failed": 0,
+    "skipped": []
+  },
+  "cli_scenarios": 11,
+  "negative_controls": {
+    "old_packet_fill": "runtime assertion fails: codec_num_frames <= 2",
+    "old_mic_prefill": "runtime assertion fails: no post-prime missing packets in synthetic 78 ms service gap",
+    "old_mic_lifecycle": "runtime assertion fails: jitter sequence unchanged on START",
+    "old_disconnect": "runtime assertion fails: ACL release requested before queued redial"
+  },
+  "clock_validation": {
+    "gap_model_ms": 78,
+    "not_live_packet_reconstruction": true,
+    "drift_ppm": [
+      -1500,
+      -250,
+      0,
+      250,
+      1500
+    ],
+    "seconds_each": 600,
+    "missing_after_prime": 0,
+    "new_prefill_samples": 4800,
+    "extra_nominal_buffer_ms": 30
+  },
+  "source_sha256": {
+    "src/btstack/btstack_avdtp_source.c": "264b7446ffd8940e8ba35b791dd904c6bef584bbd1f86f098d4e08031169ab4f",
+    "src/btstack/aacp_mic.c": "e96180295fbe745aacb388b5df375c3265c90abf2dc02485e33d4f5cb9b1fb36",
+    "src/btstack/mic_clock.h": "c764eb44eb47f65d1305e65e308105be3e9395346efe6747306330dd08d38a0b",
+    "tools/live_audio.py": "0644e40f102ddc9da64d8077155fe5fbcd868540a3fad7b51095d7d724187a1a",
+    "tools/live_test.py": "2fea41a52029163fa091f07d457ac237149bb91eb57a746d149360e69530dc09"
+  },
+  "target_ci": "pending push",
+  "physical_repair_validation": false,
+  "remaining": [
+    "Lower-rate and both game-mode loss under actual radio/USB scheduling",
+    "Closed-mic right-channel behavior",
+    "Three complete reconnects and ten-minute soak",
+    "Acoustic mic latency with larger buffering target"
+  ],
+  "raw_voice_or_peer_keys_published": false
+}

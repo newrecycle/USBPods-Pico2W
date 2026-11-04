@@ -46,6 +46,10 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
         (root/'docs/DUPLEX-THROUGHPUT-035227.md').read_text().replace(
             '(evidence/duplex-throughput-035227.json)','(duplex-throughput-035227.json)'))
     shutil.copy2(root/'docs/evidence/duplex-throughput-035227.json',out/'duplex-throughput-035227.json')
+    (out/'DUPLEX-LIFECYCLE-042523.md').write_text(
+        (root/'docs/DUPLEX-LIFECYCLE-042523.md').read_text().replace(
+            '(evidence/duplex-lifecycle-042523.json)','(duplex-lifecycle-042523.json)'))
+    shutil.copy2(root/'docs/evidence/duplex-lifecycle-042523.json',out/'duplex-lifecycle-042523.json')
     shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)
     shutil.copy2(evidence/'verification.json',out/'verification.json')

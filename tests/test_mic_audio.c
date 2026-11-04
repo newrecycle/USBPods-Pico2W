@@ -2,6 +2,7 @@
 // Exercise queue ownership/epoch/error behavior with a deterministic decoder.
 // This tests integration mechanics, not AAC fidelity or real FDK allocation.
 #include "aacp_mic.h"
+#include "mic_clock.h"
 #include <aacdecoder_lib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -147,7 +148,8 @@ int main(void) {
  for(unsigned i=0;i<16;i++)enqueue(50);
  aacp_mic_audio_work();aacp_mic_audio_work();
  aacp_mic_discontinuity();assert(!aacp_mic_audio_packet_samples());
- for(unsigned i=0;i<6;i++)enqueue(51);
+ for(unsigned i=0;i<MIC_PREFILL_SAMPLES/480;i++)enqueue(51);
+ aacp_mic_audio_work();assert(!aacp_mic_audio_packet_samples());
  aacp_mic_audio_work();assert(aacp_mic_audio_packet_samples()==64);
  assert(aacp_mic_audio_read(p,64)==64 && p[0]==51);
  // Four-AU batches have a 64 kHz PCM timeline despite the 48 kHz ASC.

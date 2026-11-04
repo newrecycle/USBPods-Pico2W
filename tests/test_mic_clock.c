@@ -27,7 +27,24 @@ static void run(int ppm) {
  assert(!mic_clock_packet(&clock,8,0) && !clock.primed);
  printf("Mic clock 600s: drift=%d ppm high=%u adjusted=%u missing_after_prime=%u\n",ppm,high,adjusted,starved);
 }
+static void gap_replay(void) {
+ mic_clock clock={0};uint32_t queued=0,pending=0,missing=0,high=0;bool started=false;
+ for(unsigned ms=0;ms<10000;ms++) {
+  if(ms%30==0)pending+=4*MIC_AU_SAMPLES;
+  /* A 78 ms inter-batch gap: 2970 -> 3048, then deliver the held AUs.
+     This synthetic service-gap model uses the capture's 77.6 ms decoder
+     wall-time maximum; it is not a reconstruction of its packet trace. */
+  if(ms<3000 || ms>=3048){queued+=pending;pending=0;}
+  if(queued>high)high=queued;
+  assert(queued<=16*MIC_AU_SAMPLES);
+  uint32_t n=mic_clock_packet(&clock,1,queued);
+  if(n){queued-=n;started=true;}else if(started)missing++;
+ }
+ assert(started && !missing);
+ printf("Mic 78 ms batch-gap replay: missing=%u high=%u prefill=%u samples\n",missing,high,MIC_PREFILL_SAMPLES);
+}
 int main(void) {
+ gap_replay();
  run(-1500);run(-250);run(0);run(250);run(1500);
  mic_clock s={0};assert(!mic_clock_packet(&s,1,100));
  assert(mic_clock_packet(&s,1,MIC_PREFILL_SAMPLES)==64);

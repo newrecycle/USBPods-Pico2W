@@ -256,8 +256,8 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         def channel_check(label):
             for side in ('left','right'):
                 audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)
-                answer=prompt(f'{label}: tone is {side.upper()} only. Is it audible in only that AirPod? Type yes/no, or Enter for unverified:')
-                result(label+'_'+side,'PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower()=='no' else 'UNVERIFIED',answer)
+                answer=prompt(f'{label}: tone is {side.upper()} only. Type yes if correct; otherwise no, silent, both, wrong-side, or a description:')
+                result(label+'_'+side,'PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower() in ('no','silent','both','wrong-side') else 'UNVERIFIED',answer)
         channel_check('mic_active')
         prompt('Keep this firmware connected. Press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)

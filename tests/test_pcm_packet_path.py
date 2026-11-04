@@ -7,6 +7,7 @@ import tempfile
 from test_source_boundaries import ROOT,function
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--fdk-lib',type=Path,required=True)
 p.add_argument('--mic-build',action='store_true',help='Exercise the mic-capable CBR encoder policy')
+p.add_argument('--source-file',type=Path,default=ROOT/'src/btstack/btstack_avdtp_source.c')
 a=p.parse_args()
 body=r'''
 #define PI 3.14159265358979323846
@@ -49,6 +50,9 @@ int main(void) {
    while(ctx.samples_ready) {
     int consumed=codec_fdk_fill(&ctx);assert(consumed>0 && consumed<=1440);
     assert(ctx.codec_storage_count<=ctx.max_media_payload_size && ctx.codec_num_frames<=3);
+#ifdef USBPODS_MIC_DECODE
+    assert(ctx.codec_num_frames<=2); // Bound each radio-context batch for mic service.
+#endif
     unsigned off=0,frames=0;
     while(off<ctx.codec_storage_count) {
      uint8_t *p=ctx.codec_storage+off;
@@ -81,7 +85,7 @@ int main(void) {
 names=['set_usb_sw_gain_pct','audio_slot_push_samples','audio_slot_pop','audio_slot_release','src_eld_au_space','codec_fdk_fill']
 with tempfile.TemporaryDirectory() as temp:
  path=Path(temp)
- (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function('src/btstack/btstack_avdtp_source.c',n) for n in names)+body)
+ (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+body)
  args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
  if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]

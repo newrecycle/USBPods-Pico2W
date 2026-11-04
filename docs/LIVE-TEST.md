@@ -102,6 +102,11 @@ The microphone-decoder candidate uses CBR/core-only AAC-ELD at the supported
 rates. The 035227 capture exposed severe microphone starvation with the earlier
 256 kbps VBR+SBR profile. Peer VBR permission remains visible separately from
 the applied `duplex_cbr` policy; transport-only builds retain their VBR policy.
+The 042523 repair also limits radio-context encoding to two AUs per call and
+uses a 75 ms mic buffering target (30 ms more than before) in the existing
+ring. The next run specifically checks lower-rate/game loss, both channels
+while capture is closed, and full ACL reconnects. See
+[DUPLEX-LIFECYCLE-042523.md](DUPLEX-LIFECYCLE-042523.md).
 
 Diagnostics use **USB CDC only**. Leave COM3 open through the runner; do not
 open another terminal on it. Application, codec, AACP and firmware HID logs are

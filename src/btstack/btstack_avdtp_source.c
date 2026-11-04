@@ -759,6 +759,8 @@ static bool src_user_dc_hold;          /* user pressed disconnect: suppress ever
                                           until playback restarts, a dial is
                                           asked for, or a link comes up */
 bool a2dp_user_dc_hold(void){ return src_user_dc_hold; }
+static uint16_t src_disconnect_handle;
+static bool src_connect_after_disconnect;
 void a2dp_user_dc_clear(void){ src_user_dc_hold = false; }
 
 // --- Suspend recovery: restart stream if suspend response never arrives ---
@@ -1373,7 +1375,7 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     // For AAC-ELD, reserve enough space for a full frame (~350 bytes + header)
     int min_space = (cur_codec == 4) ? src_eld_au_space() : (aaceld_hdr_size + 50);
 
-    // Relay coex: cap encode work per pass. A multi-granule catch-up batch
+    // Duplex/relay coex: cap encode work per pass. A multi-granule catch-up batch
     // (up to 4 granules = 10-30 ms of CPU on real music) monopolizes the
     // shared core — measured as 27-46 ms max_tick_gap spikes -> TX jitter ->
     // sink-side concealment bursts. One granule per tick spreads the load
@@ -1383,7 +1385,11 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
        margin (chronic starvation), so ELD gets 2. Uncapped ELD during relay
        bursts 10-30 ms of encode CPU into one radio-context pass. */
     int max_aus = 8;
-    if (bt_sink_relay_streaming()) {
+    if (bt_sink_relay_streaming()
+#ifdef USBPODS_MIC_DECODE
+        || cur_codec == CODEC_ID_AACELD
+#endif
+    ) {
         if (cur_codec == 2)      max_aus = 1;
         else if (cur_codec == 4) max_aus = 2;
     }
@@ -1528,8 +1534,15 @@ static void led_idle_unless_pairing(void){
    or the headset coming back on its own. Supervision timeout (0x08, walked
    out of range) deliberately keeps the redial — that one is worth retrying. */
 void a2dp_source_remote_bye(uint16_t handle, uint8_t reason){
-    if (reason != 0x13 && reason != 0x15) return;
     if (handle == 0 || handle != src_con_handle) return;
+    src_con_handle=0;
+    if(handle==src_disconnect_handle) {
+        bool redial=src_connect_after_disconnect;
+        src_disconnect_handle=0;src_connect_after_disconnect=false;
+        if(redial)a2dp_source_reconnect();
+        return;
+    }
+    if (reason != 0x13 && reason != 0x15) return;
     /* Not every 0x13 is the headset's idea: after WE drop AVDTP ('d', 'p', a
        slot switch) the headset tidies up the now-idle ACL and that also
        reports 0x13. Those teardowns are already deliberate — announcing
@@ -1558,6 +1571,7 @@ static volatile uint8_t src_pending_jitter;   /* raw ms, 0 = none */
 static btstack_timer_source_t src_jitter_timer;
 static btstack_timer_source_t src_eld_change_timer;
 static bool src_eld_timer_armed;
+static bool src_eld_timer_waiting_media;
 static eld_phase src_eld_timer_phase;
 static void src_eld_cancel_timer(void) {
     btstack_run_loop_remove_timer(&src_eld_change_timer);src_eld_timer_armed=false;
@@ -1590,10 +1604,16 @@ static void src_eld_change_timeout(btstack_timer_source_t *ts) {
 static void src_eld_arm_timer(void) {
     if((!eld_transition_busy(&src_eld_change) && src_eld_change.phase!=ELD_WAIT_START) || src_eld_change.phase==ELD_FAILED)return;
     /* Coalesced writes must not extend an in-flight phase indefinitely. */
-    if(src_eld_timer_armed && src_eld_timer_phase==src_eld_change.phase)return;
+    bool waiting_media=src_eld_change.phase==ELD_WAIT_START && !src_stream_established;
+    if(src_eld_timer_armed && src_eld_timer_phase==src_eld_change.phase &&
+       src_eld_timer_waiting_media==waiting_media)return;
     src_eld_cancel_timer();src_eld_timer_phase=src_eld_change.phase;src_eld_timer_armed=true;
+    src_eld_timer_waiting_media=waiting_media;
     btstack_run_loop_set_timer_handler(&src_eld_change_timer,src_eld_change_timeout);
-    btstack_run_loop_set_timer(&src_eld_change_timer,3000);
+    /* Media OPEN includes peer/L2CAP establishment, not just START acceptance.
+       Give it a separate bounded window; media arrival then arms a fresh
+       three-second START deadline even though the ELD phase is unchanged. */
+    btstack_run_loop_set_timer(&src_eld_change_timer,waiting_media?10000:3000);
     btstack_run_loop_add_timer(&src_eld_change_timer);
 }
 static void src_eld_abort(uint8_t stage,uint32_t rc) {
@@ -3082,9 +3102,10 @@ static void packet_handler_inner(uint8_t packet_type, uint16_t channel, uint8_t 
                 if (src_dial_tries == 0) led_idle_unless_pairing();
                 break;
             }
-            if(src_fault_hold && !bt_sink_relay_is_phone_addr(address)) {
+            if((src_fault_hold || src_disconnect_handle) && !bt_sink_relay_is_phone_addr(address)) {
                 uint16_t h=avdtp_subevent_signaling_connection_established_get_con_handle(packet);
-                printf("[src] fault hold: rejecting headset signaling until explicit connect\n");
+                printf("[src] headset setup blocked: fault=%u disconnect_handle=0x%04x\n",
+                       (unsigned)src_fault_hold,src_disconnect_handle);
                 if(h)gap_disconnect(h);break;
             }
             /* macOS parity: packet types + role. The old one-shot behind
@@ -4069,6 +4090,7 @@ static int setup_aaceld_configuration(){ return codec_aaceld_ops.configure(); }
    next inbound connect no longer matched a slot and the sink relay adopted
    it as a PHONE ("I did not ask to scan at all"). */
 void avdtp_disconnect_keep_pairing(){
+    src_connect_after_disconnect=false; /* latest user disconnect wins */
     src_user_dc_hold = true;  /* user asked: nothing may redial on its own */
     src_dial_window_ms = 0;   /* USER disconnect: no stale-session redial */
     src_dial_tries = 0;
@@ -4080,6 +4102,12 @@ void avdtp_disconnect_keep_pairing(){
     src_stream_established = false;
     finish_scan_avdtp_codec = false;
     src_start_accepted_pending = false;
+#ifdef HAVE_AAC_FDK
+    /* Cancel setup intent before asynchronous channel/ACL release: an old
+       OPEN timeout or deferred encoder setup must not revive a disconnect. */
+    src_codec_setup_pending=0;src_codec_early_start=false;
+    src_eld_link_reset();
+#endif
     a2dp_source_disconnect(media_tracker.avdtp_cid);
     avrcp_disconnect(media_tracker.avrcp_cid);
     aap_disconnect();   /* AAP rides its own L2CAP channel — the AVDTP release
@@ -4087,6 +4115,17 @@ void avdtp_disconnect_keep_pairing(){
                            the ACL so the old AirPods redial mid-next-session
                            and the UI keeps their menu (report 7 sees channel
                            open + the new headset's connected flag) */
+    /* Channel closure alone leaves HFP/SDP (and sometimes the peer's stale
+       AVDTP session) on the old ACL. Serialize the next dial behind the HCI
+       disconnect completion, rather than reusing a half-torn-down link. */
+    if(src_con_handle && !src_disconnect_handle) {
+        src_disconnect_handle=src_con_handle;
+        uint8_t rc=gap_disconnect(src_disconnect_handle);
+        if(rc) {
+            printf("[src] ACL disconnect request failed rc=%u\n",rc);
+            src_disconnect_handle=0;
+        }
+    }
     audio_slot_queue_init();
     led_idle_unless_pairing();
 }
@@ -4251,6 +4290,7 @@ void bt_prepare_reboot(void){
 
 void a2dp_source_reconnect(){
     if(src_fault_hold)return;
+    if(src_disconnect_handle){src_connect_after_disconnect=true;return;}
     /* every dial entry point (button, web Connect, boot auto-connect) */
     src_user_dc_hold = false;            /* explicit dial: drop the 'd' hold */
     const uint8_t *a = (const uint8_t *) get_device_addr();

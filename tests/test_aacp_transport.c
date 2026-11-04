@@ -57,9 +57,12 @@ int main(void){
  uint8_t bad[]={4,0,4,0,9,0};callback(L2CAP_DATA_PACKET,0x42,bad,6);assert(!aap_protocol_seen());
  uint8_t ack[]={1,0,4,0,1,0};callback(L2CAP_DATA_PACKET,0x41,ack,6);assert(!aap_protocol_seen());
  callback(L2CAP_DATA_PACKET,0x42,ack,6);assert(aap_protocol_seen());
+ unsigned lifecycle_jitter=jitter_sequence;
  aap_set_noise_mode(2);assert(aap_get_noise_mode()==0);send_now();assert(last_len==19); // mic START first
+ assert(jitter_sequence==lifecycle_jitter);
  assert(!rate_calls);now+=800;aacp_mic_poll();assert(!rate_calls);
  capture=false;send_now();assert(last_len==12); // STOP before control writes
+ assert(jitter_sequence==lifecycle_jitter); // Capture STOP cannot rewrite playback jitter.
  aacp_mic_poll();assert(!rate_calls); // Capture never rebuilds the playback encoder.
  send_rc=1;send_now();assert(last_len==11 && last[6]==0x0d && last[7]==2);
  assert(!aap_control_diagnostics().transmitted);

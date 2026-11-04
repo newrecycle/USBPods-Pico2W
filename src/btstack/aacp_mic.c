@@ -186,9 +186,10 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
        /* Flush stale AU/PCM history after each successful wire transition.
           Adopt only our own increment: concurrent USB changes stay visible. */
        aacp_mic_discontinuity();mic_watch.generation++;
-       /* Keep the selected game/default latency policy without restarting
-          playback. The source defers this control until its stream is stable. */
-       a2dp_source_queue_jitter(aap_get_game()?aap_game_jitter():150);
+       /* Capture lifecycle owns START/STOP only. Re-sending playback jitter
+          here was an extra control absent from the working mic reference;
+          the 042523 capture shows it immediately after STOP when a playback
+          channel disappears. Explicit game/profile changes still own jitter. */
        printf("[mic] %s sent; playback unchanged\n",command==3?"START":"STOP");
      }
    } else if (++send_errors>=3) release_channel();

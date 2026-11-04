@@ -305,6 +305,14 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+Capture 042523 validates zero-loss 256 kbps playback/mic intervals on `a952fa9`,
+but lower-rate/game batches still lost AUs, the mic-closed right-channel check
+failed, and the second reconnect hit a media OPEN timeout. Read
+[DUPLEX-LIFECYCLE-042523.md](DUPLEX-LIFECYCLE-042523.md) for the next repairs:
+two-AU mic-build batches, 75 ms mic buffering, ACL teardown/dial serialization,
+separate OPEN/START deadlines, and removal of mic-triggered playback jitter.
+Physical closure/stereo and sustained performance still require the next run.
+
 The physical 035227 capture supersedes the earlier offline throughput optimism:
 pairing and mic-active stereo checks passed, but 256 kbps VBR+SBR lost over
 80% of USB samples, and CBR/game modes still lost about 6–7%. USB disappeared

@@ -24,6 +24,7 @@ fixture = r'''
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#define HAVE_AAC_FDK 1
 #define AVDTP_MAX_SEP_NUM 10
 typedef struct {uint8_t seid;} avdtp_sep_t;
 static struct {avdtp_sep_t sep; uint8_t media_codec_event[100];} remote_seps[AVDTP_MAX_SEP_NUM];
@@ -47,6 +48,18 @@ static void get_link_keys(void){}
 static void avdtp_source_establish_stream(void){dials++;}
 static const char *bd_addr_to_str(const uint8_t *m){(void)m;return "fixture";}
 static bool src_user_dc_hold;
+static uint16_t src_con_handle,src_disconnect_handle;
+static bool src_connect_after_disconnect;
+static uint32_t src_nostream_run;
+static unsigned acl_drops,dial_arms;
+static uint8_t gap_disconnect(uint16_t h){assert(h);acl_drops++;return 0;}
+static bool bt_pairing_active(void){return s_pairing;}
+void a2dp_source_reconnect(void);
+static const uint8_t *get_device_addr(void){return device_addr;}
+enum {LED_IDLE=0,LED_CONN_SLOT1=1,LED_CONN_SLOT2=2};
+static void led_set_mode(unsigned mode){(void)mode;}
+static uint8_t avdtp_source_connect(uint8_t *mac,uint16_t *cid){assert(mac==device_addr);*cid=0x42;dials++;return 0;}
+static void src_dial_retry_arm(void){dial_arms++;}
 static uint32_t src_dial_window_ms;
 static unsigned src_dial_tries,src_dial_retry_timer;
 static struct {uint16_t avdtp_cid,avrcp_cid;uint8_t volume;} media_tracker;
@@ -59,6 +72,9 @@ static void avrcp_controller_set_absolute_volume(uint16_t c,uint8_t v){(void)c;s
 static bool is_streaming,src_stream_established;
 static bool finish_scan_avdtp_codec,src_start_accepted_pending;
 static bool a2dp_is_connected_flag,src_fault_hold,src_codec_setup_pending,src_eld_setup_pending;
+static bool src_codec_early_start;
+static unsigned canceled_setups;
+static void src_eld_link_reset(void){src_eld_setup_pending=false;canceled_setups++;}
 enum {CODEC_ID_NONE=0,CODEC_ID_SBC=1,CODEC_ID_AACELD=4,ELD_READY=1};
 static struct {unsigned phase;} src_eld_change;
 static int cur_codec;
@@ -128,10 +144,23 @@ int main(void) {
   assert(got<=7 && nb[got]==0 && strlen(nb)<=7);
  }
  { char nb[1]; assert(inquiry_name_copy(nb,0,"x",1)==0); }
+ // Explicit disconnect must release the ACL, then honor one queued connect.
+ memset(device_addr,3,6);src_con_handle=0x0b;unsigned old_dials=dials;
+ src_codec_setup_pending=src_codec_early_start=src_eld_setup_pending=true;
+ avdtp_disconnect_keep_pairing();assert(acl_drops==1 && src_disconnect_handle==0x0b);
+ assert(!src_codec_setup_pending && !src_codec_early_start && !src_eld_setup_pending && canceled_setups);
+ a2dp_source_reconnect();a2dp_source_reconnect();assert(dials==old_dials && src_connect_after_disconnect);
+ a2dp_source_remote_bye(0x0c,0x16);assert(dials==old_dials); // other/phone ACL
+ a2dp_source_remote_bye(0x0b,0x16);
+ assert(dials==old_dials+1 && dial_arms==1 && !src_disconnect_handle && !src_con_handle);
+ // A second disconnect cancels the queued reconnect without dropping pairing.
+ src_con_handle=0x0d;avdtp_disconnect_keep_pairing();a2dp_source_reconnect();
+ avdtp_disconnect_keep_pairing();a2dp_source_remote_bye(0x0d,0x13);
+ assert(dials==old_dials+1 && !src_connect_after_disconnect && src_user_dc_hold);
  puts("Source discovery bounds and favorite reuse/replacement passed");
 }
 '''
-names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing','set_bt_volume','src_volume_seed_needed','src_pump_start_pending')]
+names = [('src/btstack/btstack_avdtp_source.c',n) for n in ('find_remote_seid','source_add_sep','source_cache_capability','avdtp_disconnect_keep_pairing','a2dp_source_reconnect','a2dp_source_remote_bye','set_bt_volume','src_volume_seed_needed','src_pump_start_pending')]
 names += [('src/btstack/btstack_hci.c',n) for n in ('slot_mac_valid','bt_pair_to','inquiry_name_copy')]
 # The disconnect/pairing helpers call audio_slot_queue_init() from the
 # BTstack IRQ; queue_init() allocates through the SDK malloc mutex, so the

@@ -69,6 +69,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     class Device:
         connected=False;failed=False;generation=0;was_capture=False;tx=0;revision=1
         control_tx=0;last_id=0;last_value=0
+        connect_calls=0
         def __init__(self):
             self.settings=dict(usbset=33,slot=1,connmode=1,usbvol=100,phvol=100,
                 gamelevel=1,eldrate=2,earpause=0,stem=0,debug=0,btnmode=1,ldacq=2,lhdcrate=2)
@@ -97,7 +98,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
                 transition='failed' if self.failed else 'ready',requested_revision=self.revision,
                 built_revision=self.revision,active_bitrate=p[0],active_vbr=p[1],active_sbr=p[2],
                 active_slots=p[3],input_rate=p[4],negotiated_bitrate=ceiling,negotiated_vbr=1,duplex_cbr=1,
-                error_stage=2 if self.failed else 0,last_error=263 if self.failed else 0)
+                error_stage=(6 if case=='reconnect-fault' else 2) if self.failed else 0,
+                last_error=(518 if case=='reconnect-fault' else 263) if self.failed else 0)
         def reply(self,raw):
             c=(ctypes.c_uint8*5)();assert parser(raw,len(raw),c),'Production C parser rejected '+repr(raw)
             command=raw.decode().strip()[1:];commands.append(command);name=command.split()[0]
@@ -112,6 +114,9 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
             if name=='pair' and case=='pair-rejected':return [dict(kind='error',error='simulated pair rejection')]
             if name in ('pair','connect'):
                 self.connected=True;self.failed=False;self.generation+=1
+                if name=='connect':
+                    self.connect_calls+=1
+                    if case=='reconnect-fault' and self.connect_calls==2:self.connected=False;self.failed=True
             elif name=='disconnect':self.connected=False;self.generation+=1
             elif name=='profile':
                 assert len(streams)==2 or not streams # Matrix or cleanup.
@@ -184,7 +189,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     root=next(output.glob('USBPods-results-*'))
     if root.suffix=='.zip':root=root.with_suffix('')
     summary=json.loads((root/'summary.json').read_text());tests=summary['tests']
-    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost')
+    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault')
     assert code==(2 if failed else 0),(case,code,log.getvalue()[-1200:])
     assert summary['automated_pass']==(not failed)
     assert not summary['complete'] # Physical observations remain UNVERIFIED.
@@ -209,6 +214,11 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert fault['before_stream_cleanup'] and fault['status']['capture']
         if case=='mic-watchdog':assert fault['status']['mic_watchdog_failed'] and fault['status']['streaming']
         else:assert fault['eldstatus']['last_error']==263
+    if case=='reconnect-fault':
+        fault=json.loads((root/'audio-failure-state.json').read_text())
+        assert fault['before_stream_cleanup'] and fault['status']['fault_hold']
+        assert fault['eldstatus']['last_error']==518 and device.connect_calls==2
+        assert 'Firmware fault while waiting' in tests['simultaneous_audio']['detail']
     if case=='normalize':assert not any(c.startswith('pair ') for c in commands)
     with zipfile.ZipFile(root.with_suffix('.zip')) as z:
         assert z.testzip() is None and 'summary.json' in z.namelist() and 'dependencies.json' in z.namelist()
@@ -238,7 +248,7 @@ if __name__=='__main__':
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
         for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),
-                             ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000)]:
+                             ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)
             results.append(result);print('PASS '+case,flush=True)

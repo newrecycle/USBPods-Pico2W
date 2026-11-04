@@ -193,6 +193,8 @@ class Link:
         while time.monotonic()<deadline:
             last=self.request('status')
             if predicate(last):return last
+            if last.get('fault_hold') or last.get('mic_watchdog_failed'):
+                raise RuntimeError('Firmware fault while waiting for device state: '+str(last))
             time.sleep(.5)
         raise TimeoutError(f'Device state timeout; last={last}')
 
