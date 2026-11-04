@@ -243,6 +243,8 @@ class Contracts(unittest.TestCase):
             with zipfile.ZipFile(archive) as z:
                 summary=json.loads(z.read('summary.json'))
                 self.assertEqual(summary['tests']['run']['status'],'FAIL')
+                self.assertFalse(summary['hardware_run'])
+                self.assertEqual(summary['hardware_phase'],'not_started')
                 self.assertIn('exception.txt',z.namelist())
     def test_target_identity(self):
         a={'index':1,'name':'My AirPods','mac':'AA:BB:CC:DD:EE:FF'}
