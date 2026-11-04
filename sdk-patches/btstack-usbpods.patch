@@ -1,7 +1,7 @@
 diff --git a/src/classic/avdtp.c b/src/classic/avdtp.c
 --- a/src/classic/avdtp.c
 +++ b/src/classic/avdtp.c
-@@ -1229,12 +1229,17 @@ uint8_t avdtp_start_stream(uint16_t avdtp_cid, uint8_t local_seid){
+@@ -1229,12 +1229,18 @@ uint8_t avdtp_start_stream(uint16_t avdtp_cid, uint8_t local_seid){
      if (!is_avdtp_remote_seid_registered(stream_endpoint)){
          log_error("avdtp_media_connect: no remote sep registered with the stream endpoint");
          return ERROR_CODE_UNKNOWN_CONNECTION_IDENTIFIER;
