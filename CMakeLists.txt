@@ -110,7 +110,11 @@ set(FDK_BUILD_DIR ${CMAKE_BINARY_DIR}/fdk-aac)
 
 
 add_subdirectory(${FDK_DIR} ${FDK_BUILD_DIR})
-target_compile_definitions(fdk-aac PUBLIC FDK_ARM_ARCH)
+# FDK embeds __DATE__/__TIME__ in its library-info strings by default, which
+# makes otherwise identical builds (and their UF2 hashes) vary run to run.
+# Candidate identity and evidence pinning need reproducible firmware; the
+# strings are diagnostic only, so suppress them for every FDK object.
+target_compile_definitions(fdk-aac PUBLIC FDK_ARM_ARCH SUPPRESS_BUILD_DATE_INFO)
 
 
 set(BTSTACK_3RD_PARTY_PATH ${PICO_SDK_PATH}/lib/btstack/3rd-party)

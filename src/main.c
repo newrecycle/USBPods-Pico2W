@@ -520,9 +520,12 @@ int main() {
             }
         }
     }
-    printf("usbpods fw %s (code %u, build %s %s)\n",
+    /* Deterministic build identity: the source SHA (also exposed over the
+       control channel) instead of __DATE__/__TIME__, so two clean builds of
+       the same commit produce byte-identical firmware and UF2 hashes. */
+    printf("usbpods fw %s (code %u, build %s)\n",
            USBPODS_VERSION_NAME, (unsigned)USBPODS_VERSION_CODE,
-           __DATE__, __TIME__);
+           USBPODS_BUILD_SHA);
 
     audio_slot_queue_init();
 
