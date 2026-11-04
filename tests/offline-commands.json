@@ -825,5 +825,44 @@
       "tests/test_aacp_session_telemetry.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "compile-mic-core1-threaded",
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-O1",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address,undefined",
+      "-pthread",
+      "-DUSBPODS_MIC_DECODE=1",
+      "-I",
+      "tests/mic_mocks",
+      "-I",
+      "src/btstack",
+      "tests/test_mic_core1_threaded.c",
+      "src/btstack/aacp_mic_audio.c",
+      "src/btstack/mic_clock.c",
+      "-o",
+      "{TMP}/test-mic-core1-threaded"
+    ],
+    "timeout": 120
+  },
+  {
+    "name": "mic-core1-threaded",
+    "argv": [
+      "{TMP}/test-mic-core1-threaded"
+    ],
+    "timeout": 25
+  },
+  {
+    "name": "dualcore-mic-wiring",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_dualcore_mic_wiring.py"
+    ],
+    "timeout": 120
   }
 ]

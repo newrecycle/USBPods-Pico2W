@@ -2,6 +2,8 @@ name: Pico firmware build
 on:
   push:
     branches: [main, codex/eld-integration]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       edition:
@@ -45,6 +47,7 @@ jobs:
           - {firmware: stock0031, mic: transport, decode: 'OFF'}
           - {firmware: rpi0065, mic: transport, decode: 'OFF'}
           - {firmware: rpi0065, mic: aaceld, decode: 'ON'}
+          - {firmware: rpi0065, mic: aaceld-core1-experimental, decode: 'ON', dualcore: 'ON'}
     steps:
       - uses: actions/checkout@v4
       - name: Require authorized Full sources before downloading toolchains
@@ -141,6 +144,9 @@ jobs:
           /tmp/test-transport
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_audio.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-audio
           /tmp/test-mic-audio
+          cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack tests/test_mic_core1_threaded.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-core1
+          timeout 20 /tmp/test-mic-core1
+          python3 tests/test_dualcore_mic_wiring.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_relay_rtp.c src/btstack/relay_rtp.c -o /tmp/test-relay
           /tmp/test-relay
           python3 tests/test_relay_lifecycle.py
@@ -219,9 +225,9 @@ jobs:
       - name: Configure Pico 2 W firmware
         run: |
           if [ "$USBPODS_EDITION" = "lite" ]; then
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_DUAL_CORE_MIC=${{ matrix.dualcore || 'OFF' }} -DUSBPODS_LITE=ON -DUSBPODS_REQUIRE_FULL=OFF
           else
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSBPODS_BTFW=${{ matrix.firmware }} -DUSBPODS_MIC_DECODE=${{ matrix.decode }} -DUSBPODS_DUAL_CORE_MIC=${{ matrix.dualcore || 'OFF' }} -DUSBPODS_LITE=OFF -DUSBPODS_REQUIRE_FULL=ON
           fi
       - name: Build
         run: cmake --build build --parallel 2 -- -k 0
@@ -243,7 +249,7 @@ jobs:
         if: always()
         run: ccache --show-stats
       - name: Package microphone live-test candidate
-        if: matrix.decode == 'ON'
+        if: matrix.decode == 'ON' && matrix.dualcore != 'ON'
         run: |
           if ! python3 -c 'import json,sys; s=json.load(open("docs/validation-status.json")); sys.exit(not s.get("live_test_authorized") or bool(s.get("blockers")))'; then
             echo "Live candidate packaging paused during offline triage."
