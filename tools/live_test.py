@@ -296,7 +296,7 @@ def main():
     if args.noninteractive and not args.reuse_pairing and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
-    recorder=Recorder(root);link=None;original=None;summary={'schema':1,'hardware_run':True,'tests':{},'host':platform.platform(),'started':stamp}
+    recorder=Recorder(root);link=None;original=None;summary={'schema':1,'hardware_run':False,'hardware_phase':'not_started','tests':{},'host':platform.platform(),'started':stamp}
     def result(name,status,detail=None):
         summary['tests'][name]={'status':status,'detail':detail};print(name+': '+status,flush=True)
     def prompt(message):
@@ -320,6 +320,7 @@ def main():
         time.sleep(.5);info=link.request('info')
         if info.get('sha')!=manifest['sha'] or info.get('protocol')!=2:raise RuntimeError('Running firmware does not match this verified bundle')
         if info.get('mic_decode')!=manifest['mic_decode']:raise RuntimeError('Wrong firmware variant')
+        summary['hardware_run']=True;summary['hardware_phase']='firmware_identity_verified'
         summary['firmware']=info;result('firmware_identity','PASS',info)
         original=link.request('settings');summary['original_settings']=original
         summary['original_saved']=link.request('savedlist')
@@ -356,6 +357,7 @@ def main():
             link.request('pair '+str(chosen['index']))
             state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
         summary['target']=chosen
+        summary['hardware_phase']='target_connected'
         result('targeted_connection','PASS',state)
         state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
         result('aacp_peer_response','PASS',state)
@@ -378,8 +380,10 @@ def main():
                 submit_peer_control(link,'ca',0)
             if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
             from live_audio import run_matrix
+            summary['hardware_phase']='audio_matrix_attempted'
             run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
             audio_ok=True
+            summary['hardware_phase']='audio_matrix_finished'
         except Exception as e:
             result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
             try:
