@@ -129,6 +129,7 @@ class MatrixReplay(unittest.TestCase):
                     if startup_pause:
                         self.assertEqual(results['eld256'][0],'PASS')
                         self.assertIn('readiness',results['eld256'][1])
+                        self.assertTrue(results['eld256'][1]['readiness']['recovery_observed'])
                         settling=[obj for name,obj in events if name=='connection-preflight.jsonl' and obj.get('phase')=='eld256_ready']
                         self.assertTrue(any(obj['eldstatus']['transition']=='wait-start' for obj in settling))
                         self.assertEqual(settling[-1]['eldstatus']['transition'],'ready')
