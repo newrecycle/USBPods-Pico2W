@@ -3,10 +3,53 @@ import contextlib
 import json
 import math
 import queue
+import re
 import threading
 import time
 import wave
 import traceback
+
+def observation_status(text, category='quality', expected=None):
+    """Classify an explicit physical observation; never infer missing evidence.
+
+    Callers retain the operator's exact text. Free-form descriptions of problems
+    are FAIL, rather than silently UNVERIFIED, but unclear reports remain so.
+    """
+    value=re.sub(r'\s+', ' ', text.strip()).casefold()
+    if not value:
+        return 'UNVERIFIED'
+    if value in ('yes','y'):
+        return 'UNVERIFIED' if category=='gestures' else 'PASS'
+    if value in ('no','n','fail','failed','wrong-side','wrong side','silent','both'):
+        return 'FAIL'
+    if re.match(r'^no(?:[,.:;!]|\s+(?:it|the|audio|sound|left|right|playback)\b)', value):
+        return 'FAIL'
+    if category=='channel' and expected in ('left','right'):
+        other='right' if expected=='left' else 'left'
+        side=re.fullmatch(r'(?:(?:only|just) (?:the )?)?(left|right)'
+                          r'(?: (?:ear|bud|side|channel))?(?: (?:only|audible|playing))?',value)
+        if side:
+            return 'PASS' if side.group(1)==expected else 'FAIL'
+        if re.search(r'\b'+expected+r' (?:ear|bud|side|channel) (?:is |was )?'
+                     r'(?:silent|muted|missing|not (?:playing|audible))\b',value):
+            return 'FAIL'
+        if re.search(r'\b(?:only (?:the )?'+other+r'|'+other+
+                     r' (?:ear|bud|side|channel) only)\b',value):
+            return 'FAIL'
+        if re.search(r'\b(?:both ears?|both sides?|wrong (?:ear|side|channel)|'
+                     r'neither ear|no (?:audio|sound|playback))\b',value):
+            return 'FAIL'
+        # Silence in the opposite ear is compatible with a one-sided stimulus.
+        return 'UNVERIFIED'
+    if re.search(r'\b(?:distorted|crackling|clipping|incorrect|wrong|'
+                 r'did nothing|nothing happened|did not work|doesn.t work|'
+                 r'not working|not audible|silent|silence|'
+                 r'no (?:audio|sound|playback)|too (?:fast|slow|high|low)(?:[ -]pitched)?|'
+                 r'sped up)\b',value):
+        if not re.search(r'\b(?:not silent|no distortion|no clipping|no crackling)\b',value):
+            return 'FAIL'
+    return 'UNVERIFIED'
+
 
 PROFILES = [
     ('eld256',2,False,1,256000,5,1,6),
@@ -128,12 +171,29 @@ def preserve_audio_failure(root,link,recorder,error,before_cleanup=True):
     path.write_text(json.dumps(state,indent=2))
 
 def capture_close_state(link,external_before,seconds=3):
+    """Observe final firmware capture separately from initial host ownership.
+
+    Prior activity does not prove that this runner exclusively owned the input.
+    But it also must not conceal a subsequently confirmed final closure.
+    """
     last=link.request('status')
-    if external_before:return 'SKIP',{'reason':'Capture was already active before the runner opened its stream','state':last}
     end=time.monotonic()+seconds
     while last.get('capture') and time.monotonic()<end:
         time.sleep(.25);last=link.request('status')
-    return ('UNVERIFIED' if last.get('capture') else 'PASS'),{'state':last,'reason':'Runner handle closed; remaining host clients are not owned by this runner'}
+    closed=last.get('capture') == 0
+    detail={'state':last,'capture_active_before_runner':bool(external_before),
+            'firmware_capture_closed':closed,'runner_exclusive_ownership_verified':False}
+    if 'capture' not in last:
+        detail['reason']='No firmware capture-close telemetry was available'
+        return 'UNVERIFIED',detail
+    if closed:
+        detail['reason']='Firmware confirms final closure; host-client exclusivity was not established'
+        return 'PASS',detail
+    if external_before:
+        detail['reason']='Capture still active; another host client was already using it before this runner'
+        return 'SKIP',detail
+    detail['reason']='Runner input handle closed, but firmware capture is still active'
+    return 'UNVERIFIED',detail
 
 class AudioSession:
     """Callbacks only copy/queue samples. A worker owns WAV files and metrics."""
@@ -289,7 +349,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             for side in ('left','right'):
                 audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)
                 answer=prompt(f'{label}: tone is {side.upper()} only. Type yes if correct; otherwise no, silent, both, wrong-side, or a description:')
-                result(label+'_'+side,'PASS' if answer.lower()=='yes' else 'FAIL' if answer.lower() in ('no','silent','both','wrong-side') else 'UNVERIFIED',answer)
+                result(label+'_'+side,observation_status(answer,'channel',side),answer)
         channel_check('mic_active')
         prompt('Keep this firmware connected. Press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)
