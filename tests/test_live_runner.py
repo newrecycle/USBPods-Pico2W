@@ -280,12 +280,14 @@ class Contracts(unittest.TestCase):
     def test_profile_requires_applied_state(self):
         p=live_audio.PROFILES[0]
         s=dict(ready=1,pending=0,transition='ready',input_rate=48000,requested_revision=2,built_revision=2,
-               active_bitrate=256000,active_vbr=5,active_sbr=1,active_slots=6)
+               selected_rate=2,game=0,gamelevel=1,desired_bitrate=256000,negotiated_bitrate=256000,
+               negotiated_vbr=1,active_bitrate=256000,active_vbr=5,active_sbr=1,active_slots=6,
+               active_jitter=150,desired_jitter=150)
         self.assertTrue(live_audio.profile_matches(s,p))
         cbr={**s,'duplex_cbr':1,'active_vbr':0,'active_sbr':0}
         self.assertTrue(live_audio.profile_matches(cbr,p))
         self.assertFalse(live_audio.profile_matches({**cbr,'active_vbr':5},p))
-        for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(built_revision=1)):
+        for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(active_jitter=90),dict(built_revision=1)):
             self.assertFalse(live_audio.profile_matches({**s,**change},p))
     def test_counter_wrap_and_failures(self):
         a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0,clock_windows=2,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
