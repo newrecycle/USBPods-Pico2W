@@ -289,8 +289,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # silently fell back to SBC.
     HAVE_AAC_FDK
     CYW43_LWIP=0
-    # No PICO_FLASH_ASSUME_CORE1_SAFE override: both cores participate in
-    # pico_flash lockout when the experimental worker is active.
     # OOM = malloc returns NULL (FDK bails cleanly, relay prints an error)
     # instead of a device-rebooting panic mid-stream.
     PICO_MALLOC_PANIC=0
@@ -317,6 +315,13 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 )
 
 
+
+# Only the legacy single-core build can truthfully declare core 1 unused.
+# Without this, the SDK rejects safe flash writes before a second core exists.
+# A dual-core build MUST NOT bypass the inter-core lockout protocol.
+if(NOT USBPODS_DUAL_CORE_MIC)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE PICO_FLASH_ASSUME_CORE1_SAFE=1)
+endif()
 
 # Core-0 stack at top of main RAM instead of the 4 KB SCRATCH_Y bank
 # (see PICO_STACK_SIZE above). Copy of the SDK's rp2350 memmap_default.ld

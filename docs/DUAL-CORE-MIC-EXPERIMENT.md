@@ -56,3 +56,23 @@ than proceeding without coordination.
 Future encoder offload must introduce a single encoder owner, generation-tagged
 buffer protocol and acknowledged STOP/IDLE before any rebuild or release. This
 branch intentionally does not claim that work completed.
+
+## Safety review correction (before live use)
+
+The initial opt-in implementation placed core-1 startup after settings/JEDEC
+operations, leaving an unsafe gap with the implicit assumption removed.
+Corrected: core 1 launches and registers its flash-safe lockout victim IRQ
+immediately after core 0, *before* settings migration, flash TLV access and
+boot-time JEDEC/QE commands. It idles behind an atomic decoder-enable flag
+until the main core finishes allocating/configuring FDK. Both cores must be
+registered before any SDK flash_safe_execute call; startup fails closed
+otherwise. JEDEC, QE register updates and WIP polling now use
+`boot_flash_do_cmd`, whose SRAM callback is protected by
+`flash_safe_execute`. Legacy single-core builds keep the accurate
+`PICO_FLASH_ASSUME_CORE1_SAFE=1` flag, applied only when the second core is
+not used; otherwise SDK flash_safe_execute rejects single-core flash writes.
+
+The SDK's `multicore_launch_core1_raw` temporarily disables the core-0 FIFO
+interrupt during its startup handshake, then restores the flash-lockout IRQ.
+This sequencing was checked against the exact pinned pico-sdk revision
+`bddd20f928ce76142793bef434d4f75f4af6e433`.

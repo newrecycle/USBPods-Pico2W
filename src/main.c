@@ -46,6 +46,7 @@
  * The old core-1 encoder is NOT safe and remains disabled. */
 static uint32_t mic_core1_stack[4096] __attribute__((aligned(16)));
 static _Atomic bool mic_core1_ready;
+static _Atomic bool mic_core1_decode_enabled; /* after main allocates the FDK decoder */
 static _Atomic uint32_t mic_core1_passes;
 static void mic_core1_entry(void) {
     /* The decoder's separate 16 KiB stack must fault on overflow rather than
@@ -56,11 +57,36 @@ static void mic_core1_entry(void) {
         panic("mic core1 flash lockout registration failed");
     atomic_store_explicit(&mic_core1_ready, true, memory_order_release);
     for (;;) {
-        aacp_mic_audio_work();
-        atomic_fetch_add_explicit(&mic_core1_passes, 1, memory_order_relaxed);
-        if (!aacp_mic_audio_pending()) sleep_us(250);
+        if (atomic_load_explicit(&mic_core1_decode_enabled, memory_order_acquire)) {
+            aacp_mic_audio_work();
+            atomic_fetch_add_explicit(&mic_core1_passes, 1, memory_order_relaxed);
+            if (aacp_mic_audio_pending()) continue;
+        }
+        sleep_us(250);
     }
 }
+#endif
+
+#ifdef USBPODS_DUAL_CORE_MIC
+/* The boot-time JEDEC/QE probes call flash_do_cmd, which temporarily disables
+ * XIP. Once the second core exists they MUST use the SDK's coordinated flash
+ * safe zone, just like settings/TLV writes. All callback code runs from SRAM. */
+struct boot_flash_cmd {
+    const uint8_t *tx;
+    uint8_t *rx;
+    size_t count;
+};
+static void __no_inline_not_in_flash_func(boot_flash_cmd_callback)(void *arg) {
+    const struct boot_flash_cmd *cmd = arg;
+    flash_do_cmd(cmd->tx, cmd->rx, cmd->count);
+}
+static void boot_flash_do_cmd(const uint8_t *tx, uint8_t *rx, size_t count) {
+    struct boot_flash_cmd cmd = {tx, rx, count};
+    if (flash_safe_execute(boot_flash_cmd_callback, &cmd, 500) != PICO_OK)
+        panic("boot QSPI command failed flash lockout");
+}
+#else
+#define boot_flash_do_cmd flash_do_cmd
 #endif
 
 /* Boot2 re-entry WITHOUT a cache flush — see SAFE-YANK below. On RP2350
@@ -452,7 +478,19 @@ int main() {
 
     if (!flash_safe_execute_core_init())
         panic("core0 flash lockout registration failed");
-
+#ifdef USBPODS_DUAL_CORE_MIC
+    /* Register core-1 flash lockout BEFORE settings migration, TLV changes
+     * or JEDEC/QE commands can enter a flash-safe operation. Both cores need
+     * the victim IRQ installed. Decoder work stays gated until FDK init. */
+    multicore_launch_core1_with_stack(mic_core1_entry, mic_core1_stack,
+                                      sizeof mic_core1_stack);
+    absolute_time_t core1_start_deadline = make_timeout_time_ms(500);
+    while (!atomic_load_explicit(&mic_core1_ready, memory_order_acquire)) {
+        if (time_reached(core1_start_deadline))
+            panic("mic core1 failed to register flash lockout");
+        tight_loop_contents();
+    }
+#endif
     settings_init();   /* journaled store: load or migrate the legacy pages */
 
     {   /* device-bound license: verify blob vs live HW ids (~100 ms when a
@@ -506,7 +544,7 @@ int main() {
            (9Fh: manufacturer, memory type, capacity). Identifies whether
            the chip supports quad + whose QE-bit convention it uses. */
         uint8_t tx[4] = { 0x9F, 0, 0, 0 }, rx[4] = { 0 };
-        flash_do_cmd(tx, rx, 4);
+        boot_flash_do_cmd(tx, rx, 4);
         printf("[flash] JEDEC %02x %02x %02x\n", rx[1], rx[2], rx[3]);
 
         /* ONE-TIME QE FIX (root cause of the slow Waveshare): its Puya
@@ -520,20 +558,20 @@ int main() {
            the bit is actually clear — one reboot ever per chip. */
         if (rx[1] == 0x85) {
             uint8_t sr2_tx[2] = { 0x35, 0 }, sr2_rx[2] = { 0 };
-            flash_do_cmd(sr2_tx, sr2_rx, 2);
+            boot_flash_do_cmd(sr2_tx, sr2_rx, 2);
             printf("[flash] Puya SR2=0x%02x (QE=%d)\n", sr2_rx[1], (sr2_rx[1] >> 1) & 1);
             if (!(sr2_rx[1] & 0x02)) {
                 uint8_t wren[1] = { 0x06 }, wren_rx[1];
                 uint8_t wrsr2[2] = { 0x31, (uint8_t)(sr2_rx[1] | 0x02) }, wrsr2_rx[2];
-                flash_do_cmd(wren, wren_rx, 1);
-                flash_do_cmd(wrsr2, wrsr2_rx, 2);
+                boot_flash_do_cmd(wren, wren_rx, 1);
+                boot_flash_do_cmd(wrsr2, wrsr2_rx, 2);
                 for (int t = 0; t < 200; t++) {          /* WIP poll, <=200 ms */
                     uint8_t sr1_tx[2] = { 0x05, 0 }, sr1_rx[2] = { 0 };
-                    flash_do_cmd(sr1_tx, sr1_rx, 2);
+                    boot_flash_do_cmd(sr1_tx, sr1_rx, 2);
                     if (!(sr1_rx[1] & 0x01)) break;
                     busy_wait_ms(1);
                 }
-                flash_do_cmd(sr2_tx, sr2_rx, 2);
+                boot_flash_do_cmd(sr2_tx, sr2_rx, 2);
                 printf("[flash] QE programmed, SR2 now 0x%02x — rebooting into quad mode\n",
                        sr2_rx[1]);
                 if (sr2_rx[1] & 0x02) {
@@ -630,6 +668,10 @@ int main() {
 #endif
 
     aacp_mic_audio_init();
+#ifdef USBPODS_DUAL_CORE_MIC
+    atomic_store_explicit(&mic_core1_decode_enabled, true, memory_order_release);
+    printf("[core1] decoder worker enabled; flash lockout registered\n");
+#endif
     if (!radio_absent) {
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1);
         btstack_main(0, NULL);
@@ -644,17 +686,6 @@ int main() {
      * without worker acknowledgment and its encoded queue has no consumer.
      * Offload the persistent microphone decoder instead, after initialization. */
 #ifdef USBPODS_DUAL_CORE_MIC
-    if (!radio_absent) {
-        multicore_launch_core1_with_stack(mic_core1_entry, mic_core1_stack,
-                                          sizeof mic_core1_stack);
-        absolute_time_t deadline = make_timeout_time_ms(500);
-        while (!atomic_load_explicit(&mic_core1_ready, memory_order_acquire)) {
-            if (time_reached(deadline))
-                panic("mic core1 failed to register flash lockout");
-            tight_loop_contents();
-        }
-        printf("[core1] experimental mic decoder ready; flash lockout registered\n");
-    }
     /* QSPI CS-yank cannot be protected by core-0 IRQ masking on two cores.
      * Disable BOOTSEL polling in this build; CDC reset/picotool still work. */
     printf("[core1] BOOTSEL polling disabled for cross-core XIP safety\n");
