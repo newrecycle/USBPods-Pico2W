@@ -1,13 +1,17 @@
 {
   "schema": "usbpods-static-review-candidate/v1",
-  "recorded_at": "2026-11-03T20:00:00-07:00",
+  "recorded_at": "2026-11-03T20:32:00-07:00",
   "purpose": "Offline static-review repair candidate: build/link/UF2 verification and host-suite evidence only. No hardware run, flashing, packaging, audio or physical-routing claim.",
   "branch": "work/local-mic-routing",
-  "candidate_commit": "f3e53a7400d8835d8c64e831f1d190b3395db079",
+  "candidate_commit": "e8b6320b2dbdb77fa80b7f7d4421be8d829d61c9",
   "previous_commits": [
-    "8fc20d8",
-    "7d9a447",
-    "a0532e5"
+    "3c9a0349c0b61213f0ded90fd8ffdd51ee314745",
+    "7bd1c47fd0f2cddccca348488eec559fc5162261",
+    "68e06cb10a21e89783e1aa22d46d37a0af6e4027",
+    "f3e53a7400d8835d8c64e831f1d190b3395db079",
+    "8fc20d81bfdf4d3b60d6d40e182edd50debbd4b3",
+    "7d9a447729cf9812c0b40e1503da8c426629a2f6",
+    "a0532e50d5785132aca49f08358b75d394ddd7bd"
   ],
   "handoff_source_commit": "7de213042d82367401aedef3a0e9a864f9ab6773",
   "review_record": "docs/STATIC-REVIEW-2026-11-03.md",
@@ -18,7 +22,7 @@
       "failed": 0,
       "skipped": 0
     },
-    "summary": "build-offline-evidence-reviewfix/summary.json (git-ignored)",
+    "summary": "build-offline-evidence-final3/summary.json (git-ignored)",
     "environment": {
       "os": "Ubuntu 26.04.1",
       "host_cc": "clang 22.1.2 (+gcc-14 for pinned host tools)",
@@ -39,19 +43,19 @@
       "mic": "ON",
       "stem": "USBPods_Pico2W_Reconstructed_AACELD_Mic",
       "elf": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.elf",
-        "bytes": 14261440,
-        "sha256": "35460aac5e16bab012dd28640245c79ed6ca05d1874d6a122e4803b2048fc36b"
+        "path": "build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.elf",
+        "bytes": 14261816,
+        "sha256": "07cba738aa46311879006a36a074b8d5f47d40cd23e4535f45a25c9ce793e101"
       },
       "bin": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.bin",
-        "bytes": 1809168,
-        "sha256": "0f8abc9ae793bea15f036fddab0ebfde283b81652471b654bd8c5f7f8c23f454"
+        "path": "build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.bin",
+        "bytes": 1809000,
+        "sha256": "c74748e73b54768fc4ef78b9224813818917306d17f78329e9ab371260e441f3"
       },
       "uf2": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.uf2",
-        "bytes": 3618816,
-        "sha256": "b8d61529bc39e412864302aa07e58374ad6079297feab5c6e9772fbe8f4317ff"
+        "path": "build-local-rpi0065-aaceld/USBPods_Pico2W_Reconstructed_AACELD_Mic.uf2",
+        "bytes": 3618304,
+        "sha256": "c87b378ee883099d592cac89cef0ea6db072e258afbeb7af7de9d45206642972"
       }
     },
     {
@@ -60,19 +64,19 @@
       "mic": "OFF",
       "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
       "elf": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
-        "bytes": 14245124,
-        "sha256": "04dd397f9d8cacd7e174bd36384647ad6fe451636839ac1d1c6a848d9ceb3e4a"
+        "path": "build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
+        "bytes": 14245500,
+        "sha256": "51549b93fea2a05e7b9199bd84816837a8cef1fd2282ce22b4aab1686b78f18f"
       },
       "bin": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
-        "bytes": 1807544,
-        "sha256": "375157a819faa5a43904395565d48ca47fb62b28a9ca6a716104a8062545187d"
+        "path": "build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
+        "bytes": 1807376,
+        "sha256": "d10f82ff9ea699a994ca53ce0f3de060165e192a2b561f538d0335937ffb6340"
       },
       "uf2": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
+        "path": "build-local-stock0031-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
         "bytes": 3615232,
-        "sha256": "4ad7d49fc7f653952d3e0083f4116838d5822cc938e2a7ed687a3ce70379c0f4"
+        "sha256": "242da119e6fbe84c22071421770124e46055a63f8d4a0d483359e93438672e14"
       }
     },
     {
@@ -81,19 +85,19 @@
       "mic": "OFF",
       "stem": "USBPods_Pico2W_Reconstructed_AACP_Transport",
       "elf": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
-        "bytes": 14245968,
-        "sha256": "ccad9c3b80f1e7aafe5f79ca673bb7931b0ac3a446e18ae519a973c92a212af2"
+        "path": "build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.elf",
+        "bytes": 14246344,
+        "sha256": "0b929ab9e75c495e5412c2e1bac90eebe268d461e148b2b3660a3565344126dd"
       },
       "bin": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
-        "bytes": 1808328,
-        "sha256": "5c3e35c6fdfd32282bcb1f9200643a9130ec5d5c5592213f253e3738d7210479"
+        "path": "build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.bin",
+        "bytes": 1808184,
+        "sha256": "7f4e7e6a1dd2f78d7e09c94da2c95ea3fd9f8ef9f26c04f3758b1322843e3f9c"
       },
       "uf2": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
+        "path": "build-local-rpi0065-transport/USBPods_Pico2W_Reconstructed_AACP_Transport.uf2",
         "bytes": 3616768,
-        "sha256": "dc43821cc091cbe6ddecea1c39d502fc5f6176d9a6e597abf94b929d5ff7bc8f"
+        "sha256": "80f5980b4f13e05c10701d0f3680f6691e3515a09b9c6f670d85ae435f99c74b"
       }
     }
   ],
@@ -101,7 +105,7 @@
     {
       "board": "pico_w",
       "uf2": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-sco-probe-pico_w/usbpods_sco_probe.uf2",
+        "path": "build-local-sco-probe-pico_w/usbpods_sco_probe.uf2",
         "bytes": 1008640,
         "sha256": "f6332740cb0eb36a30a7290354b1a8c3beeec01cda2601e4049cc7e3007c3265"
       }
@@ -109,7 +113,7 @@
     {
       "board": "pico2_w",
       "uf2": {
-        "path": "/home/justin/USBPods-Pico2W/.worktrees/local-mic-routing/build-local-sco-probe-pico2_w/usbpods_sco_probe.uf2",
+        "path": "build-local-sco-probe-pico2_w/usbpods_sco_probe.uf2",
         "bytes": 979968,
         "sha256": "adfdd021896dfaa1fd0d2eabcf08977ee802c3ee734efb50c94e3fafdba6404e"
       }
@@ -123,8 +127,26 @@
   ],
   "limitations": [
     "No flash/execution: build+verify only.",
-    "32-bit codec heap audit absent; packaging gate now rejects that for USBPods candidates instead of silently passing.",
+    "The optional 32-bit codec-heap audit was not produced locally (no 32-bit multilib, no sudo). apply_codec_heap_audit() sets runtime_allocation_verified only after validating an audit, and packaging requires that flag for USBPods candidates, so an unaudited local build cannot be packaged.",
     "TinyUSB timer-IRQ/main-loop serialization and UAC1 44.1 host behavior are statically argued, not host-observed.",
-    "Physical routing, RF/acoustic behavior, gesture semantics and soak results remain live-only."
-  ]
+    "The final review verified repairs read-only; it did not rerun the full suite or target builds. Physical routing, RF/acoustic behavior, gesture semantics and soak results remain live-only."
+  ],
+  "firmware_source_commit": "7bd1c47fd0f2cddccca348488eec559fc5162261",
+  "final_review": {
+    "record": ".tools/review/final-review.md (git-ignored, not published)",
+    "verdict": "CHANGES REQUESTED \u2014 one medium tooling defect (codec-heap gate unsatisfiable); no firmware regression, all 10 earlier findings verified fixed",
+    "disposition": "Fixed in 3c9a034 (apply_codec_heap_audit validates a 32-bit audit and only then sets runtime_allocation_verified=true; unit tests cover valid plus five invalid audits). A full package() success-path integration test remains a known gap while packaging is paused."
+  },
+  "record_commit": "ebdae925a63ab370f80e26556c3a46b4586502f0",
+  "candidate_firmware_commit": "e8b6320b2dbdb77fa80b7f7d4421be8d829d61c9",
+  "reproducibility": {
+    "fix_commit": "e8b6320",
+    "root_causes": [
+      "3rd-party/fdk-aac embeds __DATE__/__TIME__ in diagnostic library-info strings",
+      "src/main.c boot banner printed __DATE__/__TIME__"
+    ],
+    "fix": "SUPPRESS_BUILD_DATE_INFO on the fdk-aac target; banner prints USBPODS_BUILD_SHA instead of build date/time",
+    "verified": "two independent clean rpi0065/AAC-ELD builds in fresh build directories produced the identical UF2 sha256 c87b378ee883099d592cac89cef0ea6db072e258afbeb7af7de9d45206642972",
+    "caveat": "hashes are tied to the embedded source SHA, so rebuilding a later docs-only commit changes the SHA field (not the firmware sources)"
+  }
 }
