@@ -163,6 +163,7 @@ jobs:
           python3 tests/test_uac1_controls.py
           python3 tests/test_mic_recovery_integration.py
           python3 tests/test_live_runner.py
+          python3 tests/test_validation_audit.py
           python3 tests/test_aacp_session_telemetry.py
           python3 tests/test_flash_candidate.py
           python3 tests/test_live_matrix.py
