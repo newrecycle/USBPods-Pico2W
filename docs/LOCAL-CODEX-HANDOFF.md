@@ -319,8 +319,10 @@ Lite compatibility flags do not mean public vendor Full sources are present.
    sample-count versus wall-clock policy, encoder profile differences and reset
    semantics stay unresolved; avoid changing them all together.
 4. Keep physical left/right, HID gesture semantics, RF timing and actual clock
-   drift unverified until there is matching evidence. Current packaging is
-   paused; this handoff does not request another live run or flashing operation.
+   drift unverified until there is matching evidence. Live verification was
+   authorized by repository-owner order on 2026-11-03 after the offline review
+   and green CI build; candidate packaging is produced by the CI packaging
+   step and still requires `build_verified` plus the 32-bit codec-heap audit.
 5. Keep future logs and captured keys out of commits. Commit useful code/tests,
    sanitized evidence and explanations rather than generating another speculative
    package from build success alone.

@@ -1,10 +1,8 @@
 {
   "schema": 1,
-  "live_test_authorized": false,
-  "status": "offline_review_live_runs_paused",
-  "blockers": [
-    "This is an offline-only repair pass; no new live package or unverified physical outcome is authorized"
-  ],
+  "live_test_authorized": true,
+  "status": "live_verification_authorized",
+  "blockers": [],
   "physical_validation_required": [
     "AirPods Pro 3 connection and sustained AVDTP TX",
     "Peer-supported AAC-ELD rates and both game modes",
@@ -21,5 +19,12 @@
     "101a970b capture: redundant identical profile restart followed by peer START rejection 263",
     "101a970b capture: external microphone activity was incorrectly treated as runner-owned capture close failure",
     "User A/B follow-up: playback quality judged on par; initial bass-regression claim unconfirmed"
-  ]
+  ],
+  "authorization": {
+    "authorized_by": "repository owner order",
+    "authorized_at": "2026-11-03T20:40:00-07:00",
+    "basis": "Offline static review, remediation and end-to-end verification are complete at 8b89d42 (CI: Pico firmware build 41761074322, USB capture/HID host tests 41761074425).",
+    "candidate_source_commit": "8b89d42",
+    "review_record": "docs/STATIC-REVIEW-2026-11-03.md"
+  }
 }

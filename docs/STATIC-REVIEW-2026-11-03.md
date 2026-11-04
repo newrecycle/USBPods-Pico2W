@@ -1,9 +1,13 @@
 # Static offline review and repairs — 2026-11-03
 
 This record covers the offline static-review pass requested before any further
-live test. It is **not** hardware evidence: no device was flashed or executed,
-`docs/validation-status.json` still pauses live packaging, and the physical
-left/right symptom remains unexplained and unclaimed.
+live test. It is **not** hardware evidence: no device was flashed or executed.
+After these repairs and the green CI build, live verification was authorized by
+explicit repository-owner order (2026-11-03) and
+`docs/validation-status.json` now carries that authorization; each live
+candidate still has to pass the per-candidate `build_verified` plus 32-bit
+codec-heap-audit packaging gate. The physical left/right symptom remains
+unexplained and unclaimed.
 
 ## Scope and constraints
 
@@ -85,7 +89,7 @@ left/right symptom remains unexplained and unclaimed.
 | W-F2 | Host mute implemented as a toggle, inverting mute→unmute→mute and ignoring a first mute at a new volume. | Apply the requested mute state directly. | Boundary fixture asserts the full mute/unmute/mute sequence and a first-mute case. |
 | W-F3 | Main-loop TinyUSB writes (`tud_audio_int_write`, `tud_hid_report`) could interleave with the 500 µs timer-IRQ `tud_task()`. | Short interrupt-disabled section around each main-side TinyUSB write (single-core build). | Wiring test pins all three call sites. |
 | W-F4 | UAC1 44.1 kHz personality advertised the 48 kHz 192-byte endpoint maximum. | Descriptor macro parameterised per personality: 44.1 → 180, 48 → 192; `verify_build.py` checks rate/endpoint pairs. | Target `verify_build.py` (both UAC1 configs). |
-| W-F5 | Packaging gate accepted `build_verified=True` even when the 32-bit codec-heap audit was skipped. | `package_live_test.require_codec_heap_audit()` requires `runtime_allocation_verified == true` for USBPods candidates. | Unit test covers missing/false/true; packaging still paused. |
+| W-F5 | Packaging gate accepted `build_verified=True` even when the 32-bit codec-heap audit was skipped. | `package_live_test.require_codec_heap_audit()` requires `runtime_allocation_verified == true` for USBPods candidates. | Unit test covers missing/false/true; the gate stays mandatory when packaging is authorized. |
 | W-F6 | No test for the mute state machine or the untrusted name path; doc drift. | Tests above; fixed settings UART default, LHDC rate mapping, first-commit sector and 189-byte license comments. | Same tests. |
 
 ### Whole-codebase review dispositions
@@ -128,8 +132,9 @@ missing/negative peaks and over-heap estimates, and only after every check
 passes records `host_codec_estimate` and sets
 `runtime_allocation_verified = true`. `tests/test_verify_uf2.py` covers a valid
 audit and five invalid ones and asserts the flag is never set on rejection. A
-full `package()` success-path integration test remains a known gap (packaging
-is paused; the gate and its producer are unit-tested separately). The final
+full `package()` success-path integration test remains a known gap (the gate
+and its producer are unit-tested separately; the first authorized CI package
+is the end-to-end exercise). The final
 candidate at `3c9a034` differs from `7bd1c47` only in tools/tests, not firmware
 sources.
 
