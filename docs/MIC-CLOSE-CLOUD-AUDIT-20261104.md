@@ -48,6 +48,15 @@ No hardware access, Windows endpoints, raw captures, peer ACK for STOP, ear-spec
 
 **Before/after local host reproduction:** a manually compiled Linux GCC/ASan/UBSan fixture containing the pinned production `usb_pcm_tap_feed` body showed five 500-ms L/R signal windows, but its old diagnostic lacked microphone state. The state-aware diagnostic produced the expected `open / transition / closed / transition / open` classifications while retaining left-only peak 1200 and right-only peak 1100 in their respective windows. This is a reproducible *observability* before/after, not reproduction or repair of silent left-ear acoustic output. The added regression compiles the production function body directly and includes an idle timer-before-first-packet negative-control case. CI must run this at the final source SHA before a target build is considered validated.
 
+Preserved negative control: the immutable pinned commit contains the older tap body without mic-state labeling. An unchanged baseline file is expected to fail this same regression (because no `mic=` field exists), while the current production body must pass. A local clone must fetch that SHA if it is not present:
+
+```sh
+git fetch origin 18be74cfe99f2584bcf26a0c0f0571c75a7f7bec
+git show 18be74cfe99f2584bcf26a0c0f0571c75a7f7bec:src/tinyusb/uac.c > /tmp/usbpods-mic-tap-before.c
+python3 tests/test_mic_close_tap.py --source-file /tmp/usbpods-mic-tap-before.c  # expected FAIL: missing mic= tags
+python3 tests/test_mic_close_tap.py                                         # expected PASS
+```
+
 Host replay entry points from repository root:
 
 ```sh
