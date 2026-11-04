@@ -9,6 +9,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef USBPODS_MIC_PARALLEL_HOST
+#include <pthread.h>
+#include <sched.h>
+#include <stdatomic.h>
+static _Atomic bool parallel_mic_run;
+static pthread_t parallel_mic_thread;
+static void *parallel_mic_decoder(void *unused) {
+ (void)unused;
+ while(atomic_load_explicit(&parallel_mic_run,memory_order_acquire)){
+  aacp_mic_audio_work();
+  if(!aacp_mic_audio_pending())sched_yield();
+ }
+ return NULL;
+}
+static void parallel_mic_read(INT_PCM *dst, unsigned count) {
+ unsigned offset=0;
+ for(unsigned polls=0;offset<count&&polls<1000000;polls++) {
+  offset+=aacp_mic_audio_read(dst+offset,count-offset);
+  if(offset<count)sched_yield();
+ }
+ assert(offset==count);
+}
+#endif
 #ifdef USBPODS_ALLOC_AUDIT
 #include "fdk_alloc_tracker.h"
 #else
@@ -101,6 +124,10 @@ static void mic_restart_check(void) {
 int main(void){
  setvbuf(stdout,NULL,_IONBF,0);
  mic_fixture();aacp_mic_audio_init();assert(aacp_mic_audio_ready());aacp_mic_set_capture(true);
+#ifdef USBPODS_MIC_PARALLEL_HOST
+ atomic_store_explicit(&parallel_mic_run,true,memory_order_release);
+ assert(pthread_create(&parallel_mic_thread,NULL,parallel_mic_decoder,NULL)==0);
+#endif
  uint32_t generation=aacp_mic_generation();HANDLE_AACENCODER encoder=NULL;AACENC_InfoStruct ei;
  const struct {uint8_t rate,game,level,r44,relay;} modes[]={
    {1,0,1,0,0},{2,0,1,0,0},{3,0,1,0,0},{3,1,1,0,0},
@@ -123,6 +150,12 @@ int main(void){
    resamp44_t rs;resamp44_reset_st(&rs);unsigned frames=0,max_au=0;
    for(unsigned frame=0;frame<128;frame++){
      INT_PCM input[960],resampled[960],decoded[1920],mic[480];UCHAR bytes[2048];
+#ifdef USBPODS_MIC_PARALLEL_HOST
+     /* Producer queues a real mic AU before playback work. This forces the
+        independent FDK microphone decoder to run while FDK playback encodes. */
+     unsigned m=frame%mic_count;
+     aacp_mic_audio_enqueue(mic_au[m],(uint8_t)mic_len[m]);
+#endif
      for(unsigned i=0;i<p.input_frames;i++){
        double t=(frame*p.input_frames+i)/(double)p.input_rate;
        switch((frame/16)%4) {
@@ -150,8 +183,12 @@ int main(void){
        assert(aacDecoder_DecodeFrame(decoder,decoded,1920,0)==AAC_DEC_OK);
        CStreamInfo *info=aacDecoder_GetStreamInfo(decoder);assert(info&&info->frameSize==480&&info->numChannels==2&&info->sampleRate==48000);frames++;
      }
+#ifdef USBPODS_MIC_PARALLEL_HOST
+     parallel_mic_read(mic,480);
+#else
      unsigned m=frame%mic_count;aacp_mic_audio_enqueue(mic_au[m],(uint8_t)mic_len[m]);aacp_mic_audio_work();
      assert(aacp_mic_audio_read(mic,480)==480);
+#endif
      for(unsigned i=0;i<480;i++)if(abs(mic[i])>mic_peak)mic_peak=abs(mic[i]);
      assert(aacp_mic_generation()==generation);
    }
@@ -159,6 +196,11 @@ int main(void){
    fdk_alloc_begin();fdk_alloc_end(); /* Include any lazy mic allocation. */
    printf("ELD duplex transition %u: rate=%u vbr=%u sbr=%u slots=%u input=%u frames=%u max_au=%u mic_generation=%u\n",transition,p.bitrate,p.vbr,p.sbr,p.slots,p.input_rate,frames,max_au,generation);
  }
+#ifdef USBPODS_MIC_PARALLEL_HOST
+ atomic_store_explicit(&parallel_mic_run,false,memory_order_release);
+ assert(pthread_join(parallel_mic_thread,NULL)==0);
+ puts("Real FDK parallel: microphone decode concurrent with stereo ELD encode and 24 profile rebuilds");
+#endif
  assert(mic_peak>1000);mic_restart_check();mic_burst_check();fdk_alloc_report();aacEncClose(&encoder);aacp_mic_set_capture(false);
  printf("ELD rate/game transitions with active mic queue: %u playback frames, mic peak=%d\n",all_frames,mic_peak);
 }

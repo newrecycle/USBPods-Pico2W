@@ -76,3 +76,18 @@ The SDK's `multicore_launch_core1_raw` temporarily disables the core-0 FIFO
 interrupt during its startup handshake, then restores the flash-lockout IRQ.
 This sequencing was checked against the exact pinned pico-sdk revision
 `bddd20f928ce76142793bef434d4f75f4af6e433`.
+
+## Actual concurrent FDK host regression
+
+The dual-core CI variant also compiles `tests/test_eld_duplex_fdk.c` in a
+host-pthread mode, with the repository's **real FDK-AAC** library linked. The
+microphone FDK decoder runs in a separate thread while the playback encoder
+continues across 24 rate/game/profile rebuilds and 3,072 stereo ELD encode
+frames. Real compressed mic AUs are produced before playback work and decoded
+through the production AU/PCM queue. The test checks decoded-frame shape,
+microphone PCM amplitude and generation continuity. After joining the decoder
+worker, the existing deterministic real-FDK microphone disconnect, history
+reset and full-queue backpressure regressions still run unmodified.
+
+This is a host concurrency test, **not** proof that the RP2350/XIP/USB scheduling
+is safe or that the peer accepts every profile in the physical environment.
