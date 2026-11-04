@@ -54,8 +54,8 @@ class FlashTests(unittest.TestCase):
                     if mode=='running':code=1 # Existing firmware needs CDC fallback.
                     else:state['mode']='bootsel'
                 elif action=='info':
+                    code=0 if state['mode']=='bootsel' or failure=='other-bootsel' else 1
                     if failure=='bootsel-timeout':code=1
-                    else:assert state['mode']=='bootsel'
                 elif action=='load':
                     assert state['mode']=='bootsel' and '-v' in command and '-x' in command
                     assert str(uf2) in command and '--pid' in command
@@ -66,7 +66,8 @@ class FlashTests(unittest.TestCase):
                 return types.SimpleNamespace(returncode=code,stdout='simulated',stderr='')
             expected={'hash':ValueError,'unrelated':RuntimeError,'ambiguous':RuntimeError,
                       'load':RuntimeError,'wrong-sha':RuntimeError,'bootsel-timeout':RuntimeError,
-                      'tool-timeout':subprocess.TimeoutExpired,'missing-tool':RuntimeError}.get(failure)
+                      'tool-timeout':subprocess.TimeoutExpired,'missing-tool':RuntimeError,
+                      'other-bootsel':RuntimeError}.get(failure)
             which=lambda name:None if failure=='missing-tool' else '/path with spaces/picotool.exe'
             with mock.patch.object(flash,'time',clock):
                 if expected:
@@ -76,6 +77,9 @@ class FlashTests(unittest.TestCase):
                     self.assertEqual(flash.flash(root,'COM3',serial_module=Serial,ports=ports,run=run,which=which,clock=clock),'COM7')
             if failure in ('hash','unrelated','ambiguous','missing-tool'):
                 self.assertFalse(any(x[0]=='tool' for x in calls))
+            if failure=='other-bootsel':
+                self.assertFalse(any(x[0]=='tool' and x[1][1] in ('load','reboot') for x in calls))
+                self.assertFalse(any(x[0]=='serial' and x[2]==1200 for x in calls))
             if failure!='hash' and failure!='missing-tool':
                 report=json.loads((root/'flash-log.json').read_text())
                 self.assertEqual(report['complete'],not bool(failure))
@@ -88,7 +92,7 @@ class FlashTests(unittest.TestCase):
     def test_compatible_picotool_reset(self):self.exercise('compatible')
     def test_already_bootsel(self):self.exercise('bootsel')
     def test_failures_stop_before_testing(self):
-        for failure in ('hash','missing-tool','unrelated','ambiguous','load','wrong-sha','bootsel-timeout','tool-timeout'):
+        for failure in ('hash','missing-tool','unrelated','ambiguous','load','wrong-sha','bootsel-timeout','tool-timeout','other-bootsel'):
             with self.subTest(failure=failure):self.exercise(failure=failure)
 
 

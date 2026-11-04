@@ -62,6 +62,11 @@ def flash(root, cdc=None, *, serial_module=None, ports=None, run=subprocess.run,
             report['previous_info']=firmware_info(serial_module,device.device)
             previous_serial=device.serial_number
             report['previous_port']=device.device
+            # A failed reset must not redirect a load to a different board
+            # that was already in BOOTSEL. With an application target selected,
+            # require BOOTSEL to be absent before starting its reset.
+            if invoke(['info',*BOOTSEL],timeout=5).returncode==0:
+                raise RuntimeError('Another Pico 2 is already in BOOTSEL; disconnect it before updating the running target')
             print('Entering BOOTSEL for the firmware update...',flush=True)
             filters=['--vid',hex(device.vid),'--pid',hex(device.pid)]
             if previous_serial:filters+=['--ser',previous_serial]
