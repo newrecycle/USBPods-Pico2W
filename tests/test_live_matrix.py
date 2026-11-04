@@ -146,7 +146,7 @@ class MatrixReplay(unittest.TestCase):
                         self.assertTrue(any('mic_retry_count' in e for e in results['eld256'][1]['errors']))
                         fault=json.loads((root/'audio-failure-state.json').read_text())
                         self.assertTrue(fault['before_stream_cleanup'])
-                    self.assertEqual(results['mic_close_reopen_duplex'][0],'UNVERIFIED' if external else 'PASS')
+                    self.assertEqual(results['mic_close_reopen_duplex'][0],'UNVERIFIED' if external and not external_release else 'PASS')
                     self.assertEqual(sum(c.startswith('profile ') for c in link.commands),5)
                     self.assertTrue(list(root.glob('*.wav')))
                 self.assertFalse(streams)
