@@ -23,7 +23,7 @@ int main(void) {
   for(uint8_t i=0;i<9;i++)assert(queue_try_add(&free_queue,&i));
   filling_slot_valid=false;filling_offset=0;set_usb_sw_gain_pct(gains[g]);
   is_usb_streaming=is_streaming=true;aaceld_frame_sequence=4094;
-  a2dp_media_sending_context_t ctx={.max_media_payload_size=986};
+  a2dp_media_sending_context_t ctx={.max_media_payload_size=986,.avdtp_cid=0x42,.local_seid=2};
   unsigned seq=4094,total=0;double energy[2]={0};unsigned count=0;
   for(unsigned batch=0;batch<40;batch++) {
    INT_PCM input[2880],decoded[1920];
@@ -46,13 +46,24 @@ int main(void) {
      assert(slot_pool[index].data[j]==expected);
     }
    }
-   ctx.samples_ready+=1440;
-   while(ctx.samples_ready) {
-    int consumed=codec_fdk_fill(&ctx);assert(consumed>0 && consumed<=1440);
+   // Feed one AU of pacing credit at a time, as the 10 ms production timer
+   // does. Do not clear partial packets between ticks: that hid the old
+   // 192 kbps 2+1 accumulation defect from the per-fill regression.
+   for(unsigned tick=0;tick<3;tick++) {
+    ctx.samples_ready+=480;
+    unsigned requests=send_requests;
+    codec_fdk_stage_eld_packet(&ctx);
     assert(ctx.codec_storage_count<=ctx.max_media_payload_size && ctx.codec_num_frames<=3);
 #ifdef USBPODS_MIC_DECODE
-    assert(ctx.codec_num_frames<=2); // Bound each radio-context batch for mic service.
+    assert(ctx.codec_num_frames<=2);
+    if(ctx.codec_num_frames==2)assert(ctx.codec_ready_to_send);
 #endif
+    if(!ctx.codec_ready_to_send){assert(send_requests==requests);continue;}
+    assert(send_requests==requests+1);
+    // A delayed can-send grant cannot encode into a packet already queued.
+    unsigned staged=ctx.codec_storage_count,queued=ctx.codec_num_frames;
+    codec_fdk_stage_eld_packet(&ctx);
+    assert(ctx.codec_storage_count==staged && ctx.codec_num_frames==queued && send_requests==requests+1);
     unsigned off=0,frames=0;
     while(off<ctx.codec_storage_count) {
      uint8_t *p=ctx.codec_storage+off;
@@ -69,7 +80,7 @@ int main(void) {
      }
      off+=4+n;frames++;total++;
     }
-    assert(frames==ctx.codec_num_frames);ctx.codec_storage_count=ctx.codec_num_frames=0;
+    assert(frames==ctx.codec_num_frames);ctx.codec_storage_count=ctx.codec_num_frames=ctx.codec_ready_to_send=0;
    }
    assert(!ready_queue.count && free_queue.count==9);
   }
@@ -82,10 +93,22 @@ int main(void) {
  printf("Production PCM/gain/channel order/framing/MTU: %u decoded frames passed\n",decoded_frames);
 }
 '''
-names=['set_usb_sw_gain_pct','audio_slot_push_samples','audio_slot_pop','audio_slot_release','src_eld_au_space','codec_fdk_fill']
+names=['set_usb_sw_gain_pct','audio_slot_push_samples','audio_slot_pop','audio_slot_release','src_eld_au_space','codec_fdk_fill','codec_fdk_stage_eld_packet']
+# Permit a negative control using the archived per-call-only implementation.
+# Its actual timer case is extracted unchanged rather than supplying a mock
+# implementation of the missing production staging helper.
+source=a.source_file.read_text()
+if 'static uint32_t src_eld_packet_au_limit(' in source:names.insert(-2,'src_eld_packet_au_limit')
+if 'static void codec_fdk_stage_eld_packet(' in source:
+ stage=''
+else:
+ names.remove('codec_fdk_stage_eld_packet')
+ begin=source.index('        case 4:   /* Apple AAC-ELD: encode on Core 0')
+ end=source.index('            break;',begin)
+ stage='static void codec_fdk_stage_eld_packet(a2dp_media_sending_context_t *context){'+source[source.index('\n',begin)+1:end]+'}\n'
 with tempfile.TemporaryDirectory() as temp:
  path=Path(temp)
- (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+body)
+ (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+stage+body)
  args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
  if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]

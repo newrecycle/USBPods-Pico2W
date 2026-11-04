@@ -90,7 +90,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
                 mic_recovery_pending=0,mic_watchdog_failed=int(self.mic_fault()),mic_retry_count=3 if self.mic_fault() else 0,
                 relay_connected=0,relay_streaming=0,control_tx=self.control_tx,
                 control_last_id=self.last_id,control_last_value=self.last_value,
-                control_rx_seq=list(self.sequences),allow_off=1,**self.controls)
+                control_rx_seq=list(self.sequences),allow_off=-1 if case=='off-unavailable' else 1,**self.controls)
         def eld(self):
             p=(ctypes.c_uint32*5)();s=self.settings
             profile(s['eldrate'],int(bool(s['usbset']&128)),s['gamelevel'],5,p)
@@ -206,6 +206,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert device.settings==device.original,(case,device.settings,device.original)
         assert device.controls==dict(noise=2,pvol=1,ca=1,aa=50)
         assert tests['noise']['status']==('UNVERIFIED' if case=='no-control-echo' else 'PASS')
+        if case=='off-unavailable':
+            assert 'noise 1' not in commands and tests['noise_off']['status']=='SKIP'
         for wav in root.glob('*.wav'):
             with wave.open(str(wav)) as f:assert (f.getframerate(),f.getnchannels(),f.getsampwidth())==(48000,2,2)
         assert list(root.glob('*.wav'))
@@ -247,7 +249,7 @@ if __name__=='__main__':
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
-        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),
+        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),
                              ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)

@@ -31,6 +31,33 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_noise_off_requires_an_affirmative_capability(self):
+        for allowed in (-1,0,None):
+            self.assertEqual(live.peer_control_values('noise',[1,2,3,4],{'allow_off':allowed}),[2,3,4])
+        self.assertEqual(live.peer_control_values('noise',[1,2,3,4],{'allow_off':1}),[1,2,3,4])
+        self.assertEqual(live.peer_control_values('ca',[0,1],{}),[0,1])
+
+    def test_duplex_settle_waits_for_real_playback_and_mic(self):
+        class Clock:
+            now=0
+            def monotonic(self):return self.now
+            def sleep(self,n):self.now+=n
+        clock=Clock()
+        class Link:
+            def request(self,command):
+                if command=='eldstatus':return dict(ready=1,pending=0,transition='ready',input_rate=48000,
+                    requested_revision=1,built_revision=1,active_bitrate=256000,active_vbr=0,active_sbr=0,
+                    active_slots=6,duplex_cbr=1)
+                return dict(connected=1,confirmed=1,capture=1,codec=4,streaming=int(clock.now>=2),
+                    mic_started=int(clock.now>=3),mic_recovery_pending=0,tx_packets=int(clock.now*50))
+        with mock.patch.object(live_audio,'time',clock):
+            live_audio.await_duplex_ready(Link(),FakeRecorder(),live_audio.PROFILES[-1],'reconnect')
+        self.assertGreaterEqual(clock.now,4)
+        clock.now=0
+        with mock.patch.object(live_audio,'time',clock):
+            with self.assertRaisesRegex(TimeoutError,'did not settle'):
+                live_audio.await_duplex_ready(Link(),FakeRecorder(),live_audio.PROFILES[-1],'reconnect',timeout=1)
+
     def test_connection_preflight_rejects_stalled_and_dropped_streams(self):
         class Link:
             def __init__(self,progress=True,connected=True):self.tx=0;self.progress=progress;self.connected=connected

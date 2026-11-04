@@ -1333,6 +1333,14 @@ static int src_eld_au_space(void) {
 }
 static uint8_t src_eld_slot_count(void) { return src_eld_profile().slots; }
 
+static uint32_t src_eld_packet_au_limit(void) {
+#ifdef USBPODS_MIC_DECODE
+    return 2;
+#else
+    return 3;
+#endif
+}
+
 int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     int          total_samples_read               = 0;
 
@@ -1406,6 +1414,7 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
        config ever returns, bound the CONFIG, not this loop. */
     while (context->samples_ready >= num_audio_samples_per_aac_buffer &&
            (context->max_media_payload_size - context->codec_storage_count) > min_space &&
+           (cur_codec != CODEC_ID_AACELD || context->codec_num_frames < src_eld_packet_au_limit()) &&
            max_aus-- > 0) {
 
         uint8_t slot_idx;
@@ -1466,10 +1475,25 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
 
         audio_slot_release(slot_idx);
 
-        // AAC-ELD: max 3 frames per RTP packet
-        if (cur_codec == 4 && context->codec_num_frames >= 3) break;
+        if (cur_codec == CODEC_ID_AACELD &&
+            context->codec_num_frames >= src_eld_packet_au_limit()) break;
     }
     return total_samples_read;
+}
+
+static void codec_fdk_stage_eld_packet(a2dp_media_sending_context_t *context) {
+    if (context->codec_ready_to_send) return;
+    codec_fdk_fill(context);
+    /* Bound the complete packet, including frames staged on earlier ticks.
+       A per-call cap alone still accumulated three AUs at 192 kbps, whereas
+       the MTU forced 256 kbps to send two. Mic builds use the same 20 ms
+       packet cadence in all profiles, including silence keepalives. */
+    if (context->codec_num_frames >= src_eld_packet_au_limit() ||
+        (context->codec_num_frames > 0 &&
+         (context->max_media_payload_size - context->codec_storage_count) <= src_eld_au_space())) {
+        context->codec_ready_to_send = 1;
+        a2dp_source_stream_endpoint_request_can_send_now(context->avdtp_cid, context->local_seid);
+    }
 }
 
 #endif
@@ -2766,20 +2790,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
             break;
 #ifdef HAVE_AAC_FDK
         case 4:   /* Apple AAC-ELD: encode on Core 0 (FDK-AAC not safe for Core 1) */
-            codec_fdk_fill(context);
-
-            /* CONSTANT CADENCE (splice-damage experiment): silence keepalives
-               used to ship 1-AU/10 ms while music ships 3-AU/33 ms — every
-               splice flapped the on-air rhythm, and the buds' ADAPTIVE
-               jitter engine (the AACP 0x0B machinery) is the last untested
-               damage suspect. Batch silence exactly like music so the air
-               cadence never changes across closes. */
-            if (context->codec_num_frames >= 3 ||
-                (context->codec_num_frames > 0 &&
-                 (context->max_media_payload_size - context->codec_storage_count) <= src_eld_au_space())) {
-                context->codec_ready_to_send = 1;
-                a2dp_source_stream_endpoint_request_can_send_now(context->avdtp_cid, context->local_seid);
-            }
+            codec_fdk_stage_eld_packet(context);
             break;
 #endif
         default:

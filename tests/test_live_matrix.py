@@ -74,6 +74,7 @@ class MatrixReplay(unittest.TestCase):
                 if cmd=='connect':self.connected=True;return {}
                 if cmd=='status':return dict(connected=self.connected,confirmed=int(self.connected),streaming=int(self.connected),
                     capture=int(capture_active()),codec=4 if self.connected else 0,fault_hold=int(self.failed),
+                    mic_started=int(self.connected and capture_active()),mic_recovery_pending=0,
                     peer='fixture',tx_packets=int(clock.now*50)+1,send_failures=0,
                     mic_watchdog_failed=int(mic_fault and clock.now>=3),mic_retry_count=3 if mic_fault else 0)
                 if cmd=='eldstatus':

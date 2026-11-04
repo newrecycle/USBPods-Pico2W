@@ -36,6 +36,26 @@ def await_profile(link, profile, timeout=15):
         time.sleep(.25)
     raise TimeoutError('Active ELD profile did not converge: '+str(last))
 
+def await_duplex_ready(link, recorder, profile, label, timeout=20):
+    """Start steady measurement after both paths settle, retaining startup logs."""
+    deadline=time.monotonic()+timeout;stable_since=None;start_tx=None;last={}
+    while time.monotonic()<deadline:
+        status=link.request('status');eld=link.request('eldstatus')
+        last={'status':status,'eldstatus':eld}
+        recorder.log('connection-preflight.jsonl',{'phase':label,**last})
+        if status.get('fault_hold') or status.get('mic_watchdog_failed') or not status.get('connected') or eld.get('transition')=='failed':
+            raise RuntimeError('Firmware failed during '+label+': '+str(last))
+        ready=(profile_matches(eld,profile) and status.get('streaming') and status.get('codec')==4 and
+               status.get('confirmed') and status.get('capture') and status.get('mic_started') and
+               not status.get('mic_recovery_pending'))
+        if ready:
+            if stable_since is None:stable_since=time.monotonic();start_tx=status.get('tx_packets',0)
+            if time.monotonic()-stable_since>=1 and delta({'tx_packets':start_tx},status,'tx_packets'):
+                return last
+        else:stable_since=None
+        time.sleep(.25)
+    raise TimeoutError('Duplex did not settle during '+label+': '+str(last))
+
 def snapshot(link, recorder, label):
     link.request('telemetry')
     state=recorder.control_snapshot()
@@ -248,7 +268,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 link.request(f'profile {rate} {int(gaming)} {level}')
             applied=await_profile(link,profile)
             dwell(2,'settle_'+name)
-            audio.set_phase(name);print(f'{name}: speak/count during {args.duration} seconds of duplex capture.',flush=True)
+            audio.set_phase(name);print(f'{name}: play your phone-speaker clip near the AirPods (or speak) during {args.duration} seconds of duplex capture.',flush=True)
             before=snapshot(link,recorder,name+'_begin');dwell(args.duration,name)
             after=snapshot(link,recorder,name+'_end')
             errors=health(before,after)+audio.phase_errors(name)
@@ -281,6 +301,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             link.request('connect')
             link.wait(lambda s:s.get('confirmed') and s.get('peer','').upper()==target_mac.upper(),45)
             await_profile(link,baseline);dwell(3,name+'_settle')
+            await_duplex_ready(link,recorder,baseline,name+'_ready')
             before=snapshot(link,recorder,name+'_begin');dwell(5,name)
             after=snapshot(link,recorder,name+'_end');errors=health(before,after)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})

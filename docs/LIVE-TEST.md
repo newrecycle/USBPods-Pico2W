@@ -9,7 +9,7 @@ produced by `tools/package_live_test.py` (CI packaging step) with matching
 [OFFLINE-TRIAGE-FINDINGS.md](OFFLINE-TRIAGE-FINDINGS.md),
 [STATIC-REVIEW-2026-11-03.md](STATIC-REVIEW-2026-11-03.md).
 
-**The old 238ed609 package is withdrawn. Flash the UF2 in this new package before running.**
+**The old 238ed609 package is withdrawn. Run-Test.ps1 installs this package's UF2 before testing.**
 The engineering blockers from the first capture have targeted fixes and offline
 regressions. See [the revalidation report](REVALIDATION-2026-11-03.md). The first replacement run and subsequent user observations are recorded in
 [LIVE-FINDINGS-2026-11-03.md](LIVE-FINDINGS-2026-11-03.md). The new transition
@@ -23,8 +23,15 @@ the UF2 hash and source commit; the runner refuses a different running commit.
 
 ## Windows setup
 
-1. Save your known-working UF2. Flash the package's `Reconstructed` UF2 to the
-   Pico **2 W**, using BOOTSEL. Do not flash an RP2350 application onto Pico W.
+1. Save your known-working UF2. Have `picotool` in PATH and connect the Pico
+   **2 W**, either running the previous USBPods firmware or already in BOOTSEL.
+   The launcher verifies the bundle, attempts `picotool reboot -u -f` for a
+   running device, falls back to its existing 1200-baud CDC reset hook when
+   needed, then runs `picotool load -v -x` on the bundled UF2. It waits for CDC
+   and checks the returning firmware SHA before starting tests. It follows a
+   changed COM number automatically and stops on flash/identity failure.
+   Connect only the intended Pico 2 BOOTSEL target; an ambiguous selection is
+   refused by picotool. Only UF2 sectors are written; no erase-all is used.
 2. Connect USB directly. Close other COM terminals and apps using the dongle's
    microphone. Use UAC2 and manual connect mode for the automatic run. The
    runner saves UAC2/manual/48 kHz preferences and asks for one replug/rerun if
@@ -54,7 +61,9 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    ```powershell
    py -3 -m venv .venv
    .\.venv\Scripts\python.exe -m pip install -r live-requirements.txt
-   .\.venv\Scripts\python.exe live_test.py --cdc COM3
+   .\.venv\Scripts\python.exe flash_candidate.py --cdc COM3 --port-file flashed-port.txt
+   if ($LASTEXITCODE -ne 0) { throw 'Firmware update failed; see flash-log.json' }
+   .\.venv\Scripts\python.exe live_test.py --cdc (Get-Content -Raw flashed-port.txt).Trim()
    ```
 
    `--target-mac AA:BB:CC:DD:EE:FF` can replace the name. Name matching is exact,
@@ -70,7 +79,10 @@ the UF2 hash and source commit; the runner refuses a different running commit.
 
 5. Follow the prompts. Conversation Awareness is temporarily disabled during
    audio capture when its notified state is known, then restored. The audio matrix plays quiet stereo 440/660 Hz tones
-   with broadband sections. Speak/count as prompted. WAV clips contain up to
+   with broadband sections. Play a repeatable clip through the phone's speaker
+   near the AirPods during each 20-second phase, or speak. The phone must not
+   send that clip over Bluetooth to the AirPods; this is acoustic microphone
+   input while the PC supplies playback. WAV clips contain up to
    12 seconds per phase; counters cover the full run. If Windows audio endpoint
    names are ambiguous, rerun
    with `--input-device N --output-device N`, using the captured device list.
@@ -78,6 +90,8 @@ the UF2 hash and source commit; the runner refuses a different running commit.
    the PC's default microphone or speakers.
 6. Return `USBPods-results-<UTC>.zip`, including failures. Automatic check or collection
    failures return a nonzero exit code.
+   The ZIP also includes the matching flash log. If flashing fails before a
+   test run starts, return `flash-log.json` from the package folder.
    `automated_pass` is separate from `complete`; skipped or unverified physical
    coverage remains explicit even when automatic checks pass. Inspect
    `summary.json`. Do not interpret a

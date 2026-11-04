@@ -35,7 +35,7 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     if source_sha.encode()+b'\0' not in data_bytes:raise ValueError('Source SHA is not embedded in this firmware')
     verify_uf2(firmware.read_bytes(),data_bytes)
     out.mkdir(parents=True,exist_ok=False)
-    for name in ('live_test.py','live_audio.py','Run-Test.ps1','live-requirements.txt'):
+    for name in ('live_test.py','live_audio.py','flash_candidate.py','Run-Test.ps1','live-requirements.txt'):
         shutil.copy2(root/'tools'/name,out/name)
     shutil.copy2(root/'docs/LIVE-TEST.md',out/'LIVE-TEST.md')
     shutil.copy2(root/'docs/REVALIDATION-2026-11-03.md',out/'REVALIDATION-2026-11-03.md')
@@ -50,6 +50,10 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
         (root/'docs/DUPLEX-LIFECYCLE-042523.md').read_text().replace(
             '(evidence/duplex-lifecycle-042523.json)','(duplex-lifecycle-042523.json)'))
     shutil.copy2(root/'docs/evidence/duplex-lifecycle-042523.json',out/'duplex-lifecycle-042523.json')
+    (out/'DUPLEX-PACKET-CADENCE-051250.md').write_text(
+        (root/'docs/DUPLEX-PACKET-CADENCE-051250.md').read_text().replace(
+            '(evidence/duplex-packet-cadence-051250.json)','(duplex-packet-cadence-051250.json)'))
+    shutil.copy2(root/'docs/evidence/duplex-packet-cadence-051250.json',out/'duplex-packet-cadence-051250.json')
     shutil.copy2(root/'docs/validation-status.json',out/'validation-status.json')
     shutil.copy2(firmware,out/firmware.name)
     shutil.copy2(evidence/'verification.json',out/'verification.json')

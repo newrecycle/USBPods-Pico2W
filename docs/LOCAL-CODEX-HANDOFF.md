@@ -305,6 +305,17 @@ Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
 
+Capture 051250 on `2911a82` completed the ten-minute soak and both 256 kbps
+intervals were loss-free. At 192 kbps and in game modes, the timer still staged
+three-AU packets across multiple calls despite the per-fill two-AU cap. Read
+[DUPLEX-PACKET-CADENCE-051250.md](DUPLEX-PACKET-CADENCE-051250.md) for the
+complete-packet bound, before/after production-sender regression, corrected
+reconnect settling/optional Off tests, phone-speaker input prompts and automatic
+picotool launcher. Mic-closed left-channel silence and small soak losses remain
+physical findings, not demonstrated fixes. The launcher attempts picotool
+forced reset, uses the existing CDC 1200-baud fallback for legacy firmware,
+verifies/boots the packaged UF2 and follows the returning COM port.
+
 Capture 042523 validates zero-loss 256 kbps playback/mic intervals on `a952fa9`,
 but lower-rate/game batches still lost AUs, the mic-closed right-channel check
 failed, and the second reconnect hit a media OPEN timeout. Read

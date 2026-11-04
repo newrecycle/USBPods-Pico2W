@@ -42,4 +42,7 @@ static struct {uint32_t scratch[8];} hw;
 typedef struct {
  uint32_t samples_ready;int max_media_payload_size;
  uint8_t codec_storage[1500];uint16_t codec_storage_count,codec_num_frames;
+ uint16_t avdtp_cid;uint8_t local_seid,codec_ready_to_send;
 } a2dp_media_sending_context_t;
+static unsigned send_requests;
+static void a2dp_source_stream_endpoint_request_can_send_now(uint16_t cid,uint8_t seid){assert(cid==0x42 && seid==2);send_requests++;}

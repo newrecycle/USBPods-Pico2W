@@ -199,6 +199,12 @@ class Link:
         raise TimeoutError(f'Device state timeout; last={last}')
 
 CONTROL_WIRE = {'noise':(0x0d,1),'pvol':(0x26,2),'ca':(0x28,3),'aa':(0x2e,4),'jitter':(0x0b,0)}
+
+def peer_control_values(command, values, state):
+    """Off is an optional AirPods capability, not an ANC application failure."""
+    if command=='noise' and state.get('allow_off')!=1:
+        return [v for v in values if v!=1]
+    return list(values)
 def submit_peer_control(link, command, value):
     identifier,_=CONTROL_WIRE[command]
     before=link.request('status')
@@ -280,6 +286,11 @@ def main():
         return input(message+' ').strip()
     try:
         manifest=json.loads(args.manifest.read_text());verify_manifest(args.manifest.parent.resolve(),manifest)
+        flash_log=args.manifest.parent/'flash-log.json'
+        if flash_log.is_file():
+            flash=json.loads(flash_log.read_text(encoding='utf-8'))
+            if flash.get('candidate_sha')==manifest['sha']:
+                (root/'flash-log.json').write_text(json.dumps(flash,indent=2),encoding='utf-8')
         summary['candidate']=manifest;(root/'candidate.json').write_text(json.dumps(manifest,indent=2))
         import serial
         from serial.tools import list_ports
@@ -330,7 +341,7 @@ def main():
         link.request('earpause 0');link.request('stem 0')
         if state.get('relay_connected'):
             link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
-        prompt('Wear the AirPods. A quiet tone will play; speak/count into the microphone during capture. Press Enter to start:')
+        prompt('Wear the AirPods. The PC will play a quiet tone. For microphone input, play a clip through your phone SPEAKER near the AirPods, or speak. Keep the phone audio off Bluetooth. Press Enter to start:')
         capture_ca=link.request('status').get('ca',-1)
         audio_ok=False
         try:
@@ -353,13 +364,16 @@ def main():
         link.request('telemetry')
         if audio_ok:
             for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
-                initial=link.request('status')[field]
+                control_state=link.request('status');initial=control_state[field]
                 if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
                 if command=='noise' and initial==1 and link.request('status').get('allow_off')!=1:
                     result(command,'SKIP','Current Off mode cannot be safely restored without an AllowOff notification');continue
+                selected_values=peer_control_values(command,values,control_state)
+                if selected_values!=values:
+                    result('noise_off','SKIP','Peer has not reported AllowOff=1; Off is unavailable or unconfirmed')
                 observed=[]
                 try:
-                    for value in values:
+                    for value in selected_values:
                         before,sent=submit_peer_control(link,command,value)
                         echo=observe_peer_control(link,command,value,before)
                         observed.append({'requested':value,'wire_sent':True,'fresh_peer_readback':echo,'control_tx':sent['control_tx']})

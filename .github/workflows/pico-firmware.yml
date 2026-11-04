@@ -16,6 +16,17 @@ concurrency:
 permissions:
   contents: read
 jobs:
+  windows-launcher:
+    name: Windows automatic flash launcher
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Execute PowerShell launcher contracts without USB hardware
+        shell: pwsh
+        run: ./tests/test_start_script.ps1
   build:
     name: Pico 2 W - ${{ matrix.firmware }} - ${{ matrix.mic }}
     runs-on: ubuntu-24.04
@@ -151,6 +162,7 @@ jobs:
           python3 tests/test_uac1_controls.py
           python3 tests/test_mic_recovery_integration.py
           python3 tests/test_live_runner.py
+          python3 tests/test_flash_candidate.py
           python3 tests/test_live_matrix.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_media_input.c src/btstack/media_input.c -o /tmp/test-media-input
           /tmp/test-media-input

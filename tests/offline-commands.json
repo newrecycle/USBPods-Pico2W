@@ -809,5 +809,13 @@
     ],
     "requires_fdk": true,
     "timeout": 120
+  },
+  {
+    "name": "flash-candidate",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_flash_candidate.py"
+    ],
+    "timeout": 120
   }
 ]
