@@ -114,6 +114,28 @@ class AppliedPolicy(unittest.TestCase):
         self.assertTrue(any("missing_samples" in e for e in
             live_audio.health(before, sample(2, 164, missing=1))))
 
+    def test_steady_interval_rejects_unexpected_profile_change(self):
+        profile = live_audio.PROFILES[3]
+        def sample(decoded, jitter=90):
+            applied = state(profile)
+            applied["active_jitter"] = jitter
+            return dict(
+                status=dict(streaming=1, codec=4, tx_packets=decoded, send_failures=0),
+                eldstatus=applied,
+                micstats=dict(generation=1,capture=1,decoded=decoded,
+                              clock_windows=1,measured_rate=64000,
+                              coding_rate=48000,pcm_rate=64000,
+                              errors=0,au_drop=0,pcm_drop=0),
+                usbcapture=dict(running=1,pcm_samples=decoded*480,
+                                missing_samples=0,short_writes=0),
+            )
+        before=sample(10)
+        self.assertEqual(live_audio.health(before,sample(11),profile),[])
+        # A mid-interval policy change cannot be called a passing game test
+        # even though zero AU, decoder, and USB errors were observed.
+        self.assertIn("Applied ELD profile mismatch at end of steady interval",
+                      live_audio.health(before,sample(11,jitter=150),profile))
+
     def test_firmware_status_exposes_applied_policy_not_only_preference(self):
         c_source = (ROOT / "src/device_control.c").read_text()
         self.assertIn(r'active_jitter\":%u', c_source)

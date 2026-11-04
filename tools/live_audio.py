@@ -87,13 +87,16 @@ def snapshot(link, recorder, label):
 def delta(before, after, key):
     return (int(after.get(key,0))-int(before.get(key,0))) & 0xffffffff
 
-def health(before, after):
-    """Evaluate steady intervals; transition/reconnect padding is kept separate."""
+def health(before, after, profile=None):
+    """Strict steady loss and applied-profile checks, apart from recovery."""
+
     a,b=before.get('micstats',{}),after.get('micstats',{})
     u,v=before.get('usbcapture',{}),after.get('usbcapture',{})
     errors=[]
-    for item in (before,after):
+    for label,item in (('begin',before),('end',after)):
         s=item.get('status',{});e=item.get('eldstatus',{})
+        if profile is not None and not profile_matches(e,profile):
+            errors.append(f'Applied ELD profile mismatch at {label} of steady interval')
         if s.get('mic_watchdog_failed'):errors.append('Microphone received-audio watchdog exhausted its retry budget')
         if not s.get('streaming') or s.get('codec')!=4 or e.get('transition')!='ready':
             errors.append('Playback was not in a ready AAC-ELD stream')
@@ -293,7 +296,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             audio.set_phase(name);print(f'{name}: {seconds} seconds of concurrent playback/capture. Phone-speaker input for the first 20 seconds is sufficient.',flush=True)
             before=snapshot(link,recorder,name+'_begin');dwell(seconds,name)
             after=snapshot(link,recorder,name+'_end')
-            errors=health(before,after)+audio.phase_errors(name)
+            errors=health(before,after,profile)+audio.phase_errors(name)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'applied':applied,'before':before,'after':after})
         if probe_only:
             audio.set_phase('session_closing');audio.set_capture(False)
@@ -320,7 +323,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if closed=='PASS':channel_check('mic_reopened')
         audio.set_phase('mic_reopened_steady')
         before=snapshot(link,recorder,'mic_reopened_begin');dwell(5,'mic_reopened_steady')
-        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after)
+        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after,baseline)
         result('mic_close_reopen_duplex','FAIL' if errors else 'PASS' if closed=='PASS' else 'UNVERIFIED',
                {'errors':errors,'closure':closed,'before':before,'after':after})
         for cycle in range(3):
@@ -331,20 +334,21 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             await_profile(link,baseline);dwell(3,name+'_settle')
             await_duplex_ready(link,recorder,baseline,name+'_ready')
             before=snapshot(link,recorder,name+'_begin');dwell(5,name)
-            after=snapshot(link,recorder,name+'_end');errors=health(before,after)
+            after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
         audio.set_phase('duplex_soak');print(f'Duplex soak: {args.soak_seconds} seconds. Leave both streams open.',flush=True)
         before=snapshot(link,recorder,'soak_begin');dwell(args.soak_seconds,'duplex_soak')
-        after=snapshot(link,recorder,'soak_end');errors=health(before,after)+audio.phase_errors('duplex_soak')
+        after=snapshot(link,recorder,'soak_end');errors=health(before,after,baseline)+audio.phase_errors('duplex_soak')
         result('duplex_soak','FAIL' if errors else 'PASS',{'seconds':args.soak_seconds,'errors':errors,'before':before,'after':after})
         if args.phone_relay:
             audio.set_phase('phone_relay_duplex');link.request('phonepair 1')
             try:
                 prompt('Pair/play a phone now; leave PC playback and microphone capture running. Press Enter when playing:')
                 state=link.wait(lambda s:s.get('relay_connected') and s.get('relay_streaming'),60)
-                await_profile(link,('relay',*baseline[1:4],164000,0,0,6));dwell(3,'relay_settle')
+                relay_profile=('relay',*baseline[1:4],164000,0,0,6)
+                await_profile(link,relay_profile);dwell(3,'relay_settle')
                 before=snapshot(link,recorder,'phone_relay_duplex_begin');dwell(15,'phone_relay_duplex')
-                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after)
+                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)
                 heard=prompt('Was the mixed phone/PC audio clear? Type yes/no, or Enter for unverified:')
                 result('phone_relay_duplex','FAIL' if errors or heard.lower()=='no' else 'PASS' if heard.lower()=='yes' else 'UNVERIFIED',{'state':state,'errors':errors,'before':before,'after':after})
             finally:
