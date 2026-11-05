@@ -54,8 +54,12 @@ The combined offline suite passed **75/75**, zero failures and zero skips.
 This includes ASan/UBSan production-source contracts, 15 simulated CLI scenarios,
 real-FDK duplex/profile tests, threaded queue and concurrent codec tests, and
 packaging/tamper validation. See the sanitized evidence record for individual
-results. Target and Windows CI must pass on the published integration tree
-before merging main; their run URLs will be recorded in a follow-up record.
+results. All eight CI jobs passed on published source `3ba230c93de32703ee93b81fff0c9c9252add5e8`:
+[four Pico variants and Windows launcher](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938672),
+[runner and Windows regressions](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938681),
+and [USB/HID regressions](https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938722).
+The subsequent evidence-record commit changes only this report and its JSON;
+firmware, tests, build policy and dependencies remain byte-identical.
 
 `USBPODS_DUAL_CORE_MIC` remains **OFF by default**, requires microphone decoding,
 and its distinctive experimental target remains excluded from automatic live

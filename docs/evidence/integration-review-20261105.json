@@ -463,5 +463,69 @@
       "returncode": 0,
       "seconds": 0.134
     }
+  ],
+  "tested_source_sha": "3ba230c93de32703ee93b81fff0c9c9252add5e8",
+  "tested_tree_sha": "2aa09ea750c928fe71467d2ea4eee58119adaf1c",
+  "physical_acceptance": false,
+  "ci": [
+    {
+      "id": 41971938672,
+      "name": "Pico firmware build",
+      "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938672",
+      "head_sha": "3ba230c93de32703ee93b81fff0c9c9252add5e8",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Pico 2 W - rpi0065 - aaceld-core1-experimental",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pico 2 W - rpi0065 - aaceld",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pico 2 W - rpi0065 - transport",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pico 2 W - stock0031 - transport",
+          "conclusion": "success"
+        },
+        {
+          "name": "Windows automatic flash launcher",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 41971938722,
+      "name": "USB capture and HID host tests",
+      "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938722",
+      "head_sha": "3ba230c93de32703ee93b81fff0c9c9252add5e8",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "host-regressions",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 41971938681,
+      "name": "Live runner host regressions",
+      "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41971938681",
+      "head_sha": "3ba230c93de32703ee93b81fff0c9c9252add5e8",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "Windows automatic flash launcher contracts",
+          "conclusion": "success"
+        },
+        {
+          "name": "Linux runner contracts and compiled CLI simulations",
+          "conclusion": "success"
+        }
+      ]
+    }
   ]
 }
