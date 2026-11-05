@@ -38,6 +38,17 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     for name in ('live_test.py','live_audio.py','flash_candidate.py','Run-Test.ps1','live-requirements.txt'):
         shutil.copy2(root/'tools'/name,out/name)
     shutil.copy2(root/'docs/LIVE-TEST.md',out/'LIVE-TEST.md')
+    # Audit documentation is part of the offline operator handoff and its
+    # source identity must be hash-pinned like every other packaged text file.
+    for doc in ('LOCAL-WINDOWS-20261104.md','VALIDATION-AUDIT-INITIAL-20261104.md',
+                'VALIDATION-AUDIT-REPORT-20261104.md'):
+        shutil.copy2(root/'docs'/doc,out/doc)
+    shutil.copy2(root/'docs/evidence/local-windows-20261104.json',
+                 out/'local-windows-20261104.json')
+    audit_path=out/'VALIDATION-AUDIT-REPORT-20261104.md'
+    audit_path.write_text(audit_path.read_text().replace(
+        '(evidence/local-windows-20261104.json)','(local-windows-20261104.json)'))
+
     shutil.copy2(root/'docs/REVALIDATION-2026-11-03.md',out/'REVALIDATION-2026-11-03.md')
     shutil.copy2(root/'docs/LIVE-FINDINGS-2026-11-03.md',out/'LIVE-FINDINGS-2026-11-03.md')
     for name in ('OFFLINE-TRIAGE-PLAN.md','OFFLINE-TRIAGE-FINDINGS.md'):

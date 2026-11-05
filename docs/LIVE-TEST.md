@@ -1,5 +1,18 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
+**Evidence-integrity note (independent audit, 2026-11-04):** The source candidate at
+18be74cfe99f2584bcf26a0c0f0571c75a7f7bec passed firmware and host CI,
+but it **was not flashed or physically tested**. The last physical laptop
+firmware was 880dc318072f191f1440d3f0b262d83e32729b59, normally CDC COM4.
+It passed the 256 kbps rate phase but failed 192 kbps; both game modes were
+unmeasured. Microphone-close left-ear silence persisted after MaxxAudioPro
+was disabled. The previous 600.539-second duplex soak was **already completed**
+at 2911a82; duration completion is not strict zero-loss PASS. Do not prescribe
+another ten-minute soak for this audit. See
+[the source-specific evidence ledger](VALIDATION-AUDIT-INITIAL-20261104.md)
+and [audit/integration report](VALIDATION-AUDIT-REPORT-20261104.md).
+A session-only probe does not run the manual isolated left/right checks.
+
 **Hardware runs are authorized as of 2026-11-03 by repository-owner order**
 after the offline static review, repairs and green CI build. Use only a package
 produced by `tools/package_live_test.py` (CI packaging step) with matching
@@ -36,6 +49,21 @@ channel questions, control cycling or ten-minute soak is included. Return the
 results ZIP even if it exits early. See [AACP-SESSION-0555.md](AACP-SESSION-0555.md).
 This package diagnoses the repeatable disconnect; its physical cause is still
 unresolved. Omit `-SessionOnly` for the complete matrix after that issue is closed.
+
+After the first pairing, a package containing the local runner's new
+`-ReusePairing` option can reuse the current or uniquely selected saved bond:
+
+```powershell
+.\Run-Test.ps1 -CdcPort COM4 -SessionOnly -ReusePairing
+```
+
+This mode does not scan, request case pairing mode, or send a fresh pairing
+command. A disconnected selected device is dialed through `savedconnect`.
+Ambiguous history requires `-TargetName` or `-TargetMac`; a different connected
+headset is refused. The launcher's existing flash/identity checks still apply.
+The verified `880dc31` package does not yet contain this new runner option.
+The local supplemental probes reused its existing connection and saved bond.
+See [the local Windows findings](LOCAL-WINDOWS-20261104.md).
 
 1. Save your known-working UF2. Have `picotool` in PATH and connect the Pico
    **2 W**, either running the previous USBPods firmware or already in BOOTSEL.

@@ -30,6 +30,7 @@ static uint16_t src_eld_setup_cid;
 static uint32_t src_vbr_mode,current_sample_rate,rtp_samples_per_frame,audio_timer_interval;
 static bool src_eld_reset_pending,src_codec_release_pending,is_streaming,a2dp_is_connected_flag;
 static bool src_start_accepted_pending;
+static bool src_eld_encode_requested;
 static bool src_eld_timer_armed,src_user_dc_hold,src_auto_kick_pending,src_prime_pending;
 static bool src_eld_timer_waiting_media;
 static bool src_session_streamed,src_wedge_hold,finish_scan_avdtp_codec,core1_encoder_active;

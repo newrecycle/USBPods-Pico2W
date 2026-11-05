@@ -9,7 +9,7 @@ bool aacp_mic_capture(void);
 uint32_t aacp_mic_generation(void);
 void aacp_mic_discontinuity(void); /* invalidate queued audio, preserve USB intent */
 void aacp_mic_audio_init(void);       /* plain main context, before BT starts */
-void aacp_mic_audio_work(void);       /* bounded main-context decode */
+void aacp_mic_audio_work(void);       /* bounded decode: core0 default, core1 experimental */
 bool aacp_mic_audio_pending(void);   /* runnable AU: avoid sleeping behind it */
 void aacp_mic_audio_enqueue(const uint8_t *au, uint8_t len);
 uint32_t aacp_mic_audio_read(int16_t *dst, uint32_t samples); /* USB IRQ */

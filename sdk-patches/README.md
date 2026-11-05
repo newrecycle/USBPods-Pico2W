@@ -24,6 +24,17 @@ git -C $PICO_SDK_PATH/lib/tinyusb diff > sdk-patches/tinyusb-usbpods.patch
 ## What the patches do and why each is required
 
 ### btstack-usbpods.patch
+- **`src/classic/avdtp.c` and `avdtp_initiator.c` — bounded START transaction ownership.**
+  START requires an OPENED SDK endpoint before being queued: the unpatched
+  SDK returned success in other states, then discarded that queued flag in
+  CAN_SEND_NOW without sending a command. Every initiator response now checks
+  its transaction label *before* changing SDK wait/endpoint state or emitting
+  an accept/reject, so a late first-START accept cannot consume the second
+  retry's transaction. The application still cannot infer radio delivery
+  from the API return: an actual CAN_SEND_NOW and L2CAP transmit happen later,
+  and an unanswered peer remains possible. See
+  `docs/PLAYBACK-RESTART-AUDIT-20261104.md` and
+  `tests/test_sdk_transport_contract.py`.
 - **`src/hci.c` — flush ≠ death.** Stock BTstack treats `HCI_EVENT_FLUSH_OCCURRED`
   as a link watchdog and sets `SEND_DISCONNECT`. macOS semantics: a flush is the
   200 ms timeout doing its job on a degraded link. Without this patch, any flush

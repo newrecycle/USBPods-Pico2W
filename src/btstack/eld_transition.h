@@ -13,6 +13,7 @@ typedef struct {
  eld_phase phase;
  uint32_t requested,built;
  bool managed,start_inflight;
+ uint8_t start_retries;
 } eld_transition;
 void eld_transition_reset(eld_transition*);
 void eld_transition_configured(eld_transition*);
@@ -23,5 +24,6 @@ unsigned eld_transition_built(eld_transition*,bool success);
 unsigned eld_transition_failed(eld_transition*);
 unsigned eld_transition_rejected(eld_transition*);
 bool eld_transition_begin_start(eld_transition*);
+unsigned eld_transition_retry_start(eld_transition*);
 bool eld_transition_busy(const eld_transition*);
 const char *eld_transition_phase_name(eld_phase);

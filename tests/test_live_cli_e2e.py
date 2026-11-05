@@ -95,10 +95,14 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         def eld(self):
             p=(ctypes.c_uint32*5)();s=self.settings
             profile(s['eldrate'],int(bool(s['usbset']&128)),s['gamelevel'],5,p)
+            game=bool(s['usbset']&128)
+            jitter=60 if game and s['gamelevel']==2 else 90 if game else 150
             return dict(kind='eldstatus',ready=int(self.connected),pending=0,
                 transition='failed' if self.failed else 'ready',requested_revision=self.revision,
-                built_revision=self.revision,active_bitrate=p[0],active_vbr=p[1],active_sbr=p[2],
+                built_revision=self.revision,active_bitrate=p[0],active_vbr=0,active_sbr=0,
                 active_slots=p[3],input_rate=p[4],negotiated_bitrate=ceiling,negotiated_vbr=1,duplex_cbr=1,
+                selected_rate=s['eldrate'],game=int(game),gamelevel=s['gamelevel'],
+                desired_bitrate=p[0],active_jitter=jitter,desired_jitter=jitter,
                 error_stage=(6 if case=='reconnect-fault' else 2) if self.failed else 0,
                 last_error=(518 if case=='reconnect-fault' else 263) if self.failed else 0)
         def reply(self,raw):

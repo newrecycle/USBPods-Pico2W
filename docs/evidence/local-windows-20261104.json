@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "hardware_run": true,
+  "date_utc": "2026-11-04",
+  "firmware_source_sha": "880dc318072f191f1440d3f0b262d83e32729b59",
+  "ci_run_id": 41786883085,
+  "ci_artifact_sha256": "be0e97b2e5661210a6e8402176f041276a5939b7464aba4e94fff90540228165",
+  "firmware_sha256": "924d21dc89fb41839c77b4a2e7f6bb44620fd377b40e2b9b5df5d5381ef64af6",
+  "cdc_port": "COM4",
+  "current_host": "Windows laptop",
+  "earlier_host": "Windows PC",
+  "host_processing": {
+    "earlier_pc_audio_enhancements": false,
+    "laptop_MaxxAudioPro_initially_enabled": true,
+    "disabled_by_user_during_session": true,
+    "mixing_corrected": true,
+    "earlier_pc_failures_explained_by_MaxxAudioPro": false
+  },
+  "physical_channels_after_MaxxAudioPro_disabled": {
+    "mic_open": {
+      "left_tone": "left ear only",
+      "right_tone": "right ear only"
+    },
+    "mic_closed": {
+      "left_tone": "silent",
+      "right_tone": "right ear only"
+    },
+    "mic_reopened": {
+      "left_tone": "left ear only",
+      "right_tone": "right ear only"
+    },
+    "physical_left_right_fix_verified": false
+  },
+  "manual_refresh": {
+    "command": "K",
+    "capture_closed": true,
+    "result": "FAIL",
+    "suspend_accepted": true,
+    "encoder_rebuilt": true,
+    "timeout_phase": "wait-start",
+    "error_stage": 4,
+    "last_error": 4,
+    "acl_termination_reason": "0x16 local terminated"
+  },
+  "saved_bond_reconnect": {
+    "result": "PASS",
+    "fresh_pairing": false,
+    "case_required": false,
+    "left_only_tone_with_capture_closed": "left ear only",
+    "power_cycle_persistence_tested": false
+  },
+  "measurements": {
+    "supplemental_45_second_duplex": {
+      "status": "PASS",
+      "errors": [],
+      "decoded": 6089,
+      "au_drop": 0,
+      "pcm_drop": 0,
+      "decode_errors": 0,
+      "usb_missing_samples": 0,
+      "tx_packets": 2279,
+      "session_begin_ms": 210515,
+      "session_end_ms": 256091
+    },
+    "eld256": {
+      "status": "PASS",
+      "errors": [],
+      "decoded": 2749,
+      "au_drop": 0,
+      "pcm_drop": 0,
+      "decode_errors": 0,
+      "usb_missing_samples": 0,
+      "tx_packets": 1029,
+      "session_begin_ms": 136565,
+      "session_end_ms": 157150
+    },
+    "eld192": {
+      "status": "FAIL",
+      "errors": [
+        "Microphone au_drop: +186",
+        "USB missing_samples: +95168"
+      ],
+      "decoded": 2538,
+      "au_drop": 186,
+      "pcm_drop": 0,
+      "decode_errors": 0,
+      "usb_missing_samples": 95168,
+      "tx_packets": 1029,
+      "session_begin_ms": 161807,
+      "session_end_ms": 182385
+    }
+  },
+  "remaining_current_run_coverage": {
+    "both_game_modes": "not run; stopped at 192 kbps failure",
+    "new_10_minute_soak": "not run; retain existing evidence",
+    "320_kbps": "not run; negotiated ceiling 256000"
+  },
+  "prior_soak": {
+    "source_sha": "2911a824d5a44d126234d4f63545a37051d71d5f",
+    "evidence": "duplex-packet-cadence-051250.json",
+    "user_report": "already completed successfully; do not repeat",
+    "completed_seconds": 600.539,
+    "existing_strict_zero_loss_status": "FAIL",
+    "existing_au_drop": 7,
+    "existing_usb_missing_samples": 14656
+  },
+  "final_state": {
+    "connected": 1,
+    "confirmed": 1,
+    "capture": 0,
+    "active_bitrate": 256000,
+    "transition": "ready",
+    "fresh_pairing": false
+  },
+  "local_runner_changes": {
+    "firmware_code_changed": false,
+    "packaged_or_flashed": false,
+    "changes": [
+      "bounded duplex readiness before profile measurement",
+      "explicit saved-pairing reuse mode"
+    ],
+    "file_sha256": {
+      "tools/live_audio.py": "bbb116631e9923b2321245c25eb690f4012c2c68974016bbae47617b78765936",
+      "tools/live_test.py": "7d4c04720a0cf6e90a7ea3cb5c6294ec5a262fac07d05988a08cb7603b086bc9",
+      "tools/Run-Test.ps1": "f7e08b5c139f220092c774060d8868e55cab91c68456208c6594fcc5d4942d60"
+    }
+  },
+  "local_validation": {
+    "matrix_replay_tests_passed": 5,
+    "runner_contract_tests_passed": 27,
+    "native_Windows_launcher_fixture": "PASS",
+    "archived_runner_refresh_fixture": "expected FAIL reproduced",
+    "full_simulated_CLI_suite": "could not start: cc compiler unavailable",
+    "full_offline_suite_or_new_target_build_claimed": false
+  },
+  "private_raw_inputs_committed": false,
+  "raw_archives_local_only": [
+    {
+      "name": "manual-recovery-20261104T070721Z.zip",
+      "sha256": "df1e75cdd01294a18285e0ea0c92cd3ed4a5153aaff28a8b6ffe50336afd0ad6",
+      "bytes": 17438
+    },
+    {
+      "name": "manual-recovery-20261104T070842Z.zip",
+      "sha256": "58d8de4e6a3338b140d61cf03103d7106aa9528d09fbc639d73d83a845cbf3f0",
+      "bytes": 18188
+    },
+    {
+      "name": "paired-matrix-20261104T071051Z.zip",
+      "sha256": "f3218db396206401b38d3dd506ec78d6914d14424527dca95ea2119d716cc008",
+      "bytes": 2412079
+    },
+    {
+      "name": "supplemental-20261104T065242Z.zip",
+      "sha256": "ab8dec5c9de6a3eb583f0b6595595c8ea5960b7c93de0a611da8d648b89b9e76",
+      "bytes": 2053582
+    },
+    {
+      "name": "supplemental-20261104T065629Z.zip",
+      "sha256": "0bfc8eb27253287aad3690aad5942ed1bee16cb112a0ec47fb21b10febc0e0d0",
+      "bytes": 1743164
+    },
+    {
+      "name": "supplemental-20261104T070123Z.zip",
+      "sha256": "4e029640117f0458554db2708974a9ccc4fbca0cc53271d0cda942d620bb6007",
+      "bytes": 1161097
+    },
+    {
+      "name": "supplemental-20261104T070410Z.zip",
+      "sha256": "673082740777ef3162c45438709082a714aed4f87bbb807bf6800fffdbb53303",
+      "bytes": 1607511
+    },
+    {
+      "name": "USBPods-results-20261104T064826Z.zip",
+      "sha256": "80367f8bf1ce0c322b1384d8057ab9c5cdb3054aeb4e57b21fb6b60c95512f1f",
+      "bytes": 899829
+    }
+  ],
+  "limits": [
+    "Microphone-close left-ear silence unresolved",
+    "No firmware-only comparison across PC and laptop",
+    "Explicit refresh timeout preserved; no silent automatic reconnect",
+    "Framed reception and successful decoding do not prove acoustic pitch or stereo without listening",
+    "The first supplemental run was deliberately interrupted after its passing interval to repeat channel listening with pure tones",
+    "One later run was stopped on initial capture-ownership uncertainty; the final lifecycle-only run confirmed closure"
+  ]
+}
