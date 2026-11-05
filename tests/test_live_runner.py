@@ -31,6 +31,32 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_saved_pairing_reuse_keeps_current_session_and_reconnects_only_selected_bond(self):
+        saved=[dict(index=0,mac='00:00:00:00:00:00',name=''),
+               dict(index=3,mac='AA:BB:CC:DD:EE:FF',name='fixture')]
+        class Link:
+            def __init__(self,connected):self.connected=connected;self.commands=[]
+            def request(self,cmd):
+                self.commands.append(cmd)
+                if cmd=='savedconnect 3':self.connected=True;return {}
+                if cmd=='status':return dict(connected=self.connected,peer='AA:BB:CC:DD:EE:FF')
+                raise AssertionError('Unexpected command: '+cmd)
+            def wait(self,predicate,timeout):
+                state=self.request('status');assert predicate(state);return state
+        for connected in (True,False):
+            link=Link(connected);chosen,state=live.reuse_saved_pairing(link,saved)
+            self.assertEqual(chosen['index'],3);self.assertTrue(state['connected'])
+            self.assertEqual(link.commands,['status']+([] if connected else ['savedconnect 3'])+['status'])
+        link=Link(False)
+        with self.assertRaisesRegex(ValueError,'ambiguous'):
+            live.reuse_saved_pairing(link,saved+[dict(index=4,mac='11:22:33:44:55:66',name='fixture')])
+        self.assertEqual(link.commands,['status'])
+        link=Link(True)
+        other=dict(index=4,mac='11:22:33:44:55:66',name='other')
+        with self.assertRaisesRegex(ValueError,'different headset'):
+            live.reuse_saved_pairing(link,saved+[other],mac=other['mac'])
+        self.assertEqual(link.commands,['status'])
+
     def test_preflight_restarts_stability_window_after_brief_recovery(self):
         class Clock:
             now=0
@@ -219,6 +245,8 @@ class Contracts(unittest.TestCase):
             with zipfile.ZipFile(archive) as z:
                 summary=json.loads(z.read('summary.json'))
                 self.assertEqual(summary['tests']['run']['status'],'FAIL')
+                self.assertFalse(summary['hardware_run'])
+                self.assertEqual(summary['hardware_phase'],'not_started')
                 self.assertIn('exception.txt',z.namelist())
     def test_target_identity(self):
         a={'index':1,'name':'My AirPods','mac':'AA:BB:CC:DD:EE:FF'}

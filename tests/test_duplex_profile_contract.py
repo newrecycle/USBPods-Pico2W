@@ -142,6 +142,23 @@ class AppliedPolicy(unittest.TestCase):
         self.assertIn(r'desired_jitter\":%u', c_source)
         self.assertIn("state.active.slots,state.active.jitter,state.desired.jitter,state.active.input_rate", c_source)
 
+    def test_sampled_profile_drift_and_mic_recovery_remain_failures(self):
+        profile=live_audio.PROFILES[3]
+        good=dict(status=dict(streaming=1,codec=4,mic_started=1,mic_recovery_pending=0),
+                  eldstatus=state(profile))
+        self.assertEqual(live_audio.steady_state_errors(good,profile),[])
+        drift=copy.deepcopy(good)
+        drift['eldstatus']['active_jitter']=150
+        faults=live_audio.steady_state_errors(drift,profile)
+        self.assertTrue(any('requested ready profile' in error for error in faults))
+        self.assertEqual(live_audio.steady_state_errors(good,profile),[])
+        # Recovery at the endpoint cannot erase an earlier sampled failure.
+        self.assertTrue(faults)
+        recovery=copy.deepcopy(good)
+        recovery['status']['mic_recovery_pending']=1
+        self.assertTrue(any('Microphone' in error for error in
+                            live_audio.steady_state_errors(recovery,profile)))
+
 
 if __name__ == "__main__":
     unittest.main()

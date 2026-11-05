@@ -827,6 +827,23 @@
     "timeout": 120
   },
   {
+    "name": "eld-foreground",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_foreground.py"
+    ],
+    "timeout": 120
+  },
+  {
+    "name": "mic-close-tap",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_mic_close_tap.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
     "name": "compile-mic-core1-threaded",
     "argv": [
       "cc",
@@ -866,10 +883,64 @@
     "timeout": 120
   },
   {
+    "name": "compile-parallel-fdk-duplex",
+    "requires_fdk": true,
+    "timeout": 120,
+    "argv": [
+      "cc",
+      "-std=c11",
+      "-O1",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-fsanitize=address",
+      "-pthread",
+      "-DUSBPODS_MIC_DECODE=1",
+      "-DUSBPODS_MIC_PARALLEL_HOST=1",
+      "-I",
+      "tests/time_mocks",
+      "-I",
+      "src/btstack",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACdec/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libAACenc/include",
+      "-isystem",
+      "3rd-party/fdk-aac/libSYS/include",
+      "tests/test_eld_duplex_fdk.c",
+      "src/btstack/eld_profile.c",
+      "src/btstack/eld_encoder.c",
+      "src/btstack/aacp_mic_audio.c",
+      "src/btstack/mic_clock.c",
+      "src/resamp44.c",
+      "{FDK}",
+      "-lstdc++",
+      "-lm",
+      "-o",
+      "{TMP}/test-eld-duplex-parallel"
+    ]
+  },
+  {
+    "name": "parallel-fdk-duplex",
+    "requires_fdk": true,
+    "timeout": 120,
+    "argv": [
+      "{TMP}/test-eld-duplex-parallel"
+    ]
+  },
+  {
     "name": "duplex-profile-applied-policy",
     "argv": [
       "{PYTHON}",
       "tests/test_duplex_profile_contract.py"
+    ],
+    "timeout": 120
+  },
+  {
+    "name": "validation-audit",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_validation_audit.py"
     ],
     "timeout": 120
   }

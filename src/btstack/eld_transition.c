@@ -48,7 +48,7 @@ unsigned eld_transition_started(eld_transition *s) {
 unsigned eld_transition_built(eld_transition *s,bool success) {
  if(s->phase!=ELD_REBUILD)return ELD_NOTHING;
  if(!success)return eld_transition_failed(s);
- s->built=s->requested;s->phase=ELD_WAIT_START;s->start_inflight=false;
+ s->built=s->requested;s->phase=ELD_WAIT_START;s->start_inflight=false;s->start_retries=0;
  return ELD_START;
 }
 unsigned eld_transition_failed(eld_transition *s) {
@@ -65,6 +65,13 @@ bool eld_transition_begin_start(eld_transition *s) {
  if(s->phase==ELD_READY)s->phase=ELD_WAIT_START;
  if(s->phase!=ELD_WAIT_START || s->start_inflight)return false;
  s->start_inflight=true;return true;
+}
+unsigned eld_transition_retry_start(eld_transition *s) {
+ /* A submitted START can be unanswered. Retry signaling once on the same
+    media channel, without another codec rebuild or an implicit reconnect. */
+ if(!s->managed || s->phase!=ELD_WAIT_START || !s->start_inflight || s->start_retries)return ELD_NOTHING;
+ s->start_retries=1;s->start_inflight=false;
+ return ELD_START;
 }
 const char *eld_transition_phase_name(eld_phase phase) {
  switch(phase) {

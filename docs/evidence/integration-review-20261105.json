@@ -1,0 +1,467 @@
+{
+  "date": "2026-11-05",
+  "baseline": "551d94bda9bf83b283512f98d2c35047d87ba6be",
+  "branches": [
+    {
+      "name": "audit/duplex-192k-profile-gpt6-20261104",
+      "sha": "97db0195bdd1b5cdd3a77f393852c9921f643309"
+    },
+    {
+      "name": "codex/eld-integration",
+      "sha": "2503a52c1b8d3c3cc65b165e453bebe4dcd5131e"
+    },
+    {
+      "name": "fix/aacp-30s",
+      "sha": "380d445c1d3ffbdd1828b15bd96ff120ced796ec"
+    },
+    {
+      "name": "fix/duplex-throughput-035227",
+      "sha": "db58171d4ac790f3cb963db9d56e910eb2d3a2e6"
+    },
+    {
+      "name": "fix/independent-review-defects",
+      "sha": "063fb38251aee3e935e5fed670b8f7d24f796d97"
+    },
+    {
+      "name": "fix/live-042523",
+      "sha": "3984ec11bb48867859838a436b8b52c410f352d4"
+    },
+    {
+      "name": "fix/live-051250",
+      "sha": "ff493acdd5f082352cc7f4d19d0b13bfc5b26806"
+    },
+    {
+      "name": "fix/preflight-062729",
+      "sha": "551d94bda9bf83b283512f98d2c35047d87ba6be"
+    },
+    {
+      "name": "main",
+      "sha": "551d94bda9bf83b283512f98d2c35047d87ba6be"
+    },
+    {
+      "name": "review/6be2889-independent",
+      "sha": "2b974bc8feda9f7496f87781668a0524f51ca494"
+    },
+    {
+      "name": "sco-firmware-investigation",
+      "sha": "e58290fa8be0db82e3de3133b7d8c0b80d6abf12"
+    },
+    {
+      "name": "verify/live-5a4ea5e-e2e",
+      "sha": "32cd8a4f6530cc7e539523a0ea2dc5fe5fa12244"
+    },
+    {
+      "name": "work/dualcore-mic-flash-safe-20261104",
+      "sha": "e21c46969fd6af4fefa04473b1316485790c445d"
+    },
+    {
+      "name": "work/local-mic-routing",
+      "sha": "8b89d425f496d0f7e0344bc150e6b836bc410346"
+    },
+    {
+      "name": "work/local-windows-20261104-mic-close-cloud-audit-01",
+      "sha": "2d16f2d341b13f3929b3cdf5975194f38c04cea6"
+    },
+    {
+      "name": "work/local-windows-20261104",
+      "sha": "18be74cfe99f2584bcf26a0c0f0571c75a7f7bec"
+    },
+    {
+      "name": "work/local-windows-evidence-audit-20261104-gpt6",
+      "sha": "05dde86d80da963c26d7beaf39e7a531b7469c13"
+    },
+    {
+      "name": "work/local-windows-playback-restart-20261104-gpt6",
+      "sha": "1bc7093660a2f176670c38e9450b6351854b14d0"
+    },
+    {
+      "name": "work/playback-start-contract-20261104-gpt6",
+      "sha": "a63d3844736fd28c6b28bcd2787d9b017c12388a"
+    }
+  ],
+  "pull_requests": [
+    3,
+    4
+  ],
+  "hardware_run": false,
+  "passed": 75,
+  "failed": 0,
+  "skipped": [],
+  "results": [
+    {
+      "name": "00 test-aacp",
+      "returncode": 0,
+      "seconds": 0.13
+    },
+    {
+      "name": "01 test-aacp",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "02 test-control",
+      "returncode": 0,
+      "seconds": 0.126
+    },
+    {
+      "name": "03 test-control",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "04 test-console",
+      "returncode": 0,
+      "seconds": 0.096
+    },
+    {
+      "name": "05 test-console",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "06 test-transport",
+      "returncode": 0,
+      "seconds": 0.315
+    },
+    {
+      "name": "07 test-transport",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "08 test-mic-audio",
+      "returncode": 0,
+      "seconds": 0.209
+    },
+    {
+      "name": "09 test-mic-audio",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "10 test-relay",
+      "returncode": 0,
+      "seconds": 0.097
+    },
+    {
+      "name": "11 test-relay",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "12 test_relay_lifecycle.py",
+      "returncode": 0,
+      "seconds": 0.187
+    },
+    {
+      "name": "13 test-eld-profile",
+      "returncode": 0,
+      "seconds": 0.082
+    },
+    {
+      "name": "14 test-eld-profile",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "15 test-eld-encoder",
+      "returncode": 0,
+      "seconds": 0.109
+    },
+    {
+      "name": "16 test-eld-encoder",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "17 test-eld-transition",
+      "returncode": 0,
+      "seconds": 0.106
+    },
+    {
+      "name": "18 test-eld-transition",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "19 test_eld_adapter.py",
+      "returncode": 0,
+      "seconds": 0.412
+    },
+    {
+      "name": "20 test-mic-telemetry",
+      "returncode": 0,
+      "seconds": 0.136
+    },
+    {
+      "name": "21 test-mic-telemetry",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "22 test-usb-input",
+      "returncode": 0,
+      "seconds": 0.168
+    },
+    {
+      "name": "23 test-usb-input",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "24 test_usb_input_wiring.py",
+      "returncode": 0,
+      "seconds": 0.041
+    },
+    {
+      "name": "25 test_live_runner.py",
+      "returncode": 0,
+      "seconds": 3.51
+    },
+    {
+      "name": "26 test_source_boundaries.py",
+      "returncode": 0,
+      "seconds": 0.221
+    },
+    {
+      "name": "27 test_control_records.py",
+      "returncode": 0,
+      "seconds": 0.108
+    },
+    {
+      "name": "28 test_settings_timing.py",
+      "returncode": 0,
+      "seconds": 0.192
+    },
+    {
+      "name": "29 test_sdk_transport_contract.py",
+      "returncode": 0,
+      "seconds": 0.128
+    },
+    {
+      "name": "30 test_relay_sdk_routing.py",
+      "returncode": 0,
+      "seconds": 0.127
+    },
+    {
+      "name": "31 test_codec_setup.py",
+      "returncode": 0,
+      "seconds": 0.193
+    },
+    {
+      "name": "32 test_eld_negotiation.py",
+      "returncode": 0,
+      "seconds": 0.153
+    },
+    {
+      "name": "33 test-eld-codec-config",
+      "returncode": 0,
+      "seconds": 0.097
+    },
+    {
+      "name": "34 test-eld-codec-config",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "35 test-mic-clock",
+      "returncode": 0,
+      "seconds": 0.083
+    },
+    {
+      "name": "36 test-mic-clock",
+      "returncode": 0,
+      "seconds": 0.068
+    },
+    {
+      "name": "37 test-usb-hid-threads",
+      "returncode": 0,
+      "seconds": 0.135
+    },
+    {
+      "name": "38 test-usb-hid-threads",
+      "returncode": 0,
+      "seconds": 0.009
+    },
+    {
+      "name": "39 test_verify_uf2.py",
+      "returncode": 0,
+      "seconds": 0.069
+    },
+    {
+      "name": "40 test_button_context.py",
+      "returncode": 0,
+      "seconds": 0.093
+    },
+    {
+      "name": "41 test_control_status.py",
+      "returncode": 0,
+      "seconds": 0.104
+    },
+    {
+      "name": "42 test-media-input",
+      "returncode": 0,
+      "seconds": 0.082
+    },
+    {
+      "name": "43 test-media-input",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "44 test_live_matrix.py",
+      "returncode": 0,
+      "seconds": 2.255
+    },
+    {
+      "name": "45 test_media_input_wiring.py",
+      "returncode": 0,
+      "seconds": 0.365
+    },
+    {
+      "name": "46 test_pcm_packet_path.py",
+      "returncode": 0,
+      "seconds": 0.56
+    },
+    {
+      "name": "47 test_usb_control_boundaries.py",
+      "returncode": 0,
+      "seconds": 0.196
+    },
+    {
+      "name": "48 test_uac1_controls.py",
+      "returncode": 0,
+      "seconds": 0.125
+    },
+    {
+      "name": "49 test_mic_recovery_integration.py",
+      "returncode": 0,
+      "seconds": 0.899
+    },
+    {
+      "name": "compile mic-fdk",
+      "returncode": 0,
+      "seconds": 0.186
+    },
+    {
+      "name": "mic-fdk",
+      "returncode": 0,
+      "seconds": 0.019
+    },
+    {
+      "name": "compile eld-duplex",
+      "returncode": 0,
+      "seconds": 0.382
+    },
+    {
+      "name": "eld-duplex",
+      "returncode": 0,
+      "seconds": 0.609
+    },
+    {
+      "name": "compile eld-frequency",
+      "returncode": 0,
+      "seconds": 0.253
+    },
+    {
+      "name": "eld-frequency",
+      "returncode": 0,
+      "seconds": 0.443
+    },
+    {
+      "name": "compile resamp44",
+      "returncode": 0,
+      "seconds": 0.123
+    },
+    {
+      "name": "resamp44",
+      "returncode": 0,
+      "seconds": 0.005
+    },
+    {
+      "name": "forensics-legend",
+      "returncode": 0,
+      "seconds": 0.027
+    },
+    {
+      "name": "pcm-queue-reset",
+      "returncode": 0,
+      "seconds": 0.166
+    },
+    {
+      "name": "live-cli-e2e",
+      "returncode": 0,
+      "seconds": 5.121
+    },
+    {
+      "name": "compile eld-profile-mic",
+      "returncode": 0,
+      "seconds": 0.077
+    },
+    {
+      "name": "eld-profile-mic",
+      "returncode": 0,
+      "seconds": 0.004
+    },
+    {
+      "name": "pcm-packet-mic",
+      "returncode": 0,
+      "seconds": 0.499
+    },
+    {
+      "name": "flash-candidate",
+      "returncode": 0,
+      "seconds": 0.125
+    },
+    {
+      "name": "aacp-session-telemetry",
+      "returncode": 0,
+      "seconds": 0.062
+    },
+    {
+      "name": "eld-foreground",
+      "returncode": 0,
+      "seconds": 0.103
+    },
+    {
+      "name": "mic-close-tap",
+      "returncode": 0,
+      "seconds": 0.119
+    },
+    {
+      "name": "compile-mic-core1-threaded",
+      "returncode": 0,
+      "seconds": 0.278
+    },
+    {
+      "name": "mic-core1-threaded",
+      "returncode": 0,
+      "seconds": 0.006
+    },
+    {
+      "name": "dualcore-mic-wiring",
+      "returncode": 0,
+      "seconds": 0.02
+    },
+    {
+      "name": "compile-parallel-fdk-duplex",
+      "returncode": 0,
+      "seconds": 0.505
+    },
+    {
+      "name": "parallel-fdk-duplex",
+      "returncode": 0,
+      "seconds": 0.578
+    },
+    {
+      "name": "duplex-profile-applied-policy",
+      "returncode": 0,
+      "seconds": 0.066
+    },
+    {
+      "name": "validation-audit",
+      "returncode": 0,
+      "seconds": 0.134
+    }
+  ]
+}

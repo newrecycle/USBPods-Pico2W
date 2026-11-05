@@ -15,16 +15,31 @@ parser.add_argument('--source-dir',type=Path)
 args=parser.parse_args()
 directory=args.source_dir or Path(os.environ['PICO_SDK_PATH'])/'lib/btstack/src/classic'
 
-def extract(file,name):
+def read_sdk(file):
     path=directory/file
     if not path.exists():path=directory/('sdk-'+file)
-    source=path.read_text()
+    return path.read_text()
+
+def response_label_guard():
+    # Compile the exact first guard from the SDK's production initiator function.
+    # An unpatched SDK has no guard and must fail this regression.
+    source=read_sdk('avdtp_initiator.c')
+    start=source.index('void avdtp_initiator_stream_config_subsm(')
+    before_state=source.index('    if (connection->initiator_connection_state ==',start)
+    prelude=source[start:before_state]
+    guard_start=prelude.index('    if (connection->initiator_signaling_packet.transaction_label !=')
+    return prelude[guard_start:]
+
+def extract_source(source,name):
     match=re.search(r'^(?:void|uint8_t) '+name+r'\([^;]*?\)\s*\{',source,re.M)
     assert match,name
     start=source.index('{',match.start());end=start+1;depth=1
     while depth:
         depth+=(source[end]=='{')-(source[end]=='}');end+=1
     return source[match.start():end]
+
+def extract(file,name):
+    return extract_source(read_sdk(file),name)
 
 fixture=r'''
 #include <assert.h>
@@ -37,6 +52,10 @@ fixture=r'''
 #define AVDTP_STREAM_ENDPOINT_OPENED 1
 #define AVDTP_STREAM_ENDPOINT_STREAMING 2
 #define log_error(...) ((void)0)
+#define log_info(...) ((void)0)
+typedef struct {uint8_t transaction_label;} signaling_header_t;
+typedef struct {uint8_t initiator_transaction_label;signaling_header_t initiator_signaling_packet;} label_connection_t;
+static unsigned accepted_responses;
 typedef struct {uint8_t initiator_local_seid,initiator_remote_seid;} avdtp_connection_t;
 typedef struct {
  uint16_t l2cap_media_cid,sequence_number;
@@ -54,7 +73,17 @@ static void avdtp_streaming_emit_can_send_media_packet_now(avdtp_stream_endpoint
 '''
 tests=r'''
 int main(void) {
- endpoint.l2cap_media_cid=0x80;endpoint.remote_sep.seid=3;endpoint.state=AVDTP_STREAM_ENDPOINT_OPENED;
+ endpoint.l2cap_media_cid=0x80;endpoint.remote_sep.seid=3;endpoint.state=AVDTP_STREAM_ENDPOINT_STREAMING;
+ // Failing-before reproduction: execute the unchanged reference SDK body,
+ // not a hand-written model. Its success only queues an unsendable START.
+ assert(baseline_avdtp_start_stream(0x42,1)==0 && signals==1 && endpoint.start_stream==1);
+ endpoint.start_stream=0;signals=0;
+ // Passing-after: the patched production SDK rejects this state up front,
+ // rather than silently clearing a queued START without signaling.
+ assert(avdtp_start_stream(0x42,1)==12 && signals==0 && !endpoint.start_stream);
+ endpoint.state=0; // Configured but media not yet OPENED: never queue.
+ assert(avdtp_start_stream(0x42,1)==12 && signals==0 && !endpoint.start_stream);
+ endpoint.state=AVDTP_STREAM_ENDPOINT_OPENED;
  assert(avdtp_start_stream(0x42,1)==0 && signals==1);
  assert(avdtp_start_stream(0x42,1)==12 && signals==1); // START already pending.
  // A successful START request is not a media-grant proof.
@@ -69,12 +98,45 @@ int main(void) {
  endpoint.l2cap_media_cid=0;assert(avdtp_suspend_stream(0x42,1)==2);
  assert(avdtp_suspend_stream(0x99,1)==2);
  assert(avdtp_suspend_stream(0x42,9)==2);
- puts("Pinned SDK START/SUSPEND and media-grant state contracts passed");
+ // The response guard must reject an old or duplicate transaction before
+ // it can change SDK wait/endpoint state or emit a false application ACCEPT.
+ label_connection_t lc={.initiator_transaction_label=6,
+                        .initiator_signaling_packet={.transaction_label=5}};
+ check_late_response(&lc);assert(accepted_responses==0);
+ lc.initiator_signaling_packet.transaction_label=6;
+ check_late_response(&lc);assert(accepted_responses==1);
+ lc.initiator_transaction_label=7;
+ check_late_response(&lc);assert(accepted_responses==1);
+ puts("Pinned SDK START/SUSPEND and transaction-label guards passed");
 }
 '''
 with tempfile.TemporaryDirectory() as temp:
     path=Path(temp)
-    code=fixture+extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
+    guard=response_label_guard()
+    # The checked-in reference is the unmodified SDK comparison snapshot.
+    # Ensure the negative control does not accidentally acquire the new guard.
+    reference=(Path(__file__).resolve().parents[1]/'references/btstack/avdtp_initiator.c').read_text()
+    before_state=reference.split('void avdtp_initiator_stream_config_subsm(',1)[1].split(
+        '    if (connection->initiator_connection_state ==',1)[0]
+    assert 'initiator_signaling_packet.transaction_label !=' not in before_state
+    # A reentrant application callback can submit the next transaction.
+    # Retire the old response label before emitting acceptance, or the SDK
+    # overwrites that new transaction's label after returning from the callback.
+    initiator=read_sdk('avdtp_initiator.c')
+    accept_section=initiator.split('case AVDTP_RESPONSE_ACCEPT_MSG:',1)[1].split(
+        'case AVDTP_RESPONSE_REJECT_MSG:',1)[0]
+    advance='connection->initiator_transaction_label = avdtp_get_next_transaction_label();'
+    emit='avdtp_signaling_emit_accept_for_stream_endpoint('
+    assert accept_section.index(advance)<accept_section.index(emit)
+    old_accept=reference.split('case AVDTP_RESPONSE_ACCEPT_MSG:',1)[1].split(
+        'case AVDTP_RESPONSE_REJECT_MSG:',1)[0]
+    assert old_accept.index(advance)>old_accept.index(emit)
+    code=fixture+'static void check_late_response(label_connection_t *connection) {\n'+guard+' accepted_responses++;\n}\n'
+    baseline_start=extract_source(
+        (Path(__file__).resolve().parents[1]/'references/btstack/avdtp.c').read_text(),
+        'avdtp_start_stream'
+    ).replace('uint8_t avdtp_start_stream(', 'uint8_t baseline_avdtp_start_stream(',1)
+    code+=baseline_start+extract('avdtp.c','avdtp_start_stream')+extract('avdtp.c','avdtp_suspend_stream')
     code+=extract('avdtp_initiator.c','avdtp_initiator_stream_config_subsm_handle_can_send_now_stream_endpoint')+tests
     (path/'test.c').write_text(code)
     subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address,undefined',str(path/'test.c'),'-o',str(path/'test')],check=True)

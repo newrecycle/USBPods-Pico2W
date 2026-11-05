@@ -1,5 +1,10 @@
 # Local Codex handoff
 
+Latest branch integration: [2026-11-05 review](INTEGRATION-REVIEW-20261105.md)
+and [offline evidence](evidence/integration-review-20261105.json). Read this
+before the historical implementation chronology below. The integrated source
+retains default single-core operation and does not establish a physical fix.
+
 Start with [the resume prompt](LOCAL-CODEX-RESUME-PROMPT.md). This repository
 contains the implementation and tests, pinned public references and licenses,
 research notes, portable host-check commands and offline evidence. The cloud
@@ -304,6 +309,16 @@ This is an independent reconstructed build, not vendor Full. The required
 Lite compatibility flags do not mean public vendor Full sources are present.
 
 ## Continue from here
+
+The local Windows laptop session on verified `880dc31` is recorded in
+[LOCAL-WINDOWS-20261104.md](LOCAL-WINDOWS-20261104.md). Earlier tests were on
+the user's PC without audio enhancements. Laptop MaxxAudioPro caused mixing,
+but mic-close left-ear silence still reproduced after disabling it. A manual
+`K` refresh timed out; a saved-bond reconnect restored left playback with
+capture closed. 256 kbps passed, 192 kbps still lost mic AUs/USB samples.
+Keep the existing ten-minute-soak evidence; the user does not want it repeated.
+Local runner changes add saved-pairing reuse and bounded profile settling;
+they are not part of the unchanged verified firmware/package.
 
 The 062729 probe stopped before capture because preflight sampled a brief
 automatic ELD refresh. Playback resumed approximately 230 ms after suspension;

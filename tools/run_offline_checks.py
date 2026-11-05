@@ -37,7 +37,7 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--build-fdk',action='store_true')
     p.add_argument('--fdk-lib',type=Path)
-    p.add_argument('--sdk-source',type=Path,default=ROOT/'references/btstack')
+    p.add_argument('--sdk-source',type=Path,help='Already-patched SDK classic source directory')
     p.add_argument('--output',type=Path,default=ROOT/'build-offline-evidence')
     a=p.parse_args()
     if a.build_fdk and a.fdk_lib:p.error('Choose --build-fdk or --fdk-lib')
@@ -60,7 +60,19 @@ def main():
     commands=json.loads((ROOT/'tests/offline-commands.json').read_text())
     results=[];skipped=[]
     with tempfile.TemporaryDirectory(prefix='usbpods-offline-') as temp:
-        values={'{PYTHON}':sys.executable,'{TMP}':temp,'{SDK}':str(a.sdk_source.resolve()),
+        sdk=a.sdk_source
+        if sdk is None:
+            # Keep the pinned comparison sources pristine. Exercise the actual
+            # production patch against a disposable copy, as target CI does.
+            sdk=Path(temp)/'btstack/src/classic'
+            sdk.mkdir(parents=True)
+            for source in (ROOT/'references/btstack').iterdir():
+                if source.is_file():shutil.copy2(source,sdk/source.name)
+            subprocess.run(['git','apply','--include=src/classic/avdtp.c',
+                            '--include=src/classic/avdtp_initiator.c',
+                            str(ROOT/'sdk-patches/btstack-usbpods.patch')],
+                           cwd=sdk.parent.parent,check=True)
+        values={'{PYTHON}':sys.executable,'{TMP}':temp,'{SDK}':str(sdk.resolve()),
                 '{FDK}':str(fdk) if fdk else ''}
         for i,item in enumerate(commands):
             if item.get('requires_fdk') and not fdk:

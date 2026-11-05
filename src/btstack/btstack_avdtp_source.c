@@ -1232,6 +1232,7 @@ static void src_eld_initialize(void);
 static uint8_t src_eld_error_stage;
 static uint32_t src_eld_last_error,src_eld_max_rebuild_us;
 static uint32_t src_encode_last_us,src_encode_max_us; /* wall time, includes USB IRQs */
+static volatile bool src_eld_encode_requested; /* BT timer -> foreground, same core */
 static uint32_t src_suspend_ms;
 static void src_eld_abort(uint8_t stage,uint32_t rc);
 static void src_eld_execute(unsigned actions);
@@ -1390,8 +1391,10 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     // (pump ticks ~83/s, music needs ~47 granules/s — throughput unharmed).
     /* AAC-LC: 1 granule/tick suffices (83 ticks/s vs 47 needed). ELD needs
        ~100 AUs/s at its 10 ms tick — a cap of 1 is parity with NO catch-up
-       margin (chronic starvation), so ELD gets 2. Uncapped ELD during relay
-       bursts 10-30 ms of encode CPU into one radio-context pass. */
+       margin (chronic starvation), so the legacy timer path gets 2.
+       Mic builds instead service one AU per foreground pass and immediately
+       repeat runnable catch-up work after servicing the mic decoder.
+       Uncapped ELD during relay bursts 10-30 ms into one radio-context pass. */
     int max_aus = 8;
     if (bt_sink_relay_streaming()
 #ifdef USBPODS_MIC_DECODE
@@ -1401,6 +1404,11 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
         if (cur_codec == 2)      max_aus = 1;
         else if (cur_codec == 4) max_aus = 2;
     }
+#ifdef USBPODS_MIC_DECODE
+    /* Foreground alternates one playback AU with a microphone decode pass.
+       Keep the complete-packet bound independent from the work-per-pass cap. */
+    if (cur_codec == CODEC_ID_AACELD) max_aus = 1;
+#endif
 
     /* NO time budget here, deliberately (it came and went twice on
        2026-08-09). A 6 ms elapsed-time bound on this loop was added to stop
@@ -1496,7 +1504,46 @@ static void codec_fdk_stage_eld_packet(a2dp_media_sending_context_t *context) {
     }
 }
 
+static void codec_fdk_request_eld_packet(a2dp_media_sending_context_t *context) {
+#ifdef USBPODS_MIC_DECODE
+    /* Encoding in the radio timer can occupy consecutive 10 ms ticks and
+       starve the foreground mic decoder. The timer grants pacing credit;
+       foreground owns expensive encoding, one AU per main-loop pass. */
+    if (!context->codec_ready_to_send) src_eld_encode_requested=true;
+#else
+    codec_fdk_stage_eld_packet(context);
 #endif
+}
+
+static void src_eld_encode_work(void) {
+#ifdef USBPODS_MIC_DECODE
+    if (!src_eld_encode_requested) return;
+    async_context_acquire_lock_blocking(cyw43_arch_async_context());
+    src_eld_encode_requested=false;
+    if (cur_codec==CODEC_ID_AACELD && is_streaming &&
+        !src_fault_hold && !src_user_dc_hold && !src_eld_reset_pending &&
+        src_eld_change.phase==ELD_READY) {
+        uint32_t before=media_tracker.samples_ready;
+        codec_fdk_stage_eld_packet(&media_tracker);
+        /* Continue catch-up only after actual progress, so priming/empty
+           input cannot spin. Each pass first services mic decoding again. */
+        src_eld_encode_requested=!media_tracker.codec_ready_to_send &&
+            media_tracker.samples_ready<before &&
+            media_tracker.samples_ready>=acc_num_simples;
+    }
+    async_context_release_lock(cyw43_arch_async_context());
+#endif
+}
+
+#endif
+
+bool a2dp_source_main_pending(void) {
+#ifdef USBPODS_MIC_DECODE
+    return src_eld_encode_requested;
+#else
+    return false;
+#endif
+}
 
 static void a2dp_demo_timer_pause(a2dp_media_sending_context_t * context);
 static void a2dp_demo_timer_stop(a2dp_media_sending_context_t * context);
@@ -1601,6 +1648,7 @@ static void src_eld_cancel_timer(void) {
     btstack_run_loop_remove_timer(&src_eld_change_timer);src_eld_timer_armed=false;
 }
 static void src_eld_link_reset(void) {
+    src_eld_encode_requested=false;
     eld_transition_reset(&src_eld_change);src_eld_reset_pending=false;src_requested_eld_valid=false;
     src_eld_setup_pending=false;src_eld_early_start=false;src_eld_setup_cid=0;
     src_eld_cancel_timer();btstack_run_loop_remove_timer(&src_jitter_timer);
@@ -1617,7 +1665,13 @@ static bool src_event_matches_headset(uint16_t cid) {
 }
 static void src_eld_change_timeout(btstack_timer_source_t *ts) {
     (void)ts;src_eld_timer_armed=false;
-    if(eld_transition_busy(&src_eld_change))src_eld_abort(4,src_eld_change.phase);
+    if(eld_transition_busy(&src_eld_change)) {
+        unsigned retry=src_stream_established?eld_transition_retry_start(&src_eld_change):ELD_NOTHING;
+        if(retry) {
+            printf("[eld] START response absent; retry 1/1 on existing media channel\n");
+            src_eld_execute(retry);
+        } else src_eld_abort(4,src_eld_change.phase);
+    }
     else if(src_eld_change.phase==ELD_WAIT_START) {
         if(!src_stream_established){src_eld_abort(6,0x200u|AVDTP_SI_OPEN);return;}
         (void)eld_transition_rejected(&src_eld_change);
@@ -2069,6 +2123,7 @@ void a2dp_source_main_work(void) {
         else src_eld_link_reset();
         async_context_release_lock(cyw43_arch_async_context());return;
     }
+    src_eld_encode_work();
     if (!src_eld_reset_pending) return;
     /* Never allocate before the peer has accepted SUSPEND, or while START is
        still in flight. New settings coalesce into the next owned rebuild. */
@@ -2790,7 +2845,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
             break;
 #ifdef HAVE_AAC_FDK
         case 4:   /* Apple AAC-ELD: encode on Core 0 (FDK-AAC not safe for Core 1) */
-            codec_fdk_stage_eld_packet(context);
+            codec_fdk_request_eld_packet(context);
             break;
 #endif
         default:

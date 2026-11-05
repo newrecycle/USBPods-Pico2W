@@ -43,6 +43,22 @@ def choose_target(items, mac=None, name=None):
         raise ValueError(f'Expected one exact AirPods match; found {len(matches)}. Specify --target-mac or an exact --target-name.')
     return matches[0]
 
+def reuse_saved_pairing(link, items, mac=None, name=None):
+    """Reuse a selected bond without discovery, pair commands or key changes."""
+    saved=[x for x in items if x.get('mac','').upper() not in ('','00:00:00:00:00:00','FF:FF:FF:FF:FF:FF')]
+    state=link.request('status')
+    if mac or name:chosen=choose_target(saved,mac,name)
+    elif state.get('connected'):chosen=choose_target(saved,mac=state.get('peer',''))
+    elif len(saved)==1:chosen=saved[0]
+    else:raise ValueError('Saved pairing is ambiguous or absent; specify --target-mac or --target-name, or pair once without --reuse-pairing')
+    if state.get('connected'):
+        if state.get('peer','').upper()!=chosen['mac'].upper():
+            raise ValueError('A different headset is connected; refusing to replace it during saved-pairing reuse')
+    else:
+        link.request('savedconnect '+str(chosen['index']))
+    state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
+    return chosen,state
+
 def restoration_commands(original, current):
     """Avoid side effects from reapplying unchanged preferences after a failure."""
     if not current:return []
@@ -257,6 +273,8 @@ def collect_hid(recorder, cdc):
     return opened
 
 def main():
+    # Keep imported runner modules injectable for compiler-backed CLI fixtures.
+    from live_audio import observation_status
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--manifest',type=Path,default=Path(__file__).with_name('candidate.json'))
     parser.add_argument('--cdc',help='USB CDC diagnostic/control port; no UART adapter is used')
@@ -267,6 +285,7 @@ def main():
     parser.add_argument('--soak-seconds',type=int,default=600)
     parser.add_argument('--phone-relay',action='store_true',help='Include phone relay with both USB streams open')
     parser.add_argument('--session-only',action='store_true',help='Only a 45-second AAC-ELD/mic/USB session probe; omit the full feature matrix')
+    parser.add_argument('--reuse-pairing',action='store_true',help='Reuse the current or uniquely selected saved bond without scanning or fresh pairing')
     parser.add_argument('--output',type=Path,default=Path.cwd())
     parser.add_argument('--noninteractive',action='store_true')
     args=parser.parse_args()
@@ -274,10 +293,10 @@ def main():
     if not 10<=args.soak_seconds<=1800:parser.error('--soak-seconds must be 10..1800')
     if args.phone_relay and args.noninteractive:parser.error('--phone-relay requires physical phone prompts')
     if args.phone_relay and args.session_only:parser.error('--session-only cannot include phone relay')
-    if args.noninteractive and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
+    if args.noninteractive and not args.reuse_pairing and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
-    recorder=Recorder(root);link=None;original=None;summary={'schema':1,'hardware_run':True,'tests':{},'host':platform.platform(),'started':stamp}
+    recorder=Recorder(root);link=None;original=None;summary={'schema':1,'hardware_run':False,'hardware_phase':'not_started','tests':{},'host':platform.platform(),'started':stamp}
     def result(name,status,detail=None):
         summary['tests'][name]={'status':status,'detail':detail};print(name+': '+status,flush=True)
     def prompt(message):
@@ -301,6 +320,7 @@ def main():
         time.sleep(.5);info=link.request('info')
         if info.get('sha')!=manifest['sha'] or info.get('protocol')!=2:raise RuntimeError('Running firmware does not match this verified bundle')
         if info.get('mic_decode')!=manifest['mic_decode']:raise RuntimeError('Wrong firmware variant')
+        summary['hardware_run']=True;summary['hardware_phase']='firmware_identity_verified'
         summary['firmware']=info;result('firmware_identity','PASS',info)
         original=link.request('settings');summary['original_settings']=original
         summary['original_saved']=link.request('savedlist')
@@ -317,22 +337,27 @@ def main():
         result('diagnostic_transport','PASS',{'transport':'usb-cdc','port':cdc.device,'log':'cdc.jsonl','includes':'application, AACP, codec, USB and firmware HID submission logs'})
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
         except Exception as e:result('hid_connection','SKIP',str(e))
-        link.request('disconnect')
-        link.wait(lambda s:not s.get('connected'),15)
-        prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
-        link.request('scan');time.sleep(16);link.request('scanstop')
-        items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
-        try:chosen=choose_target(items,args.target_mac,args.target_name)
-        except ValueError:
-            if args.noninteractive:raise
-            print('Scanned devices:',json.dumps(items,indent=2),flush=True)
-            index=int(prompt('Enter the index of the intended AirPods from that list (no automatic guess):'))
-            selected=[item for item in items if item.get('index')==index]
-            if len(selected)!=1:raise ValueError('Not one scanned target at that index')
-            chosen=selected[0]
+        if args.reuse_pairing:
+            chosen,state=reuse_saved_pairing(link,summary['original_saved']['items'],args.target_mac,args.target_name)
+            result('saved_pairing_reuse','PASS',{'fresh_pairing':False,'target':chosen})
+        else:
+            link.request('disconnect')
+            link.wait(lambda s:not s.get('connected'),15)
+            prompt('Put the intended AirPods case into pairing mode now. Press Enter when ready:')
+            link.request('scan');time.sleep(16);link.request('scanstop')
+            items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
+            try:chosen=choose_target(items,args.target_mac,args.target_name)
+            except ValueError:
+                if args.noninteractive:raise
+                print('Scanned devices:',json.dumps(items,indent=2),flush=True)
+                index=int(prompt('Enter the index of the intended AirPods from that list (no automatic guess):'))
+                selected=[item for item in items if item.get('index')==index]
+                if len(selected)!=1:raise ValueError('Not one scanned target at that index')
+                chosen=selected[0]
+            link.request('pair '+str(chosen['index']))
+            state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
         summary['target']=chosen
-        link.request('pair '+str(chosen['index']))
-        state=link.wait(lambda s:s.get('connected') and s.get('peer','').upper()==chosen['mac'].upper(),45)
+        summary['hardware_phase']='target_connected'
         result('targeted_connection','PASS',state)
         state=link.wait(lambda s:s.get('connected') and s.get('confirmed') and s.get('peer','').upper()==chosen['mac'].upper(),30)
         result('aacp_peer_response','PASS',state)
@@ -355,8 +380,10 @@ def main():
                 submit_peer_control(link,'ca',0)
             if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
             from live_audio import run_matrix
+            summary['hardware_phase']='audio_matrix_attempted'
             run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
             audio_ok=True
+            summary['hardware_phase']='audio_matrix_finished'
         except Exception as e:
             result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
             try:
@@ -401,16 +428,16 @@ def main():
                     try:link.request(f'{command} {original[field]}')
                     except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
             heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')
-            result('playback_quality','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+            result('playback_quality',observation_status(heard),heard)
             wavs=sorted(root.glob('*.wav'))
             if wavs:
                 print('Recorded clips:',', '.join(p.name for p in wavs),flush=True)
                 heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
-                result('microphone_pitch','PASS' if heard.lower()=='yes' else 'FAIL' if heard.lower()=='no' else 'UNVERIFIED',heard)
+                result('microphone_pitch',observation_status(heard),heard)
             else:result('microphone_pitch','UNVERIFIED','Audio capture produced no WAV files; no listening prompt was presented')
             link.request('earpause 1');link.request('stem 1')
             note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
-            result('ear_and_stem','UNVERIFIED',note or 'No physical observation supplied; see firmware HID and raw HID logs')
+            result('ear_and_stem',observation_status(note,'gestures'),note or 'No physical observation supplied; see firmware HID and raw HID logs')
         else:
             result('post_audio_controls','SKIP','Session-only diagnostic scope' if args.session_only else 'Audio matrix failed; no further control mutations or physical prompts')
         if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')

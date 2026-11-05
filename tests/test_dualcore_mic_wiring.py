@@ -7,11 +7,19 @@ cmake = (root / "CMakeLists.txt").read_text()
 workflow = (root / ".github/workflows/pico-firmware.yml").read_text()
 audio = (root / "src/btstack/aacp_mic_audio.c").read_text()
 
-assert "PICO_FLASH_ASSUME_CORE1_SAFE=1" not in cmake
+assert "if(NOT USBPODS_DUAL_CORE_MIC)" in cmake
+assert "target_compile_definitions(${PROJECT_NAME} PRIVATE PICO_FLASH_ASSUME_CORE1_SAFE=1)" in cmake
+assert cmake.count("PICO_FLASH_ASSUME_CORE1_SAFE=1") == 1
 assert "option(USBPODS_DUAL_CORE_MIC" in cmake
 assert "USBPODS_DUAL_CORE_MIC requires USBPODS_MIC_DECODE=ON" in cmake
 assert "_EXPERIMENTAL_Core1Mic" in cmake
 assert "multicore_launch_core1_with_stack(mic_core1_entry" in main
+assert main.index("multicore_launch_core1_with_stack(mic_core1_entry") < main.index("settings_init();")
+assert "atomic_load_explicit(&mic_core1_decode_enabled, memory_order_acquire)" in main
+assert "atomic_store_explicit(&mic_core1_decode_enabled, true, memory_order_release)" in main
+assert "boot_flash_do_cmd(tx, rx, 4)" in main
+assert "flash_safe_execute(boot_flash_cmd_callback, &cmd, 500)" in main
+assert "boot_flash_do_cmd(sr1_tx, sr1_rx, 2)" in main
 assert main.count("flash_safe_execute_core_init()") == 2
 assert "atomic_store_explicit(&mic_core1_ready, true, memory_order_release)" in main
 assert "atomic_load_explicit(&mic_core1_ready, memory_order_acquire)" in main
