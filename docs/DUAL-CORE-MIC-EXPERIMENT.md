@@ -24,7 +24,8 @@ packet/clock policy and playback lifecycle are unchanged.
 
 ## Flash and BOOTSEL rules
 
-`PICO_FLASH_ASSUME_CORE1_SAFE=1` has been removed. Both cores call
+`PICO_FLASH_ASSUME_CORE1_SAFE=1` is absent from the experimental dual-core
+build (retained only in single-core builds). Both active cores call
 `flash_safe_execute_core_init()`, with a bounded READY acknowledgment before
 entering the main loop. SDK multicore FIFO is reserved for flash lockout, not
 application messages. This permits existing settings flash writes to request

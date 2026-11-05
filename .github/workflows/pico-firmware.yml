@@ -1,7 +1,7 @@
 name: Pico firmware build
 on:
   push:
-    branches: [main, codex/eld-integration]
+    branches: [main, codex/eld-integration, 'work/local-windows-*', 'audit/duplex-192k-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -159,17 +159,21 @@ jobs:
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_transition.c src/btstack/eld_transition.c -o /tmp/test-eld-transition
           /tmp/test-eld-transition
           python3 tests/test_eld_adapter.py
+          python3 tests/test_eld_foreground.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_mic_telemetry.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-telemetry
           /tmp/test-mic-telemetry
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/tinyusb tests/test_usb_host_input.c src/tinyusb/usb_capture_lifecycle.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-input
           /tmp/test-usb-input
           python3 tests/test_usb_input_wiring.py
           python3 tests/test_usb_control_boundaries.py
+          python3 tests/test_mic_close_tap.py
           python3 tests/test_uac1_controls.py
           python3 tests/test_mic_recovery_integration.py
           python3 tests/test_live_runner.py
+          python3 tests/test_validation_audit.py
           python3 tests/test_aacp_session_telemetry.py
           python3 tests/test_flash_candidate.py
+          python3 tests/test_duplex_profile_contract.py
           python3 tests/test_live_matrix.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_media_input.c src/btstack/media_input.c -o /tmp/test-media-input
           /tmp/test-media-input

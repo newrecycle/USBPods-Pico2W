@@ -774,11 +774,12 @@ int main() {
            normal loop/watchdog again immediately in that case, rather than
            adding 2 ms to every catch-up batch. Full PCM queues still sleep. */
 #ifdef USBPODS_DUAL_CORE_MIC
-        /* Only core 1 owns the decoder queue. Core 0 must not busy-spin
-         * simply because the other core has runnable work. */
-        sleep_ms(aacp_mic_capture() ? 2 : 10);
+        if (radio_absent || !a2dp_source_main_pending())
+            sleep_ms(aacp_mic_capture() ? 2 : 10);
 #else
-        if (!aacp_mic_audio_pending()) sleep_ms(aacp_mic_capture() ? 2 : 10);
+        if (!aacp_mic_audio_pending() &&
+            (radio_absent || !a2dp_source_main_pending()))
+            sleep_ms(aacp_mic_capture() ? 2 : 10);
 #endif
     }
 

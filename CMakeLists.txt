@@ -71,6 +71,9 @@ foreach(_usbpods_check
         "lib/btstack/src/hci.c|usbpods"
         "lib/btstack/src/l2cap.c|l2cap_set_flushable_local_cid"
         "lib/btstack/src/classic/avdtp_source.c|usbpods"
+        "lib/btstack/src/classic/avdtp.c|A queued START is silently discarded"
+        "lib/btstack/src/classic/avdtp_initiator.c|stale AVDTP response label"
+        "lib/btstack/src/classic/avdtp_initiator.c|Retire this label BEFORE"
         "lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c|// panic(\"ep")
     string(REPLACE "|" ";" _usbpods_pair "${_usbpods_check}")
     list(GET _usbpods_pair 0 _usbpods_file)

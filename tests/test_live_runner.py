@@ -31,6 +31,32 @@ class FakePort:
     def flush(self):pass
 
 class Contracts(unittest.TestCase):
+    def test_saved_pairing_reuse_keeps_current_session_and_reconnects_only_selected_bond(self):
+        saved=[dict(index=0,mac='00:00:00:00:00:00',name=''),
+               dict(index=3,mac='AA:BB:CC:DD:EE:FF',name='fixture')]
+        class Link:
+            def __init__(self,connected):self.connected=connected;self.commands=[]
+            def request(self,cmd):
+                self.commands.append(cmd)
+                if cmd=='savedconnect 3':self.connected=True;return {}
+                if cmd=='status':return dict(connected=self.connected,peer='AA:BB:CC:DD:EE:FF')
+                raise AssertionError('Unexpected command: '+cmd)
+            def wait(self,predicate,timeout):
+                state=self.request('status');assert predicate(state);return state
+        for connected in (True,False):
+            link=Link(connected);chosen,state=live.reuse_saved_pairing(link,saved)
+            self.assertEqual(chosen['index'],3);self.assertTrue(state['connected'])
+            self.assertEqual(link.commands,['status']+([] if connected else ['savedconnect 3'])+['status'])
+        link=Link(False)
+        with self.assertRaisesRegex(ValueError,'ambiguous'):
+            live.reuse_saved_pairing(link,saved+[dict(index=4,mac='11:22:33:44:55:66',name='fixture')])
+        self.assertEqual(link.commands,['status'])
+        link=Link(True)
+        other=dict(index=4,mac='11:22:33:44:55:66',name='other')
+        with self.assertRaisesRegex(ValueError,'different headset'):
+            live.reuse_saved_pairing(link,saved+[other],mac=other['mac'])
+        self.assertEqual(link.commands,['status'])
+
     def test_preflight_restarts_stability_window_after_brief_recovery(self):
         class Clock:
             now=0
@@ -70,8 +96,10 @@ class Contracts(unittest.TestCase):
         class Link:
             def request(self,command):
                 if command=='eldstatus':return dict(ready=1,pending=0,transition='ready',input_rate=48000,
+                    selected_rate=2,game=0,gamelevel=1,desired_bitrate=256000,
                     requested_revision=1,built_revision=1,active_bitrate=256000,active_vbr=0,active_sbr=0,
-                    active_slots=6,duplex_cbr=1)
+                    active_slots=6,active_jitter=150,desired_jitter=150,
+                    duplex_cbr=1,negotiated_bitrate=256000)
                 return dict(connected=1,confirmed=1,capture=1,codec=4,streaming=int(clock.now>=2),
                     mic_started=int(clock.now>=3),mic_recovery_pending=0,tx_packets=int(clock.now*50))
         with mock.patch.object(live_audio,'time',clock):
@@ -217,6 +245,8 @@ class Contracts(unittest.TestCase):
             with zipfile.ZipFile(archive) as z:
                 summary=json.loads(z.read('summary.json'))
                 self.assertEqual(summary['tests']['run']['status'],'FAIL')
+                self.assertFalse(summary['hardware_run'])
+                self.assertEqual(summary['hardware_phase'],'not_started')
                 self.assertIn('exception.txt',z.namelist())
     def test_target_identity(self):
         a={'index':1,'name':'My AirPods','mac':'AA:BB:CC:DD:EE:FF'}
@@ -278,12 +308,14 @@ class Contracts(unittest.TestCase):
     def test_profile_requires_applied_state(self):
         p=live_audio.PROFILES[0]
         s=dict(ready=1,pending=0,transition='ready',input_rate=48000,requested_revision=2,built_revision=2,
-               active_bitrate=256000,active_vbr=5,active_sbr=1,active_slots=6)
+               selected_rate=2,game=0,gamelevel=1,desired_bitrate=256000,negotiated_bitrate=256000,
+               negotiated_vbr=1,active_bitrate=256000,active_vbr=5,active_sbr=1,active_slots=6,
+               active_jitter=150,desired_jitter=150)
         self.assertTrue(live_audio.profile_matches(s,p))
         cbr={**s,'duplex_cbr':1,'active_vbr':0,'active_sbr':0}
         self.assertTrue(live_audio.profile_matches(cbr,p))
         self.assertFalse(live_audio.profile_matches({**cbr,'active_vbr':5},p))
-        for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(built_revision=1)):
+        for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(active_jitter=90),dict(built_revision=1)):
             self.assertFalse(live_audio.profile_matches({**s,**change},p))
     def test_counter_wrap_and_failures(self):
         a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0,clock_windows=2,measured_rate=64000,coding_rate=48000,pcm_rate=64000),

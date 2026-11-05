@@ -5,12 +5,14 @@ param(
   [int]$StageSeconds = 20,
   [int]$SoakSeconds = 600,
   [switch]$PhoneRelay,
-  [switch]$SessionOnly
+  [switch]$SessionOnly,
+  [switch]$ReusePairing
 )
 $ErrorActionPreference = 'Stop'
 $Root = $PSScriptRoot
 if ($StageSeconds -lt 5 -or $StageSeconds -gt 120) { throw 'StageSeconds must be 5..120' }
 if ($SoakSeconds -lt 10 -or $SoakSeconds -gt 1800) { throw 'SoakSeconds must be 10..1800' }
+if ($TargetName -and $TargetMac) { throw 'TargetName and TargetMac are mutually exclusive; select one exact target before flashing' }
 if ($SessionOnly -and $PhoneRelay) { throw 'SessionOnly cannot include PhoneRelay' }
 if (!(Get-Command picotool -ErrorAction SilentlyContinue)) { throw 'picotool must be in PATH' }
 $Python = Join-Path $Root '.venv\Scripts\python.exe'
@@ -32,6 +34,7 @@ if ($TargetName) { $RunArgs += @('--target-name', $TargetName) }
 if ($TargetMac) { $RunArgs += @('--target-mac', $TargetMac) }
 if ($PhoneRelay) { $RunArgs += '--phone-relay' }
 if ($SessionOnly) { $RunArgs += '--session-only' }
+if ($ReusePairing) { $RunArgs += '--reuse-pairing' }
 if ($CdcPort) { $RunArgs += @('--cdc', $CdcPort) }
 & $Python @RunArgs
 $Code = $LASTEXITCODE

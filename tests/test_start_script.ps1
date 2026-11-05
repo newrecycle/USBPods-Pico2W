@@ -28,7 +28,7 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   $Shell = (Get-Process -Id $PID).Path
   $Launcher = Join-Path $TempRoot 'Run-Test.ps1'
   function Run-Launcher([int]$Expected) {
-    & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 -SessionOnly *> (Join-Path $TempRoot 'launcher.log')
+    & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 -SessionOnly -ReusePairing *> (Join-Path $TempRoot 'launcher.log')
     if ($LASTEXITCODE -ne $Expected) { throw "Launcher exited $LASTEXITCODE; expected $Expected. $(Get-Content -Raw (Join-Path $TempRoot 'launcher.log'))" }
   }
   Run-Launcher 0
@@ -38,15 +38,23 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   if ($RunArgs[[Array]::IndexOf($RunArgs, '--cdc') + 1] -ne 'COM7') { throw 'Returning port was not sent to tests' }
   if ($RunArgs[[Array]::IndexOf($RunArgs, '--target-name') + 1] -ne "Justin's AirPods Pro") { throw 'Target argument was split' }
   if ($RunArgs -notcontains '--session-only') { throw 'Session-only mode was not forwarded' }
+  if ($RunArgs -notcontains '--reuse-pairing') { throw 'Saved-pairing reuse was not forwarded' }
   New-Item (Join-Path $TempRoot 'fail-run') | Out-Null
   Run-Launcher 9
   Remove-Item (Join-Path $TempRoot 'run-args.json')
   New-Item (Join-Path $TempRoot 'fail-flash') | Out-Null
   Run-Launcher 1
   if (Test-Path (Join-Path $TempRoot 'run-args.json')) { throw 'Tests ran after flash failure' }
+  Remove-Item (Join-Path $TempRoot 'flash-args.json')
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName 'fixture-one' -TargetMac 'AA:BB:CC:DD:EE:FF' *> (Join-Path $TempRoot 'launcher.log')
+  if ($LASTEXITCODE -eq 0) { throw 'Conflicting target identities unexpectedly accepted' }
+  if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Invalid target selection reached the firmware flasher' }
   Write-Host 'PASS Windows launcher: automatic flash, changed COM, quoted paths/target, test failure exit, flash failure stop'
 } finally {
   $env:PATH = $PreviousPath
+  $ResolvedTempRoot = [IO.Path]::GetFullPath($TempRoot)
+  if ([IO.Path]::GetDirectoryName($ResolvedTempRoot) -ne ([IO.Path]::GetTempPath()).TrimEnd('\')) { throw 'Fixture cleanup escaped the temporary directory' }
+  if ([IO.Path]::GetFileName($ResolvedTempRoot) -notlike 'USBPods launcher *') { throw 'Unexpected fixture cleanup target' }
   Remove-Item -Recurse -Force $TempRoot
 }
 # The last exercised child deliberately exits 1. GitHub's pwsh wrapper checks

@@ -235,7 +235,10 @@ static void handler(uint8_t type,uint16_t channel,uint8_t *p,uint16_t n) {
           here was an extra control absent from the working mic reference;
           the 042523 capture shows it immediately after STOP when a playback
           channel disappears. Explicit game/profile changes still own jitter. */
-       printf("[mic] %s sent; playback unchanged\n",command==3?"START":"STOP");
+       printf("[mic] %s sent capture=%u mic_gen=%lu a2dp_streaming=%u\n",
+              command==3?"START":"STOP", (unsigned)aacp_mic_capture(),
+              (unsigned long)aacp_mic_generation(),
+              (unsigned)a2dp_source_is_playing());
      }
    } else if (++send_errors>=3) release_channel("send-errors");
    break;
