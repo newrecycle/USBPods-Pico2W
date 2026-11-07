@@ -11,8 +11,8 @@ spec=importlib.util.spec_from_file_location('watch_ci',Path(__file__).resolve().
 w=importlib.util.module_from_spec(spec);spec.loader.exec_module(w)
 SHA='a'*40
 
-def run(name='firmware',id=1,status='completed',conclusion='success',sha=SHA,event='push'):
-    return dict(workflowName=name,databaseId=id,status=status,conclusion=conclusion,headSha=sha,event=event)
+def run(name='firmware',id=1,status='completed',conclusion='success',sha=SHA,event='push',attempt=1):
+    return dict(workflowName=name,databaseId=id,status=status,conclusion=conclusion,headSha=sha,event=event,attempt=attempt)
 
 class Tests(unittest.TestCase):
     def test_idle_guard_checks_identity_unfinished_and_overlapping_turns(self):
@@ -30,10 +30,21 @@ class Tests(unittest.TestCase):
             with self.assertRaises(RuntimeError):w.session_is_idle(path,'wrong')
             with path.open('a',encoding='utf-8') as out:out.write('{"type":')
             self.assertFalse(w.session_is_idle(path,session))
+            path.write_text(json.dumps(dict(type='session_meta',payload=dict(id=session)))+'\n'+
+                            json.dumps(dict(type='event_msg',payload=dict(type='task_complete',turn_id='orphan')))+'\n')
+            self.assertFalse(w.session_is_idle(path,session))
+            path.write_text('')
+            self.assertFalse(w.session_is_idle(path,session))
 
     def test_identity_and_newest_run(self):
         rows=[run(id=1),run(id=2,status='in_progress'),run(id=3,sha='b'*40),run(id=4,event='pull_request')]
         self.assertEqual(w.select_runs(rows,SHA,['firmware'])['firmware']['databaseId'],2)
+        same_id=[run(id=7,attempt=2,status='in_progress',conclusion=None),
+                 run(id=7,attempt=1,status='completed',conclusion='success')]
+        selected=w.select_runs(same_id,SHA,['firmware'])['firmware']
+        self.assertEqual(selected['attempt'],2)
+        self.assertFalse(w.wait_for_ci('repo',SHA,['firmware'],60,1,
+                         fetch=lambda:same_id)['success'])
 
     def test_waits_for_all_workflows_and_retains_failure(self):
         states=iter([[run(),run('host',status='in_progress')],
@@ -60,7 +71,7 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp)/'new'
             session_log=Path(tmp)/'session.jsonl';session_log.touch()
-            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session',session,'--session-log',str(session_log)]
+            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session',session,'--session-owner','cli','--session-log',str(session_log)]
             def invoke(argv,**kwargs):
                 self.assertTrue((output/'completion.json').exists())
                 self.assertEqual(argv[:4],['codex','exec','resume',session])
@@ -70,12 +81,27 @@ class Tests(unittest.TestCase):
             with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w,'wait_for_ci',return_value=dict(state='completed',success=False,runs=[],missing=[])),patch.object(w,'wait_for_idle',return_value=True),patch.object(w.subprocess,'run',side_effect=invoke):
                 self.assertEqual(w.main(),1)
             self.assertFalse(json.loads((output/'completion.json').read_text())['success'])
-            self.assertEqual(json.loads((output/'callback-status.json').read_text())['returncode'],0)
+            result=json.loads((output/'callback-status.json').read_text())
+            self.assertEqual(result['returncode'],0)
+            self.assertEqual(result['state'],'cli_process_exited_unverified')
+            self.assertFalse(result['desktop_turn_observed'])
+
+    def test_desktop_owned_session_is_record_only_even_with_idle_log(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log=Path(tmp)/'session.jsonl';log.touch()
+            args=['watch_ci','--sha',SHA,'--output',str(Path(tmp)/'new'),
+                  '--resume-session','12345678-1234-1234-1234-123456789abc',
+                  '--session-log',str(log)]
+            with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w.subprocess,'run') as resume:
+                with self.assertRaises(SystemExit) as err:w.main()
+                self.assertEqual(err.exception.code,2)
+                resume.assert_not_called()
+            self.assertFalse((Path(tmp)/'new').exists())
 
     def test_busy_session_never_resumed(self):
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp)/'new';log=Path(tmp)/'session.jsonl';log.touch()
-            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session','12345678-1234-1234-1234-123456789abc','--session-log',str(log)]
+            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session','12345678-1234-1234-1234-123456789abc','--session-owner','cli','--session-log',str(log)]
             with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w,'wait_for_ci',return_value=dict(state='completed',success=True,runs=[],missing=[])),patch.object(w,'wait_for_idle',return_value=False),patch.object(w.subprocess,'run') as resume:
                 self.assertEqual(w.main(),2);resume.assert_not_called()
             self.assertEqual(json.loads((output/'callback-status.json').read_text())['state'],'session_busy')
