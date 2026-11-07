@@ -285,6 +285,7 @@ def main():
     parser.add_argument('--soak-seconds',type=int,default=600)
     parser.add_argument('--phone-relay',action='store_true',help='Include phone relay with both USB streams open')
     parser.add_argument('--session-only',action='store_true',help='Only a 45-second AAC-ELD/mic/USB session probe; omit the full feature matrix')
+    parser.add_argument('--mic-close-only',action='store_true',help='One narrow 256/192-supported profile and manual left/right mic close/reopen check; no soak/game/reconnect matrix')
     parser.add_argument('--reuse-pairing',action='store_true',help='Reuse the current or uniquely selected saved bond without scanning or fresh pairing')
     parser.add_argument('--output',type=Path,default=Path.cwd())
     parser.add_argument('--noninteractive',action='store_true')
@@ -293,6 +294,8 @@ def main():
     if not 10<=args.soak_seconds<=1800:parser.error('--soak-seconds must be 10..1800')
     if args.phone_relay and args.noninteractive:parser.error('--phone-relay requires physical phone prompts')
     if args.phone_relay and args.session_only:parser.error('--session-only cannot include phone relay')
+    if args.mic_close_only and (args.session_only or args.phone_relay or args.noninteractive):
+        parser.error('--mic-close-only requires interactive acoustic observations and cannot include session-only or phone relay')
     if args.noninteractive and not args.reuse_pairing and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
