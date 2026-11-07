@@ -74,6 +74,7 @@ foreach(_usbpods_check
         "lib/btstack/src/classic/avdtp.c|A queued START is silently discarded"
         "lib/btstack/src/classic/avdtp_initiator.c|stale AVDTP response label"
         "lib/btstack/src/classic/avdtp_initiator.c|Retire this label BEFORE"
+        "lib/btstack/src/classic/avdtp_initiator.c|including SEP/capability callbacks"
         "lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c|// panic(\"ep")
     string(REPLACE "|" ";" _usbpods_pair "${_usbpods_check}")
     list(GET _usbpods_pair 0 _usbpods_file)

@@ -185,6 +185,7 @@ jobs:
           python3 tests/test_control_status.py
           python3 tests/test_settings_timing.py
           python3 tests/test_sdk_transport_contract.py
+          python3 tests/test_sdk_response_reentry.py
           python3 tests/test_relay_sdk_routing.py
           python3 tests/test_codec_setup.py
           python3 tests/test_button_context.py

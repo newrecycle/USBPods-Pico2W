@@ -97,3 +97,58 @@ acceptance. Do not flash automatically from the callback. Prepare the short
 same-host comparison in handoff order, enumerating current ports first. Avoid
 the launcher's default full matrix/600-second soak; session-only also omits
 isolated channel checks, so neither default is the complete targeted plan.
+
+## Physical setup failure and response-ordering repair
+
+All three required push workflows passed for `e9f548259cfc402db88a1e2ea7ca0a56ee99844a`
+(firmware `42417493025`, USB host `42417493014`, runner `42417493056`). The
+single-core Lite rpi0065 AAC-ELD artifact `13592137712` was downloaded and its
+archive hash and every candidate manifest hash verified. Picotool loaded and
+verified it; COM4 reported the exact candidate identity. See
+[sanitized setup evidence](evidence/local-windows-20261107-setup.json).
+
+The attempted 256 kbps baseline never reached steady playback. AVDTP signaling
+and AACP authentication/control succeeded, but the media endpoint remained
+unset: `codec=0`, `transition=off`, `active_bitrate=0`, `negotiated_bitrate=0`,
+`local_seid=0`, `remote_seid=0`, no TX packets. One explicitly requested
+disconnect/saved-bond reconnect reproduced this state. The runner preserved
+both failures and stopped. No fresh pairing was needed. Microphone-only
+reception is not a duplex result; its setup losses cannot be labeled a 192 kbps
+steady failure. No isolated listening, game profile, explicit K refresh or
+replacement soak was measured. The hardware failures remain unresolved.
+
+Source review found a concrete reentrancy defect in the integrated SDK patch.
+It retired an accepted response's label before the final generic ACCEPT event,
+but after `avdtp_signaling_emit_sep_done()` and
+`avdtp_signaling_emit_capabilities()`. The application's synchronous callbacks
+there call `avdtp_source_get_all_capabilities()` for the next endpoint. That
+assigns a new transaction label; the old handler's later retirement overwrites
+it. With the new common stale-label guard, a legitimate capability response
+can then be discarded. This is a falsifiable cause for the observed setup
+stall, not wire-level proof that every observed stall took that path.
+
+The repair moves retirement to the beginning of the accepted-response arm,
+before any event callback. The old DISCOVER-local label check is removed
+because the common guard has already validated it; comparing again after
+retirement would reject the valid discovery response itself. OPENED guards,
+bounded START retry and stale-response filtering remain. Configure requires
+the stronger patch marker. `test_sdk_response_reentry.py` executes the actual
+production response prelude, DISCOVER/capability arms and generic ACCEPT tail
+with synchronous next-command callbacks at all 15 label positions. It also
+compiles the exact e9f5482 patch, reconstructed against the unmodified licensed
+reference, and requires its specific overwritten-label assertion failure;
+compile errors cannot count as a successful negative control. All execution
+is deferred to Actions. The fixture contains no raw hardware data.
+
+The next physical candidate must first pass exact-source CI and establish
+media/configuration readiness before restarting the planned audio comparison.
+
+## Observed callback limitation
+
+The e9f5482 watcher correctly recorded successful CI, but its one CLI callback
+was refused: Desktop's thread store still had an active writer. A logged
+`task_complete` does not release Desktop's persistent writer. No second CLI
+resume was attempted. Continue in the original chat from `completion.json`;
+do not retry a CLI resume against this Desktop-owned session or add an approval
+bypass. Subsequent watches here must record completion without CLI resumption
+unless a supported native completion notification is actually established.

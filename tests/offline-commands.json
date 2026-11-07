@@ -952,5 +952,16 @@
     ],
     "timeout": 120,
     "requires_fdk": false
+  },
+  {
+    "name": "sdk-response-reentry",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_sdk_response_reentry.py",
+      "--source-dir",
+      "{SDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]

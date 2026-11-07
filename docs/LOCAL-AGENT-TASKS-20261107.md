@@ -114,6 +114,14 @@ Windows installation supports or can access the same session. Use the exact
 session UUID from the local CLI/session UI; NEVER `--last`, which might resume
 another project. Do not inspect or copy authentication secrets.
 
+**Observed Desktop limitation (2026-11-07):** the exact-session callback for
+e9f5482 was refused with `thread-store conflict ... already has an active writer`
+even after the agent turn ended. The event-log idle guard does not establish
+that Desktop released its persistent writer. Do not retry CLI resumption of
+this Desktop-owned session. Use record-only monitoring and continue manually
+in this chat from `completion.json`, unless a supported native completion
+notification is confirmed. See `LOCAL-FOLLOWUP-20261107.md` for evidence.
+
 For branch pushes with the stated prefix, expected workflow names are:
 `Pico firmware build`, `USB capture and HID host tests`,
 `Live runner host regressions`. On other refs/events, inspect trigger rules

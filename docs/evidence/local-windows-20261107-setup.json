@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "hardware_run": true,
+  "firmware_source_sha": "e9f548259cfc402db88a1e2ea7ca0a56ee99844a",
+  "ci_run_id": 42417493025,
+  "artifact_id": 13592137712,
+  "artifact_sha256": "7707e5f2e7f55d83c1d46df762e44edaba911f1618042dedc5a6b905f7c93c37",
+  "firmware_sha256": "961bc13698720070cf046adba43c42794b352c65de9f577693b3171b9e818e3d",
+  "variant": "Lite rpi0065 AACELD mic; default single core",
+  "cdc_port": "COM4",
+  "flash_load_verify_passed": true,
+  "returning_identity_verified": true,
+  "cases": [
+    {
+      "id": "live-20261107T220424Z",
+      "archive_sha256": "2a47abc75b33236f99d3871b06d9df67931eef8b5b686ddf57fb5554b9642a80",
+      "failure": "256 kbps requested; AVDTP signaling/control connected but playback never configured; codec=0, transition=off, no negotiated bitrate or media endpoint",
+      "explicit_saved_reconnect": false
+    },
+    {
+      "id": "live-20261107T220532Z",
+      "archive_sha256": "2d7cf6d40b0ddee73e4e4fde6a0b256749954e437b1c6af2070118cd8ecfbc11",
+      "failure": "256 kbps requested; AVDTP signaling/control connected but playback never configured; codec=0, transition=off, no negotiated bitrate or media endpoint",
+      "explicit_saved_reconnect": true
+    }
+  ],
+  "steady_duplex_baseline_started": false,
+  "channel_listening_measured": false,
+  "rates_192_and_game_measured": false,
+  "explicit_refresh_measured": false,
+  "new_soak_run": false,
+  "raw_evidence_committed": false
+}
