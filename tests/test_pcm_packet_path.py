@@ -7,13 +7,17 @@ import tempfile
 from test_source_boundaries import ROOT,function
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--fdk-lib',type=Path,required=True)
 p.add_argument('--mic-build',action='store_true',help='Exercise the mic-capable CBR encoder policy')
+p.add_argument('--negative-swap',action='store_true',help='Intentionally swap decoded L/R to prove channel isolation assertions reject corruption')
 p.add_argument('--source-file',type=Path,default=ROOT/'src/btstack/btstack_avdtp_source.c')
 a=p.parse_args()
 body=r'''
 #define PI 3.14159265358979323846
 int main(void) {
  const unsigned gains[]={100,50,0};unsigned decoded_frames=0;
- for(unsigned mode=1;mode<=3;mode++)for(unsigned g=0;g<3;g++) {
+ for(unsigned mode=1;mode<=3;mode++)for(unsigned g=0;g<3;g++)for(unsigned side=0;side<3;side++) {
+#ifdef USBPODS_NEGATIVE_SWAP_DECODED
+  if(mode!=1 || g!=0 || side!=1)continue;
+#endif
   usb_pcm_tap=(g%2)==0; // diagnostics must preserve the actual encoded signal
   profile=eld_profile_select(mode,false,1,false,false,5,1);
   assert(eld_encoder_open(&handleAAC,&aacinf,&profile)==AACENC_OK);
@@ -30,8 +34,8 @@ int main(void) {
    INT_PCM input[2880],decoded[1920];
    for(unsigned i=0;i<1440;i++) {
     double t=(batch*1440+i)/48000.0;
-    input[2*i]=(INT_PCM)(10000*sin(2*PI*40*t)+6000*sin(2*PI*1000*t));
-    input[2*i+1]=(INT_PCM)(8000*sin(2*PI*120*t)+4000*sin(2*PI*4000*t));
+    input[2*i]=side==2 ? 0 : (INT_PCM)(10000*sin(2*PI*40*t)+6000*sin(2*PI*1000*t));
+    input[2*i+1]=side==1 ? 0 : (INT_PCM)(8000*sin(2*PI*120*t)+4000*sin(2*PI*4000*t));
    }
    const unsigned chunks[]={44,45,47,48,49};
    for(unsigned off=0,k=0;off<1440;k++) {
@@ -77,6 +81,9 @@ int main(void) {
      assert(aacDecoder_Fill(dec,payload,&size,&valid)==AAC_DEC_OK && !valid);
      assert(aacDecoder_DecodeFrame(dec,decoded,1920,0)==AAC_DEC_OK);
      if(total>20)for(unsigned i=0;i<480;i++) {
+#ifdef USBPODS_NEGATIVE_SWAP_DECODED
+      INT_PCM swap=decoded[2*i];decoded[2*i]=decoded[2*i+1];decoded[2*i+1]=swap;
+#endif
       energy[0]+=(double)decoded[2*i]*decoded[2*i];energy[1]+=(double)decoded[2*i+1]*decoded[2*i+1];count++;
      }
      off+=4+n;frames++;total++;
@@ -87,8 +94,16 @@ int main(void) {
   }
   assert(!usb_slot_push_drops && !usb_slot_ready_full_drops);
   double rms0=sqrt(energy[0]/count),rms1=sqrt(energy[1]/count);
-  if(!gains[g])assert(rms0<1 && rms1<1);else assert(rms0>900*gains[g]/100.0/8 && rms1>600*gains[g]/100.0/8);
-  printf("Production PCM->Apple AU path: mode=%u gain=%u frames=%u RMS=%.2f/%.2f sequence-wrap verified\n",mode,gains[g],total,rms0,rms1);
+  if(!gains[g])assert(rms0<1 && rms1<1);
+  else if(side==0)assert(rms0>900*gains[g]/100.0/8 && rms1>600*gains[g]/100.0/8);
+  else if(side==1) {
+    assert(rms0>900*gains[g]/100.0/8);
+    assert(rms1<rms0*0.16+20); // silent right must not acquire left audio
+  } else {
+    assert(rms1>600*gains[g]/100.0/8);
+    assert(rms0<rms1*0.16+20); // silent left must not acquire right audio
+  }
+  printf("Production PCM->Apple AU path: mode=%u gain=%u side=%u frames=%u RMS=%.2f/%.2f sequence-wrap verified\n",mode,gains[g],side,total,rms0,rms1);
   decoded_frames+=total;aacDecoder_Close(dec);aacEncClose(&handleAAC);
  }
  printf("Production PCM/gain/channel order/framing/MTU: %u decoded frames passed\n",decoded_frames);
@@ -113,6 +128,7 @@ with tempfile.TemporaryDirectory() as temp:
  (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+stage+body)
  args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
  if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
+if a.negative_swap:args+=['-DUSBPODS_NEGATIVE_SWAP_DECODED=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]
  args+=[str(path/'pipeline.c'),str(ROOT/'src/btstack/eld_profile.c'),str(ROOT/'src/btstack/eld_encoder.c'),str(ROOT/'src/resamp44.c'),str(a.fdk_lib.resolve()),'-lstdc++','-lm','-o',str(path/'pipeline')]
  subprocess.run(args,check=True)
