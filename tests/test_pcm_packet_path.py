@@ -128,7 +128,7 @@ with tempfile.TemporaryDirectory() as temp:
  (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+stage+body)
  args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
  if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
-if a.negative_swap:args+=['-DUSBPODS_NEGATIVE_SWAP_DECODED=1']
+ if a.negative_swap:args+=['-DUSBPODS_NEGATIVE_SWAP_DECODED=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]
  args+=[str(path/'pipeline.c'),str(ROOT/'src/btstack/eld_profile.c'),str(ROOT/'src/btstack/eld_encoder.c'),str(ROOT/'src/resamp44.c'),str(a.fdk_lib.resolve()),'-lstdc++','-lm','-o',str(path/'pipeline')]
  subprocess.run(args,check=True)
