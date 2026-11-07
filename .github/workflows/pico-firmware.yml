@@ -1,7 +1,7 @@
 name: Pico firmware build
 on:
   push:
-    branches: [main, codex/eld-integration, 'work/local-windows-*', 'audit/duplex-192k-*']
+    branches: [main, codex/eld-integration, 'work/local-windows-*', 'audit/duplex-192k-*', 'audit/sequential-validation-*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -197,6 +197,24 @@ jobs:
           cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread -I src/tinyusb tests/test_usb_hid_threads.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-hid-threads
           timeout 20 /tmp/test-usb-hid-threads
           python3 tests/test_verify_uf2.py
+      - name: Production AU/PCM/USB clock schedules and intentional loss negative control
+        if: matrix.mic == 'aaceld'
+        run: |
+          cc -std=c11 -O1 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            -DUSBPODS_MIC_DECODE=1 -I tests/mic_mocks -I src/btstack -I src/tinyusb \
+            tests/test_mic_service_schedules.c src/btstack/aacp_mic_audio.c \
+            src/btstack/mic_clock.c src/tinyusb/usb_capture_lifecycle.c \
+            -o /tmp/test-mic-service
+          for case in on-time producer-gap worker-delay consumer-hold capture-epoch; do
+            /tmp/test-mic-service "$case"
+          done
+          ulimit -c 0
+          if /tmp/test-mic-service negative-worker-no-loss >/tmp/mic-negative.log 2>&1; then
+            echo "::error::An intentionally false zero-USB-loss claim was accepted"
+            exit 1
+          fi
+          grep -F 'EXPECTED_NEGATIVE_CONTROL:' /tmp/mic-negative.log
+          grep -F 'usb.missing_samples==0' /tmp/mic-negative.log
       - name: Test real FDK AAC-ELD microphone profile
         if: matrix.decode == 'ON'
         run: |
