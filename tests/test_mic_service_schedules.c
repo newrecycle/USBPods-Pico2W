@@ -153,8 +153,9 @@ static void schedule(const char *which) {
     assert(primed_once && st.decoder_ready && st.capture);
     assert(st.decode_errors==0 && st.pcm_overflows==0);
     assert(usb.short_writes==0 && usb.expected_samples==usb.pcm_samples+usb.missing_samples);
-    assert(usb.usb_packets==usb.underrun_packets+usb.pcm_samples/64u ||
-           usb.usb_packets>usb.underrun_packets); // packets may be 63/64/65
+    assert(usb.usb_packets>0 && usb.packets_63+usb.packets_65<=usb.usb_packets);
+    assert(usb.expected_samples>=63u*usb.usb_packets &&
+           usb.expected_samples<=65u*usb.usb_packets);
     assert(st.decoded==received_au);
     if(!consumer_hold) {
         assert(st.au_overflows==0);
