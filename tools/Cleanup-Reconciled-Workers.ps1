@@ -57,6 +57,21 @@ foreach ($record in $records) {
     }
 }
 
+# The reconciliation branch itself may be retired only if fully
+# accepted into Target. This makes it safe to keep just main + development.
+$cleanupRecords = @($records)
+$auditName = 'audit/sequential-validation-20261107-gpt6'
+$auditRef = 'refs/remotes/origin/' + $auditName
+& git -C $repoRoot show-ref --verify --quiet $auditRef
+if ($LASTEXITCODE -eq 0) {
+    $auditHead = (& git -C $repoRoot rev-parse $auditRef).Trim()
+    & git -C $repoRoot merge-base --is-ancestor $auditHead $targetSha
+    if ($LASTEXITCODE -ne 0) {
+        throw 'The independent reconciliation branch is not integrated; do not clean it'
+    }
+    $cleanupRecords += @{ Name=$auditName; Head=$auditHead; File='' }
+}
+
 # Check out-of-band local state: do not erase a checked-out dirty worker.
 $worktreeText = (& git -C $repoRoot worktree list --porcelain) -join [Environment]::NewLine
 $worktrees = @()
@@ -66,7 +81,7 @@ foreach ($block in ($worktreeText -split '(\r?\n){2,}')) {
     if (!$pathLine.Count -or !$branchLine.Count) { continue }
     $folder = $pathLine[0].Substring(9)
     $localBranch = $branchLine[0].Substring(18)
-    if (@($records | Where-Object { $_.Name -eq $localBranch }).Count) {
+    if (@($cleanupRecords | Where-Object { $_.Name -eq $localBranch }).Count) {
         $dirty = @(& git -C $folder status --porcelain)
         if ($LASTEXITCODE -ne 0 -or $dirty.Count) {
             throw "Worker worktree is dirty or inaccessible; no cleanup: $folder"
@@ -78,7 +93,7 @@ foreach ($block in ($worktreeText -split '(\r?\n){2,}')) {
 Write-Host "Verified target $Target @ $targetSha"
 Write-Host 'The four unchanged worker documents are present. PR #5/#6 should already be closed/reconciled.'
 foreach ($wt in $worktrees) { Write-Host "Clean worker worktree: $($wt.Path) [$($wt.Branch)]" }
-foreach ($record in $records) { Write-Host "Eligible remote branch: $($record.Name) @ $($record.Head)" }
+foreach ($record in $cleanupRecords) { Write-Host "Eligible remote branch: $($record.Name) @ $($record.Head)" }
 
 if (!$Apply) {
     Write-Host 'DRY RUN ONLY. Pass -Apply after PR review and approved integration.'
@@ -89,7 +104,7 @@ foreach ($wt in $worktrees) {
     & git -C $repoRoot worktree remove $wt.Path
     if ($LASTEXITCODE -ne 0) { throw "Failed to remove worktree: $($wt.Path)" }
 }
-foreach ($record in $records) {
+foreach ($record in $cleanupRecords) {
     & git -C $repoRoot push origin --delete $record.Name
     if ($LASTEXITCODE -ne 0) { throw "Failed remote deletion: $($record.Name)" }
     $local = (& git -C $repoRoot rev-parse --verify ('refs/heads/' + $record.Name) 2>$null)
@@ -100,4 +115,4 @@ foreach ($record in $records) {
 }
 & git -C $repoRoot worktree prune
 if ($LASTEXITCODE -ne 0) { throw 'Git worktree metadata pruning failed' }
-Write-Host 'Completed verified cleanup of four reviewed worker refs and their clean local worktrees.'
+Write-Host 'Completed verified cleanup of reviewed worker refs, eligible audit ref and clean local worktrees.'
