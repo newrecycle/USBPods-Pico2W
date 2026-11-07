@@ -1,3 +1,10 @@
+# Current local task handoff
+
+Read and execute [LOCAL-AGENT-TASKS-20261107.md](LOCAL-AGENT-TASKS-20261107.md)
+first. It supersedes stale implementation/task-status statements below, requires
+GitHub Actions for firmware builds/tests, and supplies a background CI completion
+callback. Historical constraints and evidence below remain relevant.
+
 # Paste this into local Codex
 
 Continue the USBPods reconstruction project in this repository. First read

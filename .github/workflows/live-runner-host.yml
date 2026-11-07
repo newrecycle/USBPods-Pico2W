@@ -4,6 +4,8 @@ on:
     branches: ['work/local-windows-*']
   pull_request:
     paths:
+      - 'tools/watch_ci.py'
+      - 'tests/test_watch_ci.py'
       - 'tools/live_test.py'
       - 'tools/live_audio.py'
       - 'tools/Run-Test.ps1'
@@ -41,6 +43,7 @@ jobs:
           python3 tests/test_live_runner.py
           python3 tests/test_live_matrix.py
           python3 tests/test_validation_audit.py
+          python3 tests/test_watch_ci.py
       - name: Exercise production codec scheduling and transition adapters
         run: |
           python3 tests/test_eld_foreground.py
