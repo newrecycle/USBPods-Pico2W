@@ -1,7 +1,7 @@
 name: Live runner host regressions
 on:
   push:
-    branches: ['work/local-windows-*']
+    branches: ['work/local-windows-*', 'audit/sequential-validation-*']
   pull_request:
     paths:
       - 'tools/watch_ci.py'
