@@ -15,6 +15,22 @@ def run(name='firmware',id=1,status='completed',conclusion='success',sha=SHA,eve
     return dict(workflowName=name,databaseId=id,status=status,conclusion=conclusion,headSha=sha,event=event)
 
 class Tests(unittest.TestCase):
+    def test_idle_guard_checks_identity_unfinished_and_overlapping_turns(self):
+        session='12345678-1234-1234-1234-123456789abc'
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'session.jsonl'
+            rows=[dict(type='session_meta',payload=dict(id=session))]
+            def write():path.write_text(''.join(json.dumps(r)+'\n' for r in rows),encoding='utf-8')
+            def event(kind,turn):rows.append(dict(type='event_msg',payload=dict(type=kind,turn_id=turn)));write()
+            write();self.assertFalse(w.session_is_idle(path,session))
+            event('task_started','a');self.assertFalse(w.session_is_idle(path,session))
+            event('task_started','b');event('task_complete','b')
+            self.assertFalse(w.session_is_idle(path,session))
+            event('turn_aborted','a');self.assertTrue(w.session_is_idle(path,session))
+            with self.assertRaises(RuntimeError):w.session_is_idle(path,'wrong')
+            with path.open('a',encoding='utf-8') as out:out.write('{"type":')
+            self.assertFalse(w.session_is_idle(path,session))
+
     def test_identity_and_newest_run(self):
         rows=[run(id=1),run(id=2,status='in_progress'),run(id=3,sha='b'*40),run(id=4,event='pull_request')]
         self.assertEqual(w.select_runs(rows,SHA,['firmware'])['firmware']['databaseId'],2)
@@ -43,16 +59,25 @@ class Tests(unittest.TestCase):
         session='12345678-1234-1234-1234-123456789abc'
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp)/'new'
-            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session',session]
+            session_log=Path(tmp)/'session.jsonl';session_log.touch()
+            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session',session,'--session-log',str(session_log)]
             def invoke(argv,**kwargs):
                 self.assertTrue((output/'completion.json').exists())
                 self.assertEqual(argv[:4],['codex','exec','resume',session])
                 self.assertNotIn('--last',argv)
                 self.assertFalse(any('bypass' in x for x in argv))
                 return types.SimpleNamespace(returncode=0)
-            with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w,'wait_for_ci',return_value=dict(state='completed',success=False,runs=[],missing=[])),patch.object(w.subprocess,'run',side_effect=invoke):
+            with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w,'wait_for_ci',return_value=dict(state='completed',success=False,runs=[],missing=[])),patch.object(w,'wait_for_idle',return_value=True),patch.object(w.subprocess,'run',side_effect=invoke):
                 self.assertEqual(w.main(),1)
             self.assertFalse(json.loads((output/'completion.json').read_text())['success'])
             self.assertEqual(json.loads((output/'callback-status.json').read_text())['returncode'],0)
+
+    def test_busy_session_never_resumed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output=Path(tmp)/'new';log=Path(tmp)/'session.jsonl';log.touch()
+            args=['watch_ci','--sha',SHA,'--output',str(output),'--resume-session','12345678-1234-1234-1234-123456789abc','--session-log',str(log)]
+            with patch('sys.argv',args),patch.object(w.shutil,'which',side_effect=lambda x:x),patch.object(w,'wait_for_ci',return_value=dict(state='completed',success=True,runs=[],missing=[])),patch.object(w,'wait_for_idle',return_value=False),patch.object(w.subprocess,'run') as resume:
+                self.assertEqual(w.main(),2);resume.assert_not_called()
+            self.assertEqual(json.loads((output/'callback-status.json').read_text())['state'],'session_busy')
 
 if __name__=='__main__':unittest.main()

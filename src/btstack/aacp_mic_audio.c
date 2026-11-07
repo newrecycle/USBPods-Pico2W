@@ -119,11 +119,13 @@ _Static_assert(sizeof(INT_PCM)==sizeof(int16_t), "microphone requires 16-bit FDK
 #define PCM_SLOTS 16u
 #define FRAME 480u
 
-static struct { uint32_t epoch; uint8_t len, data[255]; } aus[AU_SLOTS];
+static struct { uint32_t epoch, queued_us; uint8_t len, data[255]; } aus[AU_SLOTS];
 static struct { uint32_t epoch; int16_t data[FRAME]; } pcm[PCM_SLOTS];
 static _Atomic uint32_t aw, ar, pw, pr;
 static _Atomic uint32_t au_high, pcm_high, au_overflows, pcm_overflows;
 static _Atomic uint32_t au_stale, pcm_stale, au_inactive;
+static _Atomic uint32_t au_wait_last_us, au_wait_max_us, work_max_us;
+static _Atomic uint32_t pcm_blocked, au_overflow_pcm_full;
 static _Atomic uint32_t decoded, errors, flush_errors, max_us, last_us, ema_us;
 static _Atomic uint32_t last_rate, last_channels, last_frame;
 static _Atomic bool ready;
@@ -167,9 +169,13 @@ void aacp_mic_audio_enqueue(const uint8_t *au,uint8_t len) {
     uint32_t r=atomic_load_explicit(&ar,memory_order_acquire);
     if (w-r>=AU_SLOTS) {
         atomic_fetch_add_explicit(&au_overflows,1,memory_order_relaxed);
+        if (atomic_load_explicit(&pw,memory_order_acquire)-
+            atomic_load_explicit(&pr,memory_order_acquire)==PCM_SLOTS)
+            atomic_fetch_add_explicit(&au_overflow_pcm_full,1,memory_order_relaxed);
         return;
     }
     aus[w%AU_SLOTS].epoch=epoch;
+    aus[w%AU_SLOTS].queued_us=time_us_32();
     aus[w%AU_SLOTS].len=len;
     memcpy(aus[w%AU_SLOTS].data,au,len);
     atomic_store_explicit(&aw,w+1,memory_order_release);
@@ -180,6 +186,7 @@ void aacp_mic_audio_enqueue(const uint8_t *au,uint8_t len) {
  * thirty-two stale queued AUs first so a reconnect cannot starve new data. */
 void aacp_mic_audio_work(void) {
     if (!decoder) return;
+    const uint32_t work_started=time_us_32();
     unsigned processed=0;
     for (unsigned scanned=0; scanned<AU_SLOTS+8u && processed<8u; scanned++) {
         uint32_t r=atomic_load_explicit(&ar,memory_order_relaxed);
@@ -195,7 +202,10 @@ void aacp_mic_audio_work(void) {
            during DecodeFrame. Stale AUs above are still drained when full. */
         uint32_t w=atomic_load_explicit(&pw,memory_order_relaxed);
         uint32_t pr_now=atomic_load_explicit(&pr,memory_order_acquire);
-        if (w-pr_now>=PCM_SLOTS) break;
+        if (w-pr_now>=PCM_SLOTS) {
+            atomic_fetch_add_explicit(&pcm_blocked,1,memory_order_relaxed);
+            break;
+        }
         processed++;
         /* FDK reads an AU before applying CLRHIST/INTR: an empty DecodeFrame
            only returns NOT_ENOUGH_BITS and never clears ELD history. Discard
@@ -205,6 +215,9 @@ void aacp_mic_audio_work(void) {
         UCHAR *input[]={aus[r%AU_SLOTS].data};
         UINT size=aus[r%AU_SLOTS].len, valid=size;
         uint32_t t=time_us_32();
+        uint32_t wait=t-aus[r%AU_SLOTS].queued_us; /* wrapping device clock */
+        atomic_store_explicit(&au_wait_last_us,wait,memory_order_relaxed);
+        sample_max(&au_wait_max_us,wait);
         AAC_DECODER_ERROR err=reset_history ?
             aacDecoder_SetParam(decoder,AAC_TPDEC_CLEAR_BUFFER,1) : AAC_DEC_OK;
         if (err==AAC_DEC_OK) err=aacDecoder_Fill(decoder,input,&size,&valid);
@@ -242,6 +255,7 @@ void aacp_mic_audio_work(void) {
         atomic_store_explicit(&pw,w+1,memory_order_release);
         sample_max(&pcm_high,w-pr_now+1);
     }
+    sample_max(&work_max_us,time_us_32()-work_started);
 }
 bool aacp_mic_audio_pending(void) {
     return aacp_mic_capture() && aacp_mic_audio_ready() &&
@@ -351,6 +365,11 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
     out->au_stale=READ_D(au_stale);
     out->pcm_stale=READ_D(pcm_stale);
     out->au_inactive=READ_D(au_inactive);
+    out->au_wait_last_us=READ_D(au_wait_last_us);
+    out->au_wait_max_us=READ_D(au_wait_max_us);
+    out->work_max_us=READ_D(work_max_us);
+    out->pcm_blocked=READ_D(pcm_blocked);
+    out->au_overflow_pcm_full=READ_D(au_overflow_pcm_full);
     out->decoded=READ_D(decoded);
     out->decode_errors=READ_D(errors);
     out->decode_last_us=READ_D(last_us);

@@ -1342,6 +1342,40 @@ static uint32_t src_eld_packet_au_limit(void) {
 #endif
 }
 
+/* 'U' diagnostic only: the actual stereo input handed to FDK, after gain,
+ * mixing and optional resampling. This does not prove the compressed payload
+ * decodes correctly or that either earbud rendered it. No PCM is modified. */
+static void src_eld_pcm_tap_note(const int16_t *pcm, uint32_t frames) {
+    extern volatile bool usb_pcm_tap;
+    static struct {
+        uint32_t started, generation, frames, peak_l, peak_r;
+        bool valid, capture, mixed;
+    } tap;
+    if (!usb_pcm_tap) { memset(&tap,0,sizeof tap); return; }
+    uint32_t now=time_us_32(),generation=aacp_mic_generation();
+    bool capture=aacp_mic_capture();
+    if (!tap.valid || now-tap.started>1000000u) {
+        memset(&tap,0,sizeof tap);tap.valid=true;tap.started=now;
+        tap.generation=generation;tap.capture=capture;
+    }
+    if (tap.generation!=generation || tap.capture!=capture) tap.mixed=true;
+    for (uint32_t i=0;i<frames;i++) {
+        int32_t l=pcm[2*i],r=pcm[2*i+1];
+        uint32_t al=(uint32_t)(l<0?-l:l),ar=(uint32_t)(r<0?-r:r);
+        if(al>tap.peak_l)tap.peak_l=al;
+        if(ar>tap.peak_r)tap.peak_r=ar;
+    }
+    tap.frames+=frames;
+    if (aacp_mic_generation()!=generation) tap.mixed=true;
+    if (now-tap.started>=500000u) {
+        printf("[eld-pcm] frames=%lu peak_l=%lu peak_r=%lu mic=%s gen=%lu\n",
+               (unsigned long)tap.frames,(unsigned long)tap.peak_l,
+               (unsigned long)tap.peak_r,tap.mixed?"transition":tap.capture?"open":"closed",
+               (unsigned long)generation);
+        memset(&tap,0,sizeof tap);
+    }
+}
+
 int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     int          total_samples_read               = 0;
 
@@ -1450,6 +1484,8 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
         out_buf.bufSizes     = &out_size;
         AACENC_ERROR err;
 
+        if(cur_codec==CODEC_ID_AACELD && aacinf.inputChannels==2)
+            src_eld_pcm_tap_note((const int16_t *)in_ptr,(uint32_t)in_args.numInSamples/2u);
         watchdog_hw->scratch[7] = 0x3B;   /* entering aacEncEncode */
         const uint32_t encode_started=time_us_32();
         err = aacEncEncode(handleAAC, &in_buf, &out_buf, &in_args, &out_args);

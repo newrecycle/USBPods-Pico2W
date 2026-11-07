@@ -1,5 +1,12 @@
 # Local Codex handoff
 
+Current task order and CI-only build/test policy: [2026-11-07 local handoff](LOCAL-AGENT-TASKS-20261107.md).
+The current integrated baseline is `263de0c707e95a668f8ce2686ac38ba3058cee3d`;
+the later handoff commit adds documentation and a CI watcher. The source-specific
+authorization and `evidence/current-validation.json` below are historical records,
+not physical acceptance of integrated main. See `validation-status.json` for
+their scope. The last physically tested laptop source remains `880dc318`.
+
 Latest branch integration: [2026-11-05 review](INTEGRATION-REVIEW-20261105.md)
 and [offline evidence](evidence/integration-review-20261105.json). Read this
 before the historical implementation chronology below. The integrated source
@@ -56,8 +63,10 @@ capture fault until a new capture generation or a new AACP channel session
 (teardown clears it so a reconnect can retry; the retry counters are per
 channel attempt), and leaves playback running. Stale queued AU/PCM history is
 invalidated on wire transitions.
-Selected jitter/game policy is reapplied through the existing delayed control
-path without rebuilding playback. Explicit playback recovery remains available.
+In that historical implementation, microphone transitions also reapplied jitter
+policy. Integrated main sends selected jitter on AACP channel open and explicit
+game/profile changes, not on ordinary microphone close/open. Explicit playback
+recovery remains available.
 
 `:status` adds `mic_audio_seen`, `mic_watchdog_failed`, `mic_retry_count`,
 `mic_restarts`, `mic_watchdog_failures` and `mic_audio_age_ms`; unknown age is
@@ -107,9 +116,10 @@ playback and 48 kHz coding / 64 kHz mono PCM microphone consumption.
   may already be on the user's local PC. Their availability is not required to
   build this independent firmware. Do not substitute them as authoritative code.
 - `docs/evidence/live-capture-facts.json`: sanitized facts and transition timeline.
-- `docs/evidence/current-validation.json`: exact source/CI state and remaining
-  physical limits. A documentation-only commit may be newer than the tested
-  source commit; use this record rather than guessing from the latest title.
+- `docs/evidence/current-validation.json`: historical `7de2130` source/CI state
+  and physical limits at that time. Current integrated evidence and the latest
+  physical source are indexed in `docs/validation-status.json`; retain exact
+  source identities rather than guessing from the latest commit title.
 
 ## Handoff validation result
 

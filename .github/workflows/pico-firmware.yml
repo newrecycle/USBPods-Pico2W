@@ -160,6 +160,7 @@ jobs:
           /tmp/test-eld-transition
           python3 tests/test_eld_adapter.py
           python3 tests/test_eld_foreground.py
+          python3 tests/test_eld_pcm_tap.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_mic_telemetry.c src/btstack/aacp_mic_audio.c src/btstack/mic_clock.c -o /tmp/test-mic-telemetry
           /tmp/test-mic-telemetry
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/tinyusb tests/test_usb_host_input.c src/tinyusb/usb_capture_lifecycle.c src/tinyusb/usb_hid_media.c -o /tmp/test-usb-input

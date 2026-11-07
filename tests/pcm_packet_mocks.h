@@ -26,6 +26,9 @@ static uint16_t filling_offset,slot_frame_int16=960,usb_sw_gain_q15=32768,aaceld
 static uint32_t usb_slot_push_drops,usb_slot_ready_full_drops,slot_real_waits;
 static uint32_t src_encode_last_us,src_encode_max_us;
 static uint32_t time_us_32(void){static uint32_t ticks;return ++ticks;}
+volatile bool usb_pcm_tap;
+#define aacp_mic_generation() 1u
+#define aacp_mic_capture() true
 static int16_t src_tail[480],eld_rs_buf[960];
 static unsigned acc_num_simples=480;
 static HANDLE_AACENCODER handleAAC;

@@ -26,5 +26,16 @@
     "basis": "Offline static review, remediation and end-to-end verification are complete at 8b89d42 (CI: Pico firmware build 41761074322, USB capture/HID host tests 41761074425).",
     "candidate_source_commit": "8b89d42",
     "review_record": "docs/STATIC-REVIEW-2026-11-03.md"
+  },
+  "authorization_scope": "The 2026-11-03 authorization records owner permission for controlled hardware testing of the named historical candidate; it is not physical acceptance of integrated main or future candidates.",
+  "current_followup": {
+    "handoff": "docs/LOCAL-AGENT-TASKS-20261107.md",
+    "integrated_baseline": "263de0c707e95a668f8ce2686ac38ba3058cee3d",
+    "workflow_evidence": "docs/evidence/integration-review-20261105.json",
+    "last_physical_source": "880dc318072f191f1440d3f0b262d83e32729b59",
+    "physical_evidence": "docs/evidence/local-windows-20261104.json",
+    "integrated_main_physically_accepted": false,
+    "firmware_build_and_codec_tests": "GitHub Actions only",
+    "dual_core_mic_default": false
   }
 }

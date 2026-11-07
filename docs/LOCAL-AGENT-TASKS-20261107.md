@@ -128,11 +128,12 @@ PowerShell, from the dedicated repository worktree after pushing:
 $sha = (git rev-parse HEAD).Trim()
 # Replace with THIS local Codex session UUID, confirmed accessible by its CLI.
 $session = 'REPLACE-WITH-EXACT-SESSION-UUID'
+$sessionLog = 'REPLACE-WITH-MATCHING-LOCAL-SESSION-JSONL-PATH'
 # Unique local directory, outside the repository; keep it free of spaces here.
 $out = Join-Path $env:TEMP ('USBPods-CI-' + $sha.Substring(0,8) + '-' + [guid]::NewGuid().ToString('N'))
-Start-Process -FilePath (Get-Command python).Source -WorkingDirectory (Get-Location).Path -ArgumentList @(
+Start-Process -WindowStyle Hidden -FilePath (Get-Command python).Source -WorkingDirectory (Get-Location).Path -ArgumentList @(
   'tools/watch_ci.py', '--sha', $sha, '--output', $out,
-  '--resume-session', $session
+  '--resume-session', $session, '--session-log', $sessionLog
 ) -RedirectStandardOutput ($out + '.stdout.log') -RedirectStandardError ($out + '.stderr.log')
 ```
 
@@ -141,6 +142,12 @@ before the callback runs. Never concurrently resume a session being actively
 used. If CI is already complete, handle its result in the current turn rather
 than starting a competing continuation. For strict idle-session operation,
 launch the command from a separate terminal after the original session yields.
+The callback now requires a matching local session JSONL. After recording CI,
+it waits for all logged `task_started` turns to receive matching `task_complete`
+or `turn_aborted` records before invoking the CLI. Unknown identity, partial
+records or a busy-session timeout refuse resumption. This is an idle check, not
+an exclusive Desktop lock: keep the session unused until the callback finishes.
+No fixed delay is treated as evidence that the session yielded.
 The watcher survives the end of that agent turn, provided its local process
 is not terminated and the machine remains awake.
 
@@ -171,5 +178,6 @@ References:
 
 Watcher validation: `python tests/test_watch_ci.py` covers exact SHA/event
 filtering, latest-run selection, aggregate completion, non-success conclusions
-and missing-workflow timeout without calling GitHub or a model. No firmware
+and missing-workflow timeout, session identity and active/overlapping-turn
+refusal without calling GitHub or a model. No firmware
 build or hardware test was performed while preparing this handoff.

@@ -52,6 +52,44 @@ def save(path, value):
     temp.replace(path)
 
 
+def session_is_idle(path, session):
+    """Fail closed on unknown/incomplete logs; never infer idle from a delay."""
+    active = set()
+    observed = False
+    with path.open(encoding='utf-8') as log:
+        header = json.loads(next(log))
+        if header.get('type') != 'session_meta' or header.get('payload', {}).get('id') != session:
+            raise RuntimeError('Session log identity does not match --resume-session')
+        for line in log:
+            if not line.endswith('\n'):
+                return False  # a writer may be publishing a task_started record
+            row = json.loads(line)
+            if row.get('type') != 'event_msg':
+                continue
+            event = row.get('payload', {})
+            kind = event.get('type')
+            if kind not in ('task_started', 'task_complete', 'turn_aborted'):
+                continue
+            turn = event.get('turn_id')
+            if not turn:
+                raise RuntimeError('Session lifecycle record has no turn identity')
+            observed = True
+            if kind == 'task_started':
+                active.add(turn)
+            else:
+                active.discard(turn)
+    return observed and not active
+
+
+def wait_for_idle(path, session, timeout):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if session_is_idle(path, session):
+            return True
+        time.sleep(min(5, max(0, deadline - time.monotonic())))
+    return False
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--repo', default='newrecycle/USBPods-Pico2W')
@@ -61,6 +99,8 @@ def main():
     p.add_argument('--timeout', type=int, default=2700)
     p.add_argument('--output', type=Path, required=True, help='New local directory, outside tracked evidence')
     p.add_argument('--resume-session', help='Exact idle Codex session UUID, never --last')
+    p.add_argument('--session-log', type=Path, help='Matching local session JSONL; required for callback idle guard')
+    p.add_argument('--idle-timeout', type=int, default=1800, help='Seconds to wait for all logged turns to end')
     a = p.parse_args()
     if not re.fullmatch(r'[0-9a-fA-F]{40}', a.sha):
         p.error('--sha must be a full commit SHA')
@@ -68,6 +108,8 @@ def main():
         p.error('interval must be >=15 seconds and timeout >= interval')
     if a.resume_session and not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', a.resume_session):
         p.error('--resume-session must be the exact session UUID')
+    if a.resume_session and (not a.session_log or not a.session_log.is_file() or a.idle_timeout < 5):
+        p.error('callback requires an existing --session-log and --idle-timeout >=5')
     workflows = list(dict.fromkeys(a.workflow or DEFAULTS))
     if not shutil.which('gh') or (a.resume_session and not shutil.which('codex')):
         p.error('gh and, for the resume callback, codex must be installed and authenticated')
@@ -94,12 +136,15 @@ def main():
                   'and report the exact source/run/artifact identities and remaining physical limits.')
         # No shell, no approval bypass, no credentials or remote webhook in GitHub Actions.
         try:
+            if not wait_for_idle(a.session_log, a.resume_session, a.idle_timeout):
+                save(a.output / 'callback-status.json', dict(state='session_busy', resumed=False))
+                return 2
             with (a.output / 'callback.log').open('w', encoding='utf-8') as log:
                 r = subprocess.run([shutil.which('codex'), 'exec', 'resume', a.resume_session,
                                     '--output-last-message', str(a.output / 'callback-response.md'), prompt],
                                    stdout=log, stderr=subprocess.STDOUT, timeout=1800)
             save(a.output / 'callback-status.json', dict(returncode=r.returncode))
-        except (OSError, subprocess.TimeoutExpired) as exc:
+        except (OSError, ValueError, StopIteration, RuntimeError, subprocess.TimeoutExpired) as exc:
             save(a.output / 'callback-status.json', dict(error=type(exc).__name__))
             return 2
         if r.returncode:

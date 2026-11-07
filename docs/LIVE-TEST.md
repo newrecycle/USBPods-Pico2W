@@ -1,5 +1,16 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
+Current follow-up: [2026-11-07 task order](LOCAL-AGENT-TASKS-20261107.md).
+Build firmware and run firmware/codec tests exclusively in GitHub Actions.
+After exact-source CI passes, use a short same-host comparison: 256 kbps baseline,
+isolated left/right tones across microphone close/open, 192 kbps duplex, both
+game modes, then explicit refresh and saved-bond reconnect. Test 320 kbps only
+when the negotiated ceiling allows it. Confirm applied profile/jitter and keep
+first-fault evidence. Use phone-speaker audio as the microphone stimulus.
+Keep the existing ten-minute evidence; a new long soak needs a specific question.
+Enumerate the actual CDC port instead of assuming COM3/COM4. Experimental
+core-1 decoding remains opt-in and excluded from automatic packaging.
+
 **Evidence-integrity note (independent audit, 2026-11-04):** The source candidate at
 18be74cfe99f2584bcf26a0c0f0571c75a7f7bec passed firmware and host CI,
 but it **was not flashed or physically tested**. The last physical laptop
@@ -36,7 +47,7 @@ the UF2 hash and source commit; the runner refuses a different running commit.
 
 ## Windows setup
 
-For the current 30-second connection failure, use the focused probe:
+Historical focused probe for the 30-second connection failure:
 
 ```powershell
 .\Run-Test.ps1 -CdcPort COM3 -SessionOnly
@@ -47,8 +58,10 @@ of concurrent AAC-ELD playback, microphone capture, USB diagnostics and HID logs
 Your phone-speaker clip during the first 20 seconds is sufficient. No counting,
 channel questions, control cycling or ten-minute soak is included. Return the
 results ZIP even if it exits early. See [AACP-SESSION-0555.md](AACP-SESSION-0555.md).
-This package diagnoses the repeatable disconnect; its physical cause is still
-unresolved. Omit `-SessionOnly` for the complete matrix after that issue is closed.
+This probe diagnoses that disconnect; its physical cause was unresolved in that
+capture. It does not replace the current targeted follow-up above. Omitting
+`-SessionOnly` runs a broader matrix, including a long soak, and is not the default
+for this follow-up.
 
 After the first pairing, a package containing the local runner's new
 `-ReusePairing` option can reuse the current or uniquely selected saved bond:

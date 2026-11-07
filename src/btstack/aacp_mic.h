@@ -41,6 +41,10 @@ typedef struct {
     uint32_t timestamp_step_changes, timestamp_gap_candidates;
     uint32_t au_depth, au_high_water, au_overflows, au_stale, au_inactive;
     uint32_t pcm_depth, pcm_high_water, pcm_overflows, pcm_stale;
+    /* Lifetime timing maxima, not per-profile measurements. Work time includes
+     * interrupt preemption; blocked/drop counters do not infer a cause. */
+    uint32_t au_wait_last_us, au_wait_max_us, work_max_us;
+    uint32_t pcm_blocked, au_overflow_pcm_full;
     uint32_t decoded, decode_errors, decode_last_us, decode_max_us, decode_ema_us;
     uint32_t decoded_rate, decoded_channels, decoded_frame_samples;
     uint32_t measured_sample_rate,clock_windows,pcm_primed;

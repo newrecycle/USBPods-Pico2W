@@ -14,6 +14,7 @@ body=r'''
 int main(void) {
  const unsigned gains[]={100,50,0};unsigned decoded_frames=0;
  for(unsigned mode=1;mode<=3;mode++)for(unsigned g=0;g<3;g++) {
+  usb_pcm_tap=(g%2)==0; // diagnostics must preserve the actual encoded signal
   profile=eld_profile_select(mode,false,1,false,false,5,1);
   assert(eld_encoder_open(&handleAAC,&aacinf,&profile)==AACENC_OK);
   HANDLE_AACDECODER dec=aacDecoder_Open(TT_MP4_RAW,1);assert(dec);
@@ -98,6 +99,7 @@ names=['set_usb_sw_gain_pct','audio_slot_push_samples','audio_slot_pop','audio_s
 # Its actual timer case is extracted unchanged rather than supplying a mock
 # implementation of the missing production staging helper.
 source=a.source_file.read_text()
+if 'static void src_eld_pcm_tap_note(' in source:names.insert(-2,'src_eld_pcm_tap_note')
 if 'static uint32_t src_eld_packet_au_limit(' in source:names.insert(-2,'src_eld_packet_au_limit')
 if 'static void codec_fdk_stage_eld_packet(' in source:
  stage=''

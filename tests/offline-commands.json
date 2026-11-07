@@ -943,5 +943,14 @@
       "tests/test_validation_audit.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "eld-pcm-tap",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_pcm_tap.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
   }
 ]
