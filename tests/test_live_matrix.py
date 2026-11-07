@@ -20,7 +20,7 @@ import live_audio
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy required')
 class MatrixReplay(unittest.TestCase):
     def run_case(self,external=False,reject=False,mic_fault=False,startup_pause=False,
-                 external_release=False,operator_failure=False,steady_retry=False):
+                 external_release=False,operator_failure=False,steady_retry=False,focused=False):
         import numpy as np
         events=[];results={};streams=[];phase_begin={}
         class Recorder:
@@ -108,7 +108,7 @@ class MatrixReplay(unittest.TestCase):
                     clock.sleep(.25)
                 raise TimeoutError('Stateful replay timeout')
         link=Link()
-        args=types.SimpleNamespace(output_device=None,input_device=None,duration=5,soak_seconds=10,phone_relay=False)
+        args=types.SimpleNamespace(output_device=None,input_device=None,duration=5,soak_seconds=10,phone_relay=False,mic_close_only=focused)
         def result(name,status,detail=None):results[name]=(status,detail)
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
@@ -129,7 +129,15 @@ class MatrixReplay(unittest.TestCase):
                     live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,
                         lambda message:'left ear is silent' if operator_failure and 'mic_closed: tone is LEFT' in message else '',
                         'fixture')
-                    self.assertEqual(results['duplex_soak'][0],'PASS')
+                    if focused:
+                        self.assertNotIn('duplex_soak',results)
+                        self.assertNotIn('eld192',results)
+                        self.assertNotIn('game_stable',results)
+                        self.assertNotIn('game_latency',results)
+                        self.assertNotIn('capture_reconnect_1',results)
+                        self.assertEqual(results['reconnect_game_soak'][0],'SKIP')
+                        self.assertEqual(results['mic_close_reopen_duplex'][0],'PASS')
+                    else:self.assertEqual(results['duplex_soak'][0],'PASS')
                     if startup_pause:
                         self.assertEqual(results['eld256'][0],'PASS')
                         self.assertIn('readiness',results['eld256'][1])
@@ -137,8 +145,9 @@ class MatrixReplay(unittest.TestCase):
                         settling=[obj for name,obj in events if name=='connection-preflight.jsonl' and obj.get('phase')=='eld256_ready']
                         self.assertTrue(any(obj['eldstatus']['transition']=='wait-start' for obj in settling))
                         self.assertEqual(settling[-1]['eldstatus']['transition'],'ready')
-                    self.assertEqual(results['eld320'][0],'SKIP')
-                    for i in range(1,4):self.assertEqual(results[f'capture_reconnect_{i}'][0],'PASS')
+                    if not focused:
+                        self.assertEqual(results['eld320'][0],'SKIP')
+                        for i in range(1,4):self.assertEqual(results[f'capture_reconnect_{i}'][0],'PASS')
                     self.assertEqual(results['capture_close'][0],'SKIP' if external and not external_release else 'PASS')
                     self.assertFalse(results['capture_close'][1]['runner_exclusive_ownership_verified'])
                     if external_release:
@@ -152,13 +161,14 @@ class MatrixReplay(unittest.TestCase):
                         fault=json.loads((root/'audio-failure-state.json').read_text())
                         self.assertTrue(fault['before_stream_cleanup'])
                     self.assertEqual(results['mic_close_reopen_duplex'][0],'UNVERIFIED' if external and not external_release else 'PASS')
-                    self.assertEqual(sum(c.startswith('profile ') for c in link.commands),5)
+                    self.assertEqual(sum(c.startswith('profile ') for c in link.commands),1 if focused else 5)
                     self.assertTrue(list(root.glob('*.wav')))
                 self.assertFalse(streams)
                 self.assertTrue((root/'audio-metrics.json').exists())
                 self.assertFalse(any(c.startswith(('eldrate ','gamelevel ','game ')) for c in link.commands))
         return results
     def test_complete_owned_capture_matrix(self):self.run_case()
+    def test_focused_mic_close_does_not_repeat_soak_or_game_matrix(self):self.run_case(focused=True)
     def test_profile_measurement_waits_for_refresh_after_fixed_dwell(self):self.run_case(startup_pause=True)
     def test_external_capture_is_not_a_usb_close_failure(self):self.run_case(external=True)
     def test_recorded_start_rejection_preserved_before_cleanup(self):self.run_case(reject=True)
