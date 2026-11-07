@@ -215,6 +215,12 @@ jobs:
           fi
           grep -F 'EXPECTED_NEGATIVE_CONTROL:' /tmp/mic-negative.log
           grep -F 'usb.missing_samples==0' /tmp/mic-negative.log
+          if /tmp/test-mic-service negative-worker-no-backlog >/tmp/mic-provenance-negative.log 2>&1; then
+            echo "::error::A false zero-backlog diagnosis was accepted"
+            exit 1
+          fi
+          grep -F 'EXPECTED_NEGATIVE_PROVENANCE:' /tmp/mic-provenance-negative.log
+          grep -F 'st.usb_first_fault_au_depth==0' /tmp/mic-provenance-negative.log
       - name: Test real FDK AAC-ELD microphone profile
         if: matrix.decode == 'ON'
         run: |
