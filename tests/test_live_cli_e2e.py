@@ -190,6 +190,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     args=['live_test.py','--manifest',str(manifest_path),'--cdc','COM_SIM','--duration','5','--soak-seconds','10','--output',str(output)]
     session_case=case in ('session-only','session-peer-timeout','session-no-ack')
     if session_case:args+=['--session-only']
+    if case=='mic-close-only':args+=['--mic-close-only']
     def answer(message):return '0' if 'Enter the index' in message else ''
     log=io.StringIO()
     with mock.patch.dict(sys.modules,modules),mock.patch.object(sys,'argv',args),mock.patch('builtins.input',answer),mock.patch.object(live,'time',clock),mock.patch.object(audio,'time',clock),contextlib.redirect_stdout(log):
@@ -206,7 +207,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert all('simulated USB device removed' in e for e in summary['collector_errors'])
     else:assert not summary['collector_errors'] and not summary.get('restore_errors')
     assert all(p.closed for p in ports) and all(h.closed for h in handles) and not streams
-    if not failed and not session_case:
+    if not failed and not session_case and case!='mic-close-only':
         for key in ('eld256','eld192','game_stable','game_latency','restore256','duplex_soak','capture_reconnect_1','capture_reconnect_2','capture_reconnect_3'):
             assert tests[key]['status']=='PASS',(case,key,tests[key])
         assert tests['eld320']['status']==('PASS' if ceiling>=320000 else 'SKIP')
@@ -219,6 +220,17 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         for wav in root.glob('*.wav'):
             with wave.open(str(wav)) as f:assert (f.getframerate(),f.getnchannels(),f.getsampwidth())==(48000,2,2)
         assert list(root.glob('*.wav'))
+    if case=='mic-close-only':
+        assert tests['restore256']['status']=='PASS'
+        assert tests['mic_close_endpoint']['status']=='PASS'
+        assert tests['mic_close_reopen_duplex']['status']=='PASS'
+        assert tests['capture_close']['status']=='PASS'
+        assert tests['post_audio_controls']['status']=='SKIP'
+        assert tests['reconnect_game_soak']['status']=='SKIP'
+        assert not any(k in tests for k in ('eld192','game_stable','game_latency','duplex_soak','noise','ear_and_stem','capture_reconnect_1'))
+        assert not any(c.startswith(('earpause ','stem ')) for c in commands)
+        assert device.connect_calls==0
+        assert device.settings==device.original
     if session_case:
         assert not any(k in tests for k in ('eld192','game_stable','duplex_soak','noise','ear_and_stem'))
         assert device.connect_calls==0
@@ -268,7 +280,7 @@ if __name__=='__main__':
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
-        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
+        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('mic-close-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
                              ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)
