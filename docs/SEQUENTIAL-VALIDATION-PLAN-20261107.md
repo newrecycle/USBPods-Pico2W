@@ -1,0 +1,32 @@
+# Sequential claim verification: pre-implementation ledger and plan (2026-11-07)
+
+**Frozen baseline**: `175ace9f09554881b554e8226544e78ce10d06a1` on `work/local-windows-followup-20261107`. **Integration branch**: `audit/sequential-validation-20261107-gpt6`, created directly from that exact SHA. `main` `018685157ab8c5dedc66008e2e54ae3a38994e25` is an ancestor. No PR or worker branch will be overwritten or merged into main. New worker documents are taken at exact source-commit blobs, sequentially, before changing production tests. This initial plan precedes implementation.
+
+## Commit and worker order
+
+| Order | Source | Contents | Existing evidence | New action |
+|---|---|---|---|---|
+| 0 | Main merge #4 `e2229dc` then main merge #3 `263de0c` and main handoff `0186851` | Already integrated code/docs | Historical CI, not physical acceptance | Confirm ancestry; do not remerge |
+| 1 | `e9f548259cfc402db88a1e2ea7ca0a56ee99844a` | Local diagnostics, watcher | CI 42417493025/14/56 success; **physical media setup failure** | Preserve older failure evidence |
+| 2 | `1979ae6be1c2daf9e1db8024763504d4061c4588` | Reentrant SDK AVDTP accepted-label retirement fix | CI 42419581145/084/191 passed. Actual single-core and opt-in dual-core flashed this SHA | Verify unchanged source-to-evidence chronology |
+| 3 | `175ace9f09554881b554e8226544e78ce10d06a1` | Sanitized single/dual physical evidence, docs | CI firmware 42423214285; runner 42423214310; USB 42423214239 successful. **No candidate flash** | Treat as development baseline, not newer physical test |
+| 4 | `audit/capture-lifecycle-175ace9-gpt6-20261107` `7a06d4ab97f16f3db318186194a8612ef100f069` | One new Markdown diagnosis | USB host 42423867786 success (documentation-only) | Add production AU/PCM epoch / delayed consumer fixtures |
+| 5 | `audit/mic-close-175ace9-20261107` `cc27598f00112f62337e1dbd5ed8cebb06125314` | One new Markdown diagnosis | USB host 42423953319 success (documentation-only) | Verify encoder PCM/channel tests against real production bodies, avoid peer inference |
+| 6 | Draft PR #5 `audit/runner-completion-175ace9` `db4b82ca54bf619f570a5897ad5db535d1f2a390` | Two commits producing one Markdown diagnosis | USB host 42423943904 success (documentation-only) | Test the real watcher/runner continuity functions; do not call accepted delivery an autonomous Desktop turn |
+| 7 | Draft PR #6 `audit/core1-service-175ace9` `9e25083aa86a5e80991bfe05db35d6821edeb5e6` | One new Markdown diagnosis | USB host 42424013494 success (documentation-only) | Add deterministic production queue + USB clock packet schedule tests; preserve strict losses and default-OFF core1 |
+
+## Physical source boundaries and likely testable claims
+
+- **Source `1979ae6`, single-core**: 20-second 256 kbps, 192 kbps, and both game levels passed zero new AU drops/USB missing samples *within measured steady windows*. At 192 kbps 1,412 PCM-full worker exits were **backpressure, not AU loss**. Microphone-close left-ear silence persisted with correct observed left peak in **pre-encoder** PCM; manual K and saved-bond reconnect restored audibility. Windows raw/HID and compressed output remain separate. 320 kbps was skipped at the negotiated 256 ceiling. Total AU drops reached 248 outside accepted steady intervals. **Evidence:** `docs/evidence/local-windows-20261107-live.json` and local follow-up document. Retain the already-completed earlier ten-minute soak.
+- **Same source `1979ae6`, opt-in core1**: 256 passed, 192 **failed with +44 USB underruns and +2,816 missing samples, but zero new AU overflows**. 44 × 64 = 2,816, consistent with fully empty USB PCM packets. No per-event chronology; core scheduling, producer gaps and reprime are hypotheses, not established root causes. Do not change 48/64k clocks, 32-AU/16-PCM capacities, flash safety or default-OFF core policy without a measured cause.
+- **CI-verifiable:** AU/PCM ring generation retirement, bounded backpressure, delayed USB consumer, stale partial-frame discard; sample-clock prefill/rebuffer and producer-gap versus decoder-delay signatures; real PCM gain and encoder/decoder channel order, output AU framing; watcher exact-SHA/run-attempt semantics and record-only continuation; package/manifest identity; START submitted versus received AUs versus decode; negative conditions from real production functions.
+- **Physical-only, not eligible for synthetic PASS:** left AirPods audibility, peer decoding/ANC-Off, RF drift, actual 192k core1 scheduler preemption, user hearing, HID OS delivery, exact Windows audio exclusivity, application stimulus, Desktop autonomous waking. Document them as `UNVERIFIED`/ `FAIL (historical physical)` as applicable, never as CI passes.
+
+## Actions before declaring integration complete
+
+1. Copy the four independent Markdown reports at exact upstream blobs to an isolated integration branch, **one commit each**, unchanged. Verify each source branch differs from `175ace9` solely in docs. This preserves their authors' epistemic distinctions and leaves PRs #5/#6 open/unmodified.
+2. Add a small set of production-body deterministic regressions to existing **GitHub Actions** jobs (no extra firmware flavor): include on-time batch, producer gap and decoder scheduling delay at 1ms USB ticks; lifecycle stale/full and partial-epoch controls; actual encoder stereo channel isolation where the existing real-FDK fixture permits; watcher continuation negative controls.
+3. Guard `build_verified`, positive 32-bit allocation audit, target source SHA, package file hashes, and experimental core1 opt-in/off-by-default from regression. Keep firmware compilation and *all firmware/codec tests in GitHub Actions*, not local ARM/native builds.
+4. Inspect CI *job-level* outcomes for exact SHA, record failures and repair only proven regressions. Avoid high-frequency CI polling: inspect independently until required actions finish. If CI needs to run on this audit branch, narrowly enable this branch pattern in existing workflows, not create a new workflow. Ensure canceled/skipped/missing jobs never count as PASS.
+5. Audit tests for redundancy. Leave durable production regressions in CI; leave only genuinely hardware-dependent observations and operator prompts for the Windows host. Do not schedule a duplicate ten-minute soak.
+6. Write final evidence ledger with the exact tested SHA, workflow IDs, meaningful negative controls, non-tested physical areas, integration conflicts and a short local operator checklist. Do not alter or delete worker branches, their PRs or private files.
