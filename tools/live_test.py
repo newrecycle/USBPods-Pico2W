@@ -369,7 +369,8 @@ def main():
         result('aacp_handshake','PASS' if session.get('open') and session.get('handshake_ack') else 'UNVERIFIED',
                {'session':session,'reason':'Peer traffic and locally submitted initialization do not independently establish a handshake acknowledgment'})
         result('connection_preflight','PASS',connection_preflight(link,recorder))
-        link.request('earpause 0');link.request('stem 0')
+        if not args.mic_close_only:
+            link.request('earpause 0');link.request('stem 0')
         if state.get('relay_connected'):
             link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
         if args.session_only:
@@ -398,7 +399,7 @@ def main():
                 try:submit_peer_control(link,'ca',capture_ca)
                 except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
         link.request('telemetry')
-        if audio_ok and not args.session_only:
+        if audio_ok and not (args.session_only or args.mic_close_only):
             for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
                 control_state=link.request('status');initial=control_state[field]
                 if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
@@ -442,7 +443,10 @@ def main():
             note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
             result('ear_and_stem',observation_status(note,'gestures'),note or 'No physical observation supplied; see firmware HID and raw HID logs')
         else:
-            result('post_audio_controls','SKIP','Session-only diagnostic scope' if args.session_only else 'Audio matrix failed; no further control mutations or physical prompts')
+            result('post_audio_controls','SKIP',
+                   'Focused microphone-close scope: no control mutations or extra prompts' if args.mic_close_only
+                   else 'Session-only diagnostic scope' if args.session_only
+                   else 'Audio matrix failed; no further control mutations or physical prompts')
         if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
         result('persistence_suspend_uac_slots_other_codecs','UNVERIFIED','Requires the guided matrix in LIVE-TEST.md; destructive/USB-reenumeration tests are not silently automated')
         link.request('savedlist');link.request('telemetry')
