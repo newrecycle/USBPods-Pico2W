@@ -385,7 +385,9 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if ceiling<192000:raise RuntimeError('No valid AAC-ELD session ceiling: '+str(limits))
         baseline=PROFILES[-1] if ceiling>=256000 else ('restore192',1,False,1,192000,0,0,6)
         probe_only=getattr(args,'session_only',False)
-        profiles=[('session_probe',*baseline[1:])] if probe_only else PROFILES[:-1]+[baseline]
+        mic_close_only=getattr(args,'mic_close_only',False)
+        profiles=([('session_probe',*baseline[1:])] if probe_only else [baseline] if mic_close_only
+                  else PROFILES[:-1]+[baseline])
         for profile in profiles:
             name,rate,gaming,level,*_=profile
             if profile[4]>ceiling:
@@ -442,6 +444,13 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('mic_close_reopen_duplex','FAIL' if errors else 'PASS' if closed=='PASS' else 'UNVERIFIED',
                {'errors':errors,'closure':closed,'before':before,'after':after})
+        if mic_close_only:
+            audio.set_phase('mic_close_acceptance_cleanup')
+            audio.set_capture(False)
+            final_closed,final_detail=capture_close_state(link,external_capture)
+            result('capture_close',final_closed,final_detail)
+            result('reconnect_game_soak','SKIP','Focused mic-close acceptance: no three reconnects, game profiles, relay, or repeat ten-minute soak')
+            return
         for cycle in range(3):
             name=f'capture_reconnect_{cycle+1}';audio.set_phase(name)
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)
