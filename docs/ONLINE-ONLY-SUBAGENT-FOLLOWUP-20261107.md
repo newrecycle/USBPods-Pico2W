@@ -1,0 +1,41 @@
+# ONLINE-ONLY SUBAGENT HANDOFF: USBPods unresolved claims
+
+You are an independent GitHub cloud worker with **no access to the owner's Windows laptop, Pico 2 W, AirPods Pro 3, COM4, audio captures, local worktrees, Desktop thread store or other workers**. You may review repo source, committed sanitized evidence, CI, and public references. Do not request unavailable private archives. No physical PASS claims.
+
+## Start, provenance and first reads
+
+Repository: https://github.com/newrecycle/USBPods-Pico2W. Fetch latest accepted development HEAD at origin/work/local-windows-followup-20261107; compare origin/main and record exact full SHA. If it has advanced since this prompt, review the diff before editing. Historical pre-reconciliation base: 175ace9f09554881b554e8226544e78ce10d06a1, physical firmware: 1979ae6be1c2daf9e1db8024763504d4061c4588. Create your own unique branch/worktree. Respect AGENTS.md; do not reset, force-push or merge other branches.
+
+FIRST READ in order:
+1. AGENTS.md; docs/LOCAL-CODEX-HANDOFF.md; docs/LOCAL-AGENT-TASKS-20261107.md; docs/LOCAL-FOLLOWUP-20261107.md.
+2. docs/SEQUENTIAL-VALIDATION-PLAN-20261107.md and docs/SEQUENTIAL-VALIDATION-REPORT-20261107.md.
+3. docs/CAPTURE-LIFECYCLE-DIAGNOSIS-175ACE9.md; docs/MIC-CLOSE-DIAGNOSIS-175ACE9.md; docs/RUNNER-COMPLETION-DIAGNOSIS-175ACE9.md; docs/DUALCORE-192K-DIAGNOSIS-175ACE9.md.
+4. docs/evidence/local-windows-20261107-setup.json; docs/evidence/local-windows-20261107-live.json; docs/evidence/local-windows-20261107-dualcore.json; docs/validation-status.json; docs/DUAL-CORE-MIC-EXPERIMENT.md.
+5. Actual production src/btstack/aacp_mic_audio.c; mic_clock.c; btstack_avdtp_source.c; src/tinyusb/uac.c; usb_capture_lifecycle.c; tools/live_audio.py; live_test.py; watch_ci.py; package_live_test.py; tests/test_mic_service_schedules.c; test_pcm_packet_path.py; test_mic_recovery_integration.py; test_sdk_response_reentry.py; test_live_matrix.py; test_watch_ci.py and GitHub workflows.
+
+## Evidence you must preserve, not reinterpret
+
+- On physically tested single-core source 1979ae6, 20-second 256/192 and both game-mode steady intervals passed strict *interval* AU/drop and USB missing-sample checks. 192 had 1,412 PCM-full work exits without drops: backpressure is not loss. The full session also logged 248 **lifetime** AU drops during startup/interrupted/lifecycle activity. Do not claim whole-session zero loss.
+- Mic-close left-ear silence persists despite correct post-gain, pre-FDK left-channel PCM peaks. Manual one-shot K refresh and saved bond reconnect each restored left with capture still closed. Neither is automatic repair or proof peer attribution; compressed AAC-ELD output at the failed instant was not measured.
+- 320kbps was skipped at a 256kbps negotiated ceiling. The previous ten-minute soak was already completed on an older SHA, so do not prescribe a replacement.
+- Opt-in core1 firmware at exactly the same source passed 256 but FAILED 192 with 44 fully missing 64-sample USB packets (2,816 samples) and zero new AU drops. No event timestamps establish which of producer timing, worker service, temporary reprime, core0 USB scheduling, or flash/XIP contention triggered them. Core1 stays OFF by default and excluded from automatic candidate packaging.
+- Intermediate flashed e9f5482 failed AVDTP media setup. Later 1979ae6 repaired synchronous reentrant AVDTP response-label retirement and passed short rate/setup physical checks. Do not undo that repair.
+- CI success is build/compiled/simulated evidence, not acoustic or RF acceptance. No raw local audio/archive contents are available.
+
+## Required ordered workflow
+
+BEFORE editing code: write/commit a falsifiable evidence plan mapping each proposed defect to source code, observed historical evidence, production function-level reproduction, negative control and what remains unprovable without hardware.
+
+1. **Mic-close playback routing**: Trace USB alt0/alt1 capture generation, local AACP STOP/START submission, ELD encoder lifetime/profile/jitter, stereo PCM, real FDK AAC-ELD AU output, Apple header/RTP staging. Extend existing real-FDK regression with deterministic isolated L/R patterns across capture-state transitions and a wrong-channel negative control. Tests must exercise production bodies, not merely source-string assertions. If necessary add safe, opt-in, preallocated, bounded *metadata-only* transition/AU timing capture; do not upload compressed/private audio, block USB IRQ, allocate in audio callback or print large logs. Do not automatically K-refresh, reconnect, inject undocumented AACP bytes, or change working clocks/EQ to mask defect. Even decoded synthetic output cannot prove an actual AirPods renderer fault.
+2. **Core1 192kbps loss**: Use tests/test_mic_service_schedules.c against actual AU/PCM queues, packet clock and USB accounting. Verify 4 AU/30ms batch, original 32/16 rings, 480 samples/AU, 4800-sample prefill, 63/64/65 packets, first stale full ring, partial epochs, producer-gap versus delayed worker and paused USB consumer. Build a failing-before negative control for any proposed fix. For the eventual physical discriminator, add only minimal bounded first-underrun telemetry: reason, exact PCM sample availability/offset, AU and PCM depth, last successful enqueue/decode publish and worker pass, callback timing, settings flash-safe execution window. Use safe atomic snapshot publication and no interrupt allocation/CDC print. Do not change clock rate, widen ring, relax zero-loss threshold or enable core1 default without evidence.
+3. **Capture lifecycle and AU overflow**: Distinguish true compressed AU overflows, decoder blocking on full PCM, expected stale retirement, generation changes and rebuffer silence. Reproduce delayed first USB callback and suspend/alt churn using production bodies. Keep PCM read pointer/offset/clock owned by USB consumer and AU SPSC release/acquire. Correct only proven race; never turn the 248 recorded lifetime overflows into a synthetic PASS.
+4. **Runner, watcher and evidence**: Reproduce any phase-label/callback epoch race, first-fault clobber, recorder liveness/serial failure, incomplete stimulus and ownership confusion with actual production Python callbacks and deterministic mocked host APIs. The watcher must require exact SHA/event/newest run attempt and every expected workflow, fail closed on partial/orphan lifecycle events, and never imply Desktop autonomous resumption. Desktop-owned sessions are record-only, not valid targets of codex exec resume; do not bypass locks/approvals or poll an agent for GitHub.
+5. **Strict CI gate**: Firmware, native FDK, 32-bit allocation and SDK patch tests MUST run in GitHub Actions (not locally), including positive heap and build_verified packaging gates, exact UF2/manifest/runner SHA checks, Linux host replay and Windows PowerShell launcher simulation. Keep the public Lite/Full distinction, core1 opt-in default OFF, and no unsafe global PICO_FLASH_ASSUME_CORE1_SAFE bypass. Run existing workflows at exact pushed SHA. Avoid duplicate permanent test suites or extra firmware matrix variants unless necessary to falsify a specific claim.
+
+## Deliverables / stopping rules
+
+Commit in order: plan, failing-before reproduction, minimal fix if justified, real production regressions/negative controls, CI results, final evidence ledger. Report exact SHA, workflow run IDs, job outcomes and supported assertions. Separate VERIFIED_OFFLINE, SUPPORTED_HISTORICAL_PHYSICAL, HYPOTHESIS, UNSUPPORTED, and PHYSICAL_UNMEASURED. Test every claim possible through CI without hardware; do not invent missing RF/peer data. If no reproducible source bug exists, preserve the competing hypotheses rather than guess at a fix.
+
+Only leave a **small authorized host acceptance procedure** for irreducibly physical checks: one short mic-open/closed/reopened isolated left/right playback comparison, and one opt-in same-host single-vs-core1 256/192 check *only if core1 logic actually changed*. No fresh ten-minute soak, no automatic flash on callback, no actual hardware access.
+
+Submit a reviewable isolated branch/PR with the self-contained report and remaining risks. Do not merge into main or delete branches belonging to other ongoing workers.
