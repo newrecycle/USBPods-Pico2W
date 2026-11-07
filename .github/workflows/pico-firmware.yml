@@ -232,6 +232,14 @@ jobs:
           ASAN_OPTIONS=detect_leaks=0 /tmp/test-eld-frequency
           python3 tests/test_pcm_packet_path.py --fdk-lib host-fdk/libfdk-aac.a
           python3 tests/test_pcm_packet_path.py --fdk-lib host-fdk/libfdk-aac.a --mic-build
+          if [ "${{ matrix.mic }}" = aaceld ]; then
+            ulimit -c 0
+            if python3 tests/test_pcm_packet_path.py --fdk-lib host-fdk/libfdk-aac.a --mic-build --negative-swap >/tmp/fdk-channel-negative.log 2>&1; then
+              echo "::error::Deliberately swapped output channels passed AAC-ELD channel isolation"
+              exit 1
+            fi
+            grep -F 'Assertion' /tmp/fdk-channel-negative.log
+          fi
       - name: Audit 32-bit duplex codec allocations
         if: matrix.decode == 'ON'
         run: |
