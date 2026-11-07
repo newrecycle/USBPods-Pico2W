@@ -175,15 +175,16 @@ static void schedule(const char *which) {
         assert(st.pcm_blocked>0 && st.au_overflows>0);
         assert(st.au_high_water==32 && st.pcm_high_water==16);
     }
-    printf("PASS %s: decoded=%u AU_drop=%u PCM_full=%u USB_missing=%u missing_after_prime=%u empty_AU=%u queued_AU=%u\n",
-           which,st.decoded,st.au_overflows,st.pcm_blocked,usb.missing_samples,
-           missing_after_prime,miss_no_au,miss_with_au);
     if(strcmp(which,"negative-worker-no-loss")==0) {
         // Deliberately wrong strict-pass claim must be rejected by production
         // USB accounting; CI requires this executable to fail as a control.
-        fflush(stdout);
+        fprintf(stderr,"EXPECTED_NEGATIVE_CONTROL: deliberately false zero-loss claim\n");
+        fflush(stderr);
         assert(usb.missing_samples==0);
     }
+    printf("PASS %s: decoded=%u AU_drop=%u PCM_full=%u USB_missing=%u missing_after_prime=%u empty_AU=%u queued_AU=%u\n",
+           which,st.decoded,st.au_overflows,st.pcm_blocked,usb.missing_samples,
+           missing_after_prime,miss_no_au,miss_with_au);
 }
 int main(int argc,char **argv) {
     assert(argc==2);
