@@ -32,10 +32,13 @@
     "handoff": "docs/LOCAL-AGENT-TASKS-20261107.md",
     "integrated_baseline": "263de0c707e95a668f8ce2686ac38ba3058cee3d",
     "workflow_evidence": "docs/evidence/integration-review-20261105.json",
-    "last_physical_source": "880dc318072f191f1440d3f0b262d83e32729b59",
-    "physical_evidence": "docs/evidence/local-windows-20261104.json",
+    "last_physical_source": "1979ae6be1c2daf9e1db8024763504d4061c4588",
+    "physical_evidence": "docs/evidence/local-windows-20261107-live.json",
     "integrated_main_physically_accepted": false,
     "firmware_build_and_codec_tests": "GitHub Actions only",
-    "dual_core_mic_default": false
+    "dual_core_mic_default": false,
+    "mic_close_channel_loss_fixed": false,
+    "experimental_evidence": "docs/evidence/local-windows-20261107-dualcore.json",
+    "experimental_dualcore_production_recommended": false
   }
 }
