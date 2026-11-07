@@ -19,7 +19,9 @@ def select_runs(runs, sha, workflows):
         name = run.get('workflowName')
         if run.get('headSha') != sha or run.get('event') != 'push' or name not in workflows:
             continue
-        if name not in selected or run['databaseId'] > selected[name]['databaseId']:
+        if (name not in selected or
+                (run['databaseId'], int(run.get('attempt') or 1)) >
+                (selected[name]['databaseId'], int(selected[name].get('attempt') or 1))):
             selected[name] = run
     return selected
 
@@ -55,9 +57,12 @@ def save(path, value):
 def session_is_idle(path, session):
     """Fail closed on unknown/incomplete logs; never infer idle from a delay."""
     active = set()
-    observed = False
+    observed_start = False
     with path.open(encoding='utf-8') as log:
-        header = json.loads(next(log))
+        first = next(log, None)
+        if not first or not first.endswith('\n'):
+            return False
+        header = json.loads(first)
         if header.get('type') != 'session_meta' or header.get('payload', {}).get('id') != session:
             raise RuntimeError('Session log identity does not match --resume-session')
         for line in log:
@@ -73,12 +78,16 @@ def session_is_idle(path, session):
             turn = event.get('turn_id')
             if not turn:
                 raise RuntimeError('Session lifecycle record has no turn identity')
-            observed = True
             if kind == 'task_started':
+                if turn in active:
+                    return False  # duplicate/inconsistent start is not idle proof
+                observed_start = True
                 active.add(turn)
             else:
-                active.discard(turn)
-    return observed and not active
+                if turn not in active:
+                    return False  # orphan completion cannot prove a turn ended
+                active.remove(turn)
+    return observed_start and not active
 
 
 def wait_for_idle(path, session, timeout):
@@ -98,7 +107,9 @@ def main():
     p.add_argument('--interval', type=int, default=60)
     p.add_argument('--timeout', type=int, default=2700)
     p.add_argument('--output', type=Path, required=True, help='New local directory, outside tracked evidence')
-    p.add_argument('--resume-session', help='Exact idle Codex session UUID, never --last')
+    p.add_argument('--resume-session', help='Exact CLI-owned idle Codex session UUID, never Desktop or --last')
+    p.add_argument('--session-owner', choices=('desktop', 'cli'), default='desktop',
+                   help='Desktop sessions are record-only; only explicitly CLI-owned sessions may resume')
     p.add_argument('--session-log', type=Path, help='Matching local session JSONL; required for callback idle guard')
     p.add_argument('--idle-timeout', type=int, default=1800, help='Seconds to wait for all logged turns to end')
     a = p.parse_args()
@@ -106,6 +117,8 @@ def main():
         p.error('--sha must be a full commit SHA')
     if a.interval < 15 or a.timeout < a.interval:
         p.error('interval must be >=15 seconds and timeout >= interval')
+    if a.resume_session and a.session_owner != 'cli':
+        p.error('Desktop-owned sessions cannot be resumed through CLI; run record-only or explicitly use --session-owner cli')
     if a.resume_session and not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', a.resume_session):
         p.error('--resume-session must be the exact session UUID')
     if a.resume_session and (not a.session_log or not a.session_log.is_file() or a.idle_timeout < 5):
@@ -143,7 +156,10 @@ def main():
                 r = subprocess.run([shutil.which('codex'), 'exec', 'resume', a.resume_session,
                                     '--output-last-message', str(a.output / 'callback-response.md'), prompt],
                                    stdout=log, stderr=subprocess.STDOUT, timeout=1800)
-            save(a.output / 'callback-status.json', dict(returncode=r.returncode))
+            save(a.output / 'callback-status.json', dict(
+                state='cli_process_exited_unverified' if r.returncode==0 else 'cli_process_failed',
+                returncode=r.returncode, cli_owned=True,
+                desktop_turn_observed=False, fresh_turn_observed=False))
         except (OSError, ValueError, StopIteration, RuntimeError, subprocess.TimeoutExpired) as exc:
             save(a.output / 'callback-status.json', dict(error=type(exc).__name__))
             return 2
