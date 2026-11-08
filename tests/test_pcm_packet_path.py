@@ -8,16 +8,24 @@ from test_source_boundaries import ROOT,function
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--fdk-lib',type=Path,required=True)
 p.add_argument('--mic-build',action='store_true',help='Exercise the mic-capable CBR encoder policy')
 p.add_argument('--negative-swap',action='store_true',help='Intentionally swap decoded L/R to prove channel isolation assertions reject corruption')
+p.add_argument('--negative-close-mute',action='store_true',help='Intentionally erase decoded left channel only while USB capture is closed')
 p.add_argument('--source-file',type=Path,default=ROOT/'src/btstack/btstack_avdtp_source.c')
 a=p.parse_args()
 body=r'''
+#include "usb_capture_lifecycle.h"
 #define PI 3.14159265358979323846
+static bool probe_capture;
+void aacp_mic_set_capture(bool on){probe_capture=on;}
 int main(void) {
  const unsigned gains[]={100,50,0};unsigned decoded_frames=0;
  for(unsigned mode=1;mode<=3;mode++)for(unsigned g=0;g<3;g++)for(unsigned side=0;side<3;side++) {
 #ifdef USBPODS_NEGATIVE_SWAP_DECODED
   if(mode!=1 || g!=0 || side!=1)continue;
 #endif
+#ifdef USBPODS_NEGATIVE_CLOSE_MUTE
+  if(mode!=1 || g!=0 || side!=1)continue;
+#endif
+  const bool phase_probe=mode==1 && g==0 && side==1;
   usb_pcm_tap=(g%2)==0; // diagnostics must preserve the actual encoded signal
   profile=eld_profile_select(mode,false,1,false,false,5,1);
   assert(eld_encoder_open(&handleAAC,&aacinf,&profile)==AACENC_OK);
@@ -30,7 +38,17 @@ int main(void) {
   is_usb_streaming=is_streaming=true;aaceld_frame_sequence=4094;
   a2dp_media_sending_context_t ctx={.max_media_payload_size=986,.avdtp_cid=0x42,.local_seid=2};
   unsigned seq=4094,total=0;double energy[2]={0};unsigned count=0;
+  double phase_energy[3][2]={{0}};unsigned phase_counts[3]={0};
+  const HANDLE_AACENCODER persistent_encoder=handleAAC;
   for(unsigned batch=0;batch<40;batch++) {
+   if(phase_probe){
+    if(batch==0){usb_capture_mount();usb_capture_set_alt(true);}
+    if(batch==14)usb_capture_close();
+    if(batch==27)usb_capture_set_alt(true);
+    assert(usb_capture_running()==probe_capture);
+    assert(probe_capture==(batch<14 || batch>=27));
+    assert(handleAAC==persistent_encoder); // no encoder rebuild on mic close
+   }
    INT_PCM input[2880],decoded[1920];
    for(unsigned i=0;i<1440;i++) {
     double t=(batch*1440+i)/48000.0;
@@ -84,7 +102,16 @@ int main(void) {
 #ifdef USBPODS_NEGATIVE_SWAP_DECODED
       INT_PCM swap=decoded[2*i];decoded[2*i]=decoded[2*i+1];decoded[2*i+1]=swap;
 #endif
+#ifdef USBPODS_NEGATIVE_CLOSE_MUTE
+      if(phase_probe && batch>=14 && batch<27)decoded[2*i]=0;
+#endif
       energy[0]+=(double)decoded[2*i]*decoded[2*i];energy[1]+=(double)decoded[2*i+1]*decoded[2*i+1];count++;
+      if(phase_probe){
+       const unsigned phase=batch<14?0:batch<27?1:2;
+       phase_energy[phase][0]+=(double)decoded[2*i]*decoded[2*i];
+       phase_energy[phase][1]+=(double)decoded[2*i+1]*decoded[2*i+1];
+       phase_counts[phase]++;
+      }
      }
      off+=4+n;frames++;total++;
     }
@@ -93,6 +120,24 @@ int main(void) {
    assert(!ready_queue.count && free_queue.count==9);
   }
   assert(!usb_slot_push_drops && !usb_slot_ready_full_drops);
+  if(phase_probe){
+   /* Production USB mount/alt0/alt1 mutations and the *same* FDK handle
+    * must retain decoded L/R throughout open -> closed -> reopened. This
+    * proves synthetic sender continuity, not real receiver audibility. */
+   for(unsigned phase=0;phase<3;phase++){
+    assert(phase_counts[phase]>20u*480u);
+    const double phase_rms_left=sqrt(phase_energy[phase][0]/phase_counts[phase]);
+    const double phase_rms_right=sqrt(phase_energy[phase][1]/phase_counts[phase]);
+#ifdef USBPODS_NEGATIVE_CLOSE_MUTE
+    if(phase==1){
+     fprintf(stderr,"EXPECTED_NEGATIVE_CLOSE: erased decoded left PCM only while capture closed\n");
+     fflush(stderr);
+    }
+#endif
+    assert(phase_rms_left>900.0/8.0);
+    assert(phase_rms_right<phase_rms_left*0.16+20);
+   }
+  }
   double rms0=sqrt(energy[0]/count),rms1=sqrt(energy[1]/count);
   if(!gains[g])assert(rms0<1 && rms1<1);
   else if(side==0)assert(rms0>900*gains[g]/100.0/8 && rms1>600*gains[g]/100.0/8);
@@ -126,10 +171,11 @@ else:
 with tempfile.TemporaryDirectory() as temp:
  path=Path(temp)
  (path/'pipeline.c').write_text((ROOT/'tests/pcm_packet_mocks.h').read_text()+'\n'.join(function(a.source_file,n) for n in names)+stage+body)
- args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src')]
+ args=['cc','-std=c11','-Wall','-Wextra','-Werror','-fsanitize=address','-I',str(ROOT/'src/btstack'),'-I',str(ROOT/'src/tinyusb'),'-I',str(ROOT/'src')]
  if a.mic_build:args+=['-DUSBPODS_MIC_DECODE=1']
  if a.negative_swap:args+=['-DUSBPODS_NEGATIVE_SWAP_DECODED=1']
+ if a.negative_close_mute:args+=['-DUSBPODS_NEGATIVE_CLOSE_MUTE=1']
  for d in ('libAACdec','libAACenc','libSYS'):args+=['-isystem',str(ROOT/'3rd-party/fdk-aac'/d/'include')]
- args+=[str(path/'pipeline.c'),str(ROOT/'src/btstack/eld_profile.c'),str(ROOT/'src/btstack/eld_encoder.c'),str(ROOT/'src/resamp44.c'),str(a.fdk_lib.resolve()),'-lstdc++','-lm','-o',str(path/'pipeline')]
+ args+=[str(path/'pipeline.c'),str(ROOT/'src/btstack/eld_profile.c'),str(ROOT/'src/btstack/eld_encoder.c'),str(ROOT/'src/resamp44.c'),str(ROOT/'src/tinyusb/usb_capture_lifecycle.c'),str(a.fdk_lib.resolve()),'-lstdc++','-lm','-o',str(path/'pipeline')]
  subprocess.run(args,check=True)
  subprocess.run([str(path/'pipeline')],check=True,env={**os.environ,'ASAN_OPTIONS':'detect_leaks=0'})
