@@ -263,22 +263,26 @@ class AudioSession:
         self.phase='capture_open';self.position=0
         self.rng=np.random.default_rng(0)
         self.queue=queue.Queue(maxsize=512);self.stop=threading.Event()
-        self.lock=threading.Lock();self.metrics={};self.errors=[];self.output_errors={};self.drops=0
+        self.lock=threading.Lock();self.metrics={};self.errors=[];self.output_errors={};self.output_callbacks={};self.drops=0
         self.files={};self.clip_samples={};self.stack=contextlib.ExitStack();self.input_stack=contextlib.ExitStack()
     def set_phase(self,name):
         self.phase=name;self.recorder.log('phases.jsonl',{'phase':name})
     def tone(self,outdata,frames,timing,status):
+        # A callback is evidence of the *host requesting* output samples, not
+        # evidence that the AirPods played them. Count per phase before writing.
+        phase=self.phase
+        self.output_callbacks[phase]=self.output_callbacks.get(phase,0)+1
         np=self.np
         t=(np.arange(frames)+self.position)/48000
         values=np.column_stack((500*np.sin(2*np.pi*440*t),500*np.sin(2*np.pi*660*t)))
         # Quiet broadband sections exercise more than the inexpensive sine case.
         noise=(t.astype(np.int64)%8>=4)
         values+=self.rng.uniform(-140,140,(frames,2))*noise[:,None]
-        if self.phase.endswith('_left'):values[:,1]=0
-        if self.phase.endswith('_right'):values[:,0]=0
-        if self.phase=='music_quality':values[:]=0
+        if phase.endswith('_left'):values[:,1]=0
+        if phase.endswith('_right'):values[:,0]=0
+        if phase=='music_quality':values[:]=0
         self.position+=frames;outdata[:]=values.astype('<i2').tobytes()
-        if status:self.output_errors.setdefault(self.phase,[]).append(str(status))
+        if status:self.output_errors.setdefault(phase,[]).append(str(status))
     def capture(self,indata,frames,timing,status):
         try:self.queue.put_nowait((self.phase,bytes(indata),str(status) if status else ''))
         except queue.Full:self.drops+=1
@@ -328,7 +332,8 @@ class AudioSession:
             with self.lock:
                 result={k:{**v,'rms':math.sqrt(v['sumsq']/max(v['samples'],1))} for k,v in self.metrics.items()}
             (self.root/'audio-metrics.json').write_text(json.dumps({'phases':result,'errors':self.errors,
-                     'output_status':self.output_errors,'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
+                     'output_status':self.output_errors,'output_callbacks_by_phase':self.output_callbacks,
+                      'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
                      'usb_microphone_rate':64000,'host_capture_mode':self.input_format.get('mode'),
                      'output_rate':48000},indent=2))
     def note_failure(self,error):
@@ -341,6 +346,8 @@ class AudioSession:
     def phase_errors(self,name):
         with self.lock:m=dict(self.metrics.get(name,{}))
         errors=list(m.get('host_errors',[]))+list(self.output_errors.get(name,[]))+list(self.errors)
+        if not self.output_callbacks.get(name,0):
+            errors.append('No host output callbacks observed')
         if not m.get('samples'):errors.append('No host input samples collected')
         if m.get('samples') and not m.get('peak'):errors.append('Microphone recording contains only digital silence')
         if self.drops:errors.append('Audio collector queue overflowed')
@@ -424,8 +431,12 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         def channel_check(label):
             for side in ('left','right'):
                 audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)
+                phase=label+'_'+side
+                if not audio.output_callbacks.get(phase,0):
+                    result(phase,'UNVERIFIED','No host output callbacks observed; acoustic stimulus cannot be assumed')
+                    continue
                 answer=prompt(f'{label}: tone is {side.upper()} only. Type yes if correct; otherwise no, silent, both, wrong-side, or a description:')
-                result(label+'_'+side,observation_status(answer,'channel',side),answer)
+                result(phase,observation_status(answer,'channel',side),answer)
         channel_check('mic_active')
         prompt('Keep this firmware connected. Press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)
@@ -440,7 +451,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if closed=='PASS':channel_check('mic_reopened')
         audio.set_phase('mic_reopened_steady')
         before=snapshot(link,recorder,'mic_reopened_begin');faults=dwell(5,'mic_reopened_steady',baseline)
-        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after,baseline)+faults
+        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after,baseline)+faults+audio.phase_errors('mic_reopened_steady')
         if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('mic_close_reopen_duplex','FAIL' if errors else 'PASS' if closed=='PASS' else 'UNVERIFIED',
                {'errors':errors,'closure':closed,'before':before,'after':after})
