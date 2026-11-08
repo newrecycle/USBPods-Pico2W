@@ -107,7 +107,8 @@ static void capture_epoch(void) {
 static void schedule(const char *which) {
     const bool producer_gap=strcmp(which,"producer-gap")==0;
     const bool worker_delay=strcmp(which,"worker-delay")==0 ||
-                            strcmp(which,"negative-worker-no-loss")==0;
+                            strcmp(which,"negative-worker-no-loss")==0 ||
+                            strcmp(which,"negative-worker-no-backlog")==0;
     const bool consumer_hold=strcmp(which,"consumer-hold")==0;
     const bool baseline=strcmp(which,"on-time")==0;
     assert(producer_gap || worker_delay || consumer_hold || baseline);
@@ -145,6 +146,7 @@ static void schedule(const char *which) {
                 else miss_no_au++;
             }
         }
+        aacp_mic_audio_note_usb_packet(want,got);
         usb_capture_note_tx(want,got,2*want);
     }
     aacp_mic_audio_stats st;
@@ -162,14 +164,30 @@ static void schedule(const char *which) {
         assert((uint64_t)st.decoded*480u>=usb.pcm_samples);
         assert((uint64_t)st.decoded*480u-usb.pcm_samples<=16u*480u);
     }
-    if(baseline)assert(missing_after_prime==0 && st.au_overflows==0);
+    if(baseline) {
+        assert(missing_after_prime==0 && st.au_overflows==0);
+        assert(!st.usb_postprime_underruns && !st.usb_rebuffers &&
+               !st.usb_first_fault_valid);
+    }
     if(producer_gap) {
         assert(missing_after_prime>0 && miss_no_au>0);
         assert(st.au_overflows==0 && st.au_depth<=32);
+        assert(st.usb_postprime_underruns>0 && st.usb_rebuffers>0);
+        assert(st.usb_first_fault_valid && st.usb_first_fault_generation==st.generation);
+        assert(st.usb_first_fault_au_depth==0);
+        assert(st.usb_first_fault_au_age_us!=UINT32_MAX);
+        assert(st.usb_first_fault_requested==64 &&
+               st.usb_first_fault_supplied==0 && st.usb_first_fault_rebuffer);
     }
     if(worker_delay) {
         assert(missing_after_prime>0 && miss_with_au>0);
         assert(st.au_overflows==0 && st.au_depth<=32);
+        assert(st.usb_postprime_underruns>0 && st.usb_rebuffers>0);
+        assert(st.usb_first_fault_valid && st.usb_first_fault_generation==st.generation);
+        assert(st.usb_first_fault_au_depth>0);
+        assert(st.usb_first_fault_pcm_age_us!=UINT32_MAX);
+        assert(st.usb_first_fault_requested==64 &&
+               st.usb_first_fault_supplied==0 && st.usb_first_fault_rebuffer);
     }
     if(consumer_hold) {
         assert(st.pcm_blocked>0 && st.au_overflows>0);
@@ -181,6 +199,13 @@ static void schedule(const char *which) {
         fprintf(stderr,"EXPECTED_NEGATIVE_CONTROL: deliberately false zero-loss claim\n");
         fflush(stderr);
         assert(usb.missing_samples==0);
+    }
+    if(strcmp(which,"negative-worker-no-backlog")==0) {
+        /* The real queue snapshot must reject the false producer-gap
+         * diagnosis when the decoder worker was deliberately withheld. */
+        fprintf(stderr,"EXPECTED_NEGATIVE_PROVENANCE: queued AUs during worker stall\n");
+        fflush(stderr);
+        assert(st.usb_first_fault_au_depth==0);
     }
     printf("PASS %s: decoded=%u AU_drop=%u PCM_full=%u USB_missing=%u missing_after_prime=%u empty_AU=%u queued_AU=%u\n",
            which,st.decoded,st.au_overflows,st.pcm_blocked,usb.missing_samples,

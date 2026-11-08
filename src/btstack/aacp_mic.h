@@ -48,6 +48,14 @@ typedef struct {
     uint32_t decoded, decode_errors, decode_last_us, decode_max_us, decode_ema_us;
     uint32_t decoded_rate, decoded_channels, decoded_frame_samples;
     uint32_t measured_sample_rate,clock_windows,pcm_primed;
+    /* Lifetime post-prime counters; FIRST loss since boot is sticky.
+     * Ages use the wrapping device microsecond clock; UINT32_MAX=unknown. */
+    uint32_t usb_postprime_underruns, usb_rebuffers, usb_first_fault_valid;
+    uint32_t usb_first_fault_generation, usb_first_fault_at_us;
+    uint32_t usb_first_fault_requested, usb_first_fault_supplied;
+    uint32_t usb_first_fault_au_depth, usb_first_fault_pcm_depth;
+    uint32_t usb_first_fault_available, usb_first_fault_au_age_us;
+    uint32_t usb_first_fault_pcm_age_us, usb_first_fault_rebuffer;
 } aacp_mic_audio_stats;
 
 /* Called once for each validated AACP audio AU, including diagnostic-only
@@ -55,3 +63,5 @@ typedef struct {
  * be a monotonically wrapping microsecond clock (time_us_32()). */
 void aacp_mic_audio_note_au(uint32_t timestamp, uint32_t arrival_us);
 void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out);
+/* Call from USB consumer once per IN callback; no locks, logging or allocation. */
+void aacp_mic_audio_note_usb_packet(uint32_t requested,uint32_t supplied);

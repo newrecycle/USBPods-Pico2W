@@ -20,7 +20,8 @@ import live_audio
 @unittest.skipUnless(importlib.util.find_spec('numpy'),'NumPy required')
 class MatrixReplay(unittest.TestCase):
     def run_case(self,external=False,reject=False,mic_fault=False,startup_pause=False,
-                 external_release=False,operator_failure=False,steady_retry=False,focused=False):
+                 external_release=False,operator_failure=False,steady_retry=False,focused=False,
+                 output_stall=False):
         import numpy as np
         events=[];results={};streams=[];phase_begin={}
         class Recorder:
@@ -38,6 +39,7 @@ class MatrixReplay(unittest.TestCase):
                 for stream in list(streams):
                     kw=stream.kw
                     if kw['device']==1:
+                        if output_stall:continue
                         buffer=bytearray(480*4);kw['callback'](buffer,480,None,None)
                     else:
                         frames=480;kw['callback'](np.full(frames*kw['channels'],1200,dtype='<i2').tobytes(),frames,None,None)
@@ -127,7 +129,7 @@ class MatrixReplay(unittest.TestCase):
                     self.assertLess(clock.now,10) # No 15-second convergence timeout after a known failure.
                 else:
                     live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,
-                        lambda message:'left ear is silent' if operator_failure and 'mic_closed: tone is LEFT' in message else '',
+                        lambda message:'yes' if output_stall else 'left ear is silent' if operator_failure and 'mic_closed: tone is LEFT' in message else '',
                         'fixture')
                     if focused:
                         self.assertNotIn('duplex_soak',results)
@@ -136,7 +138,16 @@ class MatrixReplay(unittest.TestCase):
                         self.assertNotIn('game_latency',results)
                         self.assertNotIn('capture_reconnect_1',results)
                         self.assertEqual(results['reconnect_game_soak'][0],'SKIP')
-                        self.assertEqual(results['mic_close_reopen_duplex'][0],'PASS')
+                        self.assertEqual(results['mic_close_reopen_duplex'][0],'FAIL' if output_stall else 'PASS')
+                        if output_stall:
+                            # Fake firmware TX counters still advance while *no*
+                            # host output callback fires. No audio PASS is valid.
+                            self.assertEqual(results['restore256'][0],'FAIL')
+                            self.assertIn('No host output callbacks observed',results['restore256'][1]['errors'])
+                            self.assertIn('No host output callbacks observed',results['mic_close_reopen_duplex'][1]['errors'])
+                            for label in ('mic_active','mic_closed','mic_reopened'):
+                                for side in ('left','right'):
+                                    self.assertEqual(results[label+'_'+side][0],'UNVERIFIED')
                     else:self.assertEqual(results['duplex_soak'][0],'PASS')
                     if startup_pause:
                         self.assertEqual(results['eld256'][0],'PASS')
@@ -160,7 +171,7 @@ class MatrixReplay(unittest.TestCase):
                         self.assertTrue(any('mic_retry_count' in e for e in results['eld256'][1]['errors']))
                         fault=json.loads((root/'audio-failure-state.json').read_text())
                         self.assertTrue(fault['before_stream_cleanup'])
-                    self.assertEqual(results['mic_close_reopen_duplex'][0],'UNVERIFIED' if external and not external_release else 'PASS')
+                    self.assertEqual(results['mic_close_reopen_duplex'][0],'FAIL' if output_stall else 'UNVERIFIED' if external and not external_release else 'PASS')
                     self.assertEqual(sum(c.startswith('profile ') for c in link.commands),1 if focused else 5)
                     self.assertTrue(list(root.glob('*.wav')))
                 self.assertFalse(streams)
@@ -169,6 +180,7 @@ class MatrixReplay(unittest.TestCase):
         return results
     def test_complete_owned_capture_matrix(self):self.run_case()
     def test_focused_mic_close_does_not_repeat_soak_or_game_matrix(self):self.run_case(focused=True)
+    def test_fake_firmware_tx_without_output_callback_cannot_pass(self):self.run_case(focused=True,output_stall=True)
     def test_profile_measurement_waits_for_refresh_after_fixed_dwell(self):self.run_case(startup_pause=True)
     def test_external_capture_is_not_a_usb_close_failure(self):self.run_case(external=True)
     def test_recorded_start_rejection_preserved_before_cleanup(self):self.run_case(reject=True)

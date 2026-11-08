@@ -215,6 +215,12 @@ jobs:
           fi
           grep -F 'EXPECTED_NEGATIVE_CONTROL:' /tmp/mic-negative.log
           grep -F 'usb.missing_samples==0' /tmp/mic-negative.log
+          if /tmp/test-mic-service negative-worker-no-backlog >/tmp/mic-provenance-negative.log 2>&1; then
+            echo "::error::A false zero-backlog diagnosis was accepted"
+            exit 1
+          fi
+          grep -F 'EXPECTED_NEGATIVE_PROVENANCE:' /tmp/mic-provenance-negative.log
+          grep -F 'st.usb_first_fault_au_depth==0' /tmp/mic-provenance-negative.log
       - name: Test real FDK AAC-ELD microphone profile
         if: matrix.decode == 'ON'
         run: |
@@ -239,6 +245,12 @@ jobs:
               exit 1
             fi
             grep -F 'Assertion' /tmp/fdk-channel-negative.log
+            if python3 tests/test_pcm_packet_path.py --fdk-lib host-fdk/libfdk-aac.a --mic-build --negative-close-mute >/tmp/fdk-close-negative.log 2>&1; then
+              echo "::error::Deliberately muted closed-phase left channel was accepted"
+              exit 1
+            fi
+            grep -F 'EXPECTED_NEGATIVE_CLOSE:' /tmp/fdk-close-negative.log
+            grep -F 'phase_rms_left>900.0/8.0' /tmp/fdk-close-negative.log
           fi
       - name: Audit 32-bit duplex codec allocations
         if: matrix.decode == 'ON'

@@ -135,6 +135,18 @@ static _Atomic bool pcm_primed;
 static HANDLE_AACDECODER decoder; /* initialized before BT starts; main owns */
 static INT_PCM scratch[960];
 static uint32_t last_epoch=UINT32_MAX; /* decoder/main only */
+/* USB-owned transient state; the immutable first-fault publication and the
+ * cross-core timestamps/counters are atomic for race-safe diagnostics. */
+static uint32_t usb_packet_generation=UINT32_MAX,usb_packet_available;
+static bool usb_primed_this_generation,usb_packet_rebuffered,usb_first_written;
+static _Atomic uint32_t last_admitted_au_us,last_published_pcm_us;
+static _Atomic bool seen_admitted_au,seen_published_pcm;
+static _Atomic uint32_t usb_postprime_underruns,usb_rebuffers;
+static struct {
+    _Atomic uint32_t generation,at_us,requested,supplied,au_depth,pcm_depth;
+    _Atomic uint32_t available,au_age_us,pcm_age_us,rebuffer;
+    _Atomic bool valid;
+} first_usb_fault;
 
 void aacp_mic_audio_init(void) {
     /* Preserve the inherited F8 E6 30 00 ASC (48kHz, 480 samples)
@@ -179,6 +191,8 @@ void aacp_mic_audio_enqueue(const uint8_t *au,uint8_t len) {
     aus[w%AU_SLOTS].len=len;
     memcpy(aus[w%AU_SLOTS].data,au,len);
     atomic_store_explicit(&aw,w+1,memory_order_release);
+    atomic_store_explicit(&last_admitted_au_us,aus[w%AU_SLOTS].queued_us,memory_order_relaxed);
+    atomic_store_explicit(&seen_admitted_au,true,memory_order_release);
     sample_max(&au_high,w-r+1);
 }
 
@@ -253,6 +267,8 @@ void aacp_mic_audio_work(void) {
         if (ok) memcpy(pcm[w%PCM_SLOTS].data,scratch,sizeof(pcm[0].data));
         else memset(pcm[w%PCM_SLOTS].data,0,sizeof(pcm[0].data));
         atomic_store_explicit(&pw,w+1,memory_order_release);
+        atomic_store_explicit(&last_published_pcm_us,time_us_32(),memory_order_relaxed);
+        atomic_store_explicit(&seen_published_pcm,true,memory_order_release);
         sample_max(&pcm_high,w-pr_now+1);
     }
     sample_max(&work_max_us,time_us_32()-work_started);
@@ -289,6 +305,10 @@ uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
 uint32_t aacp_mic_audio_packet_samples(void) {
     if(!aacp_mic_capture()){atomic_store(&pcm_primed,false);return 0;}
     uint32_t epoch=aacp_mic_generation();
+    if(usb_packet_generation!=epoch) {
+        usb_packet_generation=epoch;
+        usb_primed_this_generation=false;
+    }
     uint32_t r=atomic_load_explicit(&pr,memory_order_relaxed);
     uint32_t w=atomic_load_explicit(&pw,memory_order_acquire),available=0;
     /* A full stale ring must not block priming forever after a reconnect. */
@@ -300,9 +320,43 @@ uint32_t aacp_mic_audio_packet_samples(void) {
         if(pcm[(r+i)%PCM_SLOTS].epoch==epoch)
             available+=FRAME-(!i?pcm_offset:0);
     }
+    usb_packet_available=available;
+    const bool was_primed=packet_clock.generation==epoch && packet_clock.primed;
     uint32_t n=mic_clock_packet(&packet_clock,epoch,available);
+    usb_packet_rebuffered=was_primed && !packet_clock.primed;
+    if(usb_packet_rebuffered)
+        atomic_fetch_add_explicit(&usb_rebuffers,1,memory_order_relaxed);
+    if(packet_clock.primed)usb_primed_this_generation=true;
     atomic_store_explicit(&pcm_primed,packet_clock.primed,memory_order_relaxed);
     return n;
+}
+void aacp_mic_audio_note_usb_packet(uint32_t requested,uint32_t supplied) {
+    /* Startup prefill does not count as a post-prime fault. Strict USB
+     * missing-sample accounting remains owned by usb_capture_note_tx. */
+    if(!usb_primed_this_generation || supplied>=requested)return;
+    atomic_fetch_add_explicit(&usb_postprime_underruns,1,memory_order_relaxed);
+    if(usb_first_written)return;
+    usb_first_written=true; /* single USB consumer; publish once */
+    uint32_t now=time_us_32();
+    uint32_t wa=atomic_load_explicit(&aw,memory_order_acquire);
+    uint32_t ra=atomic_load_explicit(&ar,memory_order_acquire);
+    uint32_t wp=atomic_load_explicit(&pw,memory_order_acquire);
+    uint32_t rp=atomic_load_explicit(&pr,memory_order_acquire);
+    uint32_t ad=wa-ra,pd=wp-rp;
+    if(ad>AU_SLOTS)ad=AU_SLOTS;
+    if(pd>PCM_SLOTS)pd=PCM_SLOTS;
+#define F(k,v) atomic_store_explicit(&first_usb_fault.k,(v),memory_order_relaxed)
+    F(generation,usb_packet_generation);F(at_us,now);
+    F(requested,requested);F(supplied,supplied);
+    F(au_depth,ad);F(pcm_depth,pd);
+    F(available,usb_packet_available);
+    F(au_age_us,atomic_load_explicit(&seen_admitted_au,memory_order_acquire)
+        ? now-atomic_load_explicit(&last_admitted_au_us,memory_order_relaxed):UINT32_MAX);
+    F(pcm_age_us,atomic_load_explicit(&seen_published_pcm,memory_order_acquire)
+        ? now-atomic_load_explicit(&last_published_pcm_us,memory_order_relaxed):UINT32_MAX);
+    F(rebuffer,usb_packet_rebuffered);
+#undef F
+    atomic_store_explicit(&first_usb_fault.valid,true,memory_order_release);
 }
 #else
 /* Diagnostic-only transport keeps AU timing counters without FDK or queues. */
@@ -317,6 +371,9 @@ uint32_t aacp_mic_audio_read(int16_t *dst,uint32_t count) {
     (void)dst; (void)count; return 0;
 }
 uint32_t aacp_mic_audio_packet_samples(void){return 0;}
+void aacp_mic_audio_note_usb_packet(uint32_t requested,uint32_t supplied){
+    (void)requested; (void)supplied;
+}
 #endif
 
 /* Unlocked, eventually consistent snapshot. All shared counters are atomic;
@@ -379,6 +436,21 @@ void aacp_mic_audio_get_stats(aacp_mic_audio_stats *out) {
     out->decoded_channels=READ_D(last_channels);
     out->decoded_frame_samples=READ_D(last_frame);
     out->pcm_primed=READ_D(pcm_primed);
+    out->usb_postprime_underruns=READ_D(usb_postprime_underruns);
+    out->usb_rebuffers=READ_D(usb_rebuffers);
+    out->usb_first_fault_valid=atomic_load_explicit(&first_usb_fault.valid,memory_order_acquire);
+    if(out->usb_first_fault_valid){
+        out->usb_first_fault_generation=READ_D(first_usb_fault.generation);
+        out->usb_first_fault_at_us=READ_D(first_usb_fault.at_us);
+        out->usb_first_fault_requested=READ_D(first_usb_fault.requested);
+        out->usb_first_fault_supplied=READ_D(first_usb_fault.supplied);
+        out->usb_first_fault_au_depth=READ_D(first_usb_fault.au_depth);
+        out->usb_first_fault_pcm_depth=READ_D(first_usb_fault.pcm_depth);
+        out->usb_first_fault_available=READ_D(first_usb_fault.available);
+        out->usb_first_fault_au_age_us=READ_D(first_usb_fault.au_age_us);
+        out->usb_first_fault_pcm_age_us=READ_D(first_usb_fault.pcm_age_us);
+        out->usb_first_fault_rebuffer=READ_D(first_usb_fault.rebuffer);
+    }
 #undef READ_D
 #endif
 }
