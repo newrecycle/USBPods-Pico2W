@@ -88,7 +88,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
                 streaming=int(self.connected),codec=4 if self.connected else 0,peer=PEER,
                 capture=int(self.capture()),decoder_ready=1,tx_packets=self.tx,send_failures=0,
                 fault_hold=int(self.failed),mic_started=int(self.connected and self.capture()),
-                mic_recovery_pending=0,mic_watchdog_failed=int(self.mic_fault()),mic_retry_count=3 if self.mic_fault() else 0,
+                mic_recovery_pending=0,mic_restarts=0,mic_watchdog_failures=0,mic_watchdog_failed=int(self.mic_fault()),mic_retry_count=3 if self.mic_fault() else 0,
                 relay_connected=0,relay_streaming=0,control_tx=self.control_tx,
                 control_last_id=self.last_id,control_last_value=self.last_value,
                 control_rx_seq=list(self.sequences),allow_off=-1 if case=='off-unavailable' else 1,**self.controls)
@@ -141,10 +141,11 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
             if name!='telemetry':return [ack]
             active=int(self.capture());n=int(clock.now*133)+1
             data=[dict(kind='aacpsession',open=int(self.connected),init_sent=3,init_mask=7,handshake_ack=int(case!='session-no-ack'),peer_seen=int(self.connected)),
-                  dict(kind='micstats',generation=self.generation,capture=active,decoded=n,
+                  dict(kind='micstats',errors=0,au_drop=0,pcm_drop=0,generation=self.generation,capture=active,decoded=n,
                        clock_windows=1,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-                  dict(kind='usbcapture',running=active,pcm_samples=int(clock.now*64000)+1),
+                  dict(kind='usbcapture',missing_samples=0,short_writes=0,running=active,pcm_samples=int(clock.now*64000)+1),
                   dict(kind='hidstats',presses=1,releases=1)]
+            if case=='missing-counter':del data[2]['missing_samples']
             return [ack]+data if len(commands)%2 else data+[ack]
     device=Device()
     class Port:
@@ -198,7 +199,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     root=next(output.glob('USBPods-results-*'))
     if root.suffix=='.zip':root=root.with_suffix('')
     summary=json.loads((root/'summary.json').read_text());tests=summary['tests']
-    failed=case in ('identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault','session-peer-timeout')
+    failed=case in ('missing-counter','identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault','session-peer-timeout')
     assert code==(2 if failed else 0),(case,code,log.getvalue()[-1200:])
     assert summary['automated_pass']==(not failed)
     assert not summary['complete'] # Physical observations remain UNVERIFIED.
@@ -252,6 +253,11 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert fault['before_stream_cleanup'] and fault['status']['fault_hold']
         assert fault['eldstatus']['last_error']==518 and device.connect_calls==2
         assert 'Firmware fault while waiting' in tests['simultaneous_audio']['detail']
+    if case=='missing-counter':
+        assert tests['eld256']['status']=='FAIL'
+        assert any('usbcapture.missing_samples' in error for error in tests['eld256']['detail']['errors'])
+        fault=json.loads((root/'audio-failure-state.json').read_text())
+        assert fault['before_stream_cleanup'] and 'usbcapture.missing_samples' in fault['error']
     if case=='normalize':assert not any(c.startswith('pair ') for c in commands)
     with zipfile.ZipFile(root.with_suffix('.zip')) as z:
         assert z.testzip() is None and 'summary.json' in z.namelist() and 'dependencies.json' in z.namelist()
@@ -280,7 +286,7 @@ if __name__=='__main__':
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
-        for case,ceiling in [('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('mic-close-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
+        for case,ceiling in [('missing-counter',256000),('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('mic-close-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
                              ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)

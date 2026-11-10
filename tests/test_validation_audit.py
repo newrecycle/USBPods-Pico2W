@@ -105,9 +105,9 @@ class RunnerAudit(unittest.TestCase):
         self.assertTrue(any(x['eldstatus']['transition']=='wait-start' for x in recorder.records))
 
     def test_recovery_during_steady_interval_is_a_failure(self):
-        base={'micstats':dict(generation=3,capture=1,decoded=80,clock_windows=4,
+        base={'micstats':dict(errors=0,au_drop=0,pcm_drop=0,generation=3,capture=1,decoded=80,clock_windows=4,
                 measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-              'usbcapture':dict(running=1,pcm_samples=10000,missing_samples=0),
+              'usbcapture':dict(running=1,pcm_samples=10000,missing_samples=0,short_writes=0),
               'status':dict(streaming=1,codec=4,capture=1,mic_started=1,
                 mic_audio_seen=1,mic_retry_count=0,mic_restarts=0,
                 mic_watchdog_failures=0,tx_packets=150,send_failures=0),

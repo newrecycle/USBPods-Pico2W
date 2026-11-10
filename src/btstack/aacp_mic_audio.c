@@ -337,6 +337,13 @@ void aacp_mic_audio_note_usb_packet(uint32_t requested,uint32_t supplied) {
     atomic_fetch_add_explicit(&usb_postprime_underruns,1,memory_order_relaxed);
     if(usb_first_written)return;
     usb_first_written=true; /* single USB consumer; publish once */
+    /* Sample producer timestamps before the clock: core 1 may publish
+     * concurrently, and subtracting a newer timestamp from an older now
+     * would manufacture an age near UINT32_MAX. */
+    bool seen_au=atomic_load_explicit(&seen_admitted_au,memory_order_acquire);
+    uint32_t admitted_us=atomic_load_explicit(&last_admitted_au_us,memory_order_relaxed);
+    bool seen_pcm=atomic_load_explicit(&seen_published_pcm,memory_order_acquire);
+    uint32_t published_us=atomic_load_explicit(&last_published_pcm_us,memory_order_relaxed);
     uint32_t now=time_us_32();
     uint32_t wa=atomic_load_explicit(&aw,memory_order_acquire);
     uint32_t ra=atomic_load_explicit(&ar,memory_order_acquire);
@@ -350,10 +357,8 @@ void aacp_mic_audio_note_usb_packet(uint32_t requested,uint32_t supplied) {
     F(requested,requested);F(supplied,supplied);
     F(au_depth,ad);F(pcm_depth,pd);
     F(available,usb_packet_available);
-    F(au_age_us,atomic_load_explicit(&seen_admitted_au,memory_order_acquire)
-        ? now-atomic_load_explicit(&last_admitted_au_us,memory_order_relaxed):UINT32_MAX);
-    F(pcm_age_us,atomic_load_explicit(&seen_published_pcm,memory_order_acquire)
-        ? now-atomic_load_explicit(&last_published_pcm_us,memory_order_relaxed):UINT32_MAX);
+    F(au_age_us,seen_au ? now-admitted_us:UINT32_MAX);
+    F(pcm_age_us,seen_pcm ? now-published_us:UINT32_MAX);
     F(rebuffer,usb_packet_rebuffered);
 #undef F
     atomic_store_explicit(&first_usb_fault.valid,true,memory_order_release);
