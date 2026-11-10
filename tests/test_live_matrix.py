@@ -23,11 +23,12 @@ class MatrixReplay(unittest.TestCase):
                  external_release=False,operator_failure=False,steady_retry=False,focused=False,
                  output_stall=False, phase_stall=None, input_stall=False, channel_error=False, relay=False):
         import numpy as np
-        events=[];results={};streams=[];phase_begin={}
+        events=[];results={};streams=[];phase_begin={};measurements=set()
         class Recorder:
             def __init__(self):self.control={}
             def log(self,name,obj):
                 events.append((name,copy.deepcopy(obj)))
+                if name=='snapshots.jsonl':measurements.add(obj['phase'])
                 if name=='phases.jsonl':phase_begin[obj['phase']]=clock.now
             def control_snapshot(self):return copy.deepcopy(self.control)
         recorder=Recorder()
@@ -39,10 +40,10 @@ class MatrixReplay(unittest.TestCase):
                 for stream in list(streams):
                     kw=stream.kw
                     if kw['device']==1:
-                        if output_stall or (phase_stall and next(reversed(phase_begin),None)==phase_stall and not input_stall):continue
+                        if output_stall or (phase_stall and phase_stall+'_begin' in measurements and next(reversed(phase_begin),None)==phase_stall and not input_stall):continue
                         buffer=bytearray(480*4);kw['callback'](buffer,480,None,'output underflow' if channel_error and next(reversed(phase_begin),None)=='mic_closed_left' else None)
                     else:
-                        if phase_stall and input_stall and next(reversed(phase_begin),None)==phase_stall:continue
+                        if phase_stall and input_stall and phase_stall+'_begin' in measurements and next(reversed(phase_begin),None)==phase_stall:continue
                         frames=480;kw['callback'](np.full(frames*kw['channels'],1200,dtype='<i2').tobytes(),frames,None,None)
                 threading.Event().wait(.002) # Allow the actual bounded writer to drain.
         clock=Clock()

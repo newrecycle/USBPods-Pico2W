@@ -482,12 +482,13 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             result('reconnect_game_soak','SKIP','Focused mic-close acceptance: no three reconnects, game profiles, relay, or repeat ten-minute soak')
             return
         for cycle in range(3):
-            name=f'capture_reconnect_{cycle+1}';audio.set_phase(name)
+            name=f'capture_reconnect_{cycle+1}';audio.set_phase(name+'_transition')
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)
             link.request('connect')
             link.wait(lambda s:s.get('confirmed') and s.get('peer','').upper()==target_mac.upper(),45)
             await_profile(link,baseline);dwell(3,name+'_settle')
             await_duplex_ready(link,recorder,baseline,name+'_ready')
+            audio.set_phase(name)
             before=snapshot(link,recorder,name+'_begin');faults=dwell(5,name,baseline)
             after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)+faults+audio.phase_errors(name)
             if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
@@ -498,12 +499,13 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('duplex_soak','FAIL' if errors else 'PASS',{'seconds':args.soak_seconds,'errors':errors,'before':before,'after':after})
         if args.phone_relay:
-            audio.set_phase('phone_relay_duplex');link.request('phonepair 1')
+            audio.set_phase('phone_relay_transition');link.request('phonepair 1')
             try:
                 prompt('Pair/play a phone now; leave PC playback and microphone capture running. Press Enter when playing:')
                 state=link.wait(lambda s:s.get('relay_connected') and s.get('relay_streaming'),60)
                 relay_profile=('relay',*baseline[1:4],164000,0,0,6)
                 await_profile(link,relay_profile);dwell(3,'relay_settle')
+                audio.set_phase('phone_relay_duplex')
                 before=snapshot(link,recorder,'phone_relay_duplex_begin');faults=dwell(15,'phone_relay_duplex',relay_profile)
                 after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)+faults+audio.phase_errors('phone_relay_duplex')
                 if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
