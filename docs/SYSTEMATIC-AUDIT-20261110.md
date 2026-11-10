@@ -18,7 +18,7 @@ No sample clocks, queue capacities, codec profiles, core scheduling, radio/sessi
 
 ## Validation and limits
 
-Before repairing the runner gates, three targeted regressions failed against the previous implementation. The missing/invalid counter cases also reproduced failures and exceptions before repair. Final host validation results and exact GitHub workflow IDs are recorded with the pull request after completion. Firmware tests and builds run only in GitHub Actions; no local firmware build is used as evidence.
+Before repairing the runner gates, three targeted regressions failed against the previous implementation. The missing/invalid counter cases also reproduced failures and exceptions before repair. All 68 host tests passed locally (runner 27, matrix 16, validation 8, profiles 9, watcher 8). The first GitHub CLI integration run at `6f83b87` failed because its simulated device omitted newly required counters. The simulator now emits the real counter fields and has a separate missing-counter case requiring CLI failure, first-fault preservation and a valid ZIP. Final exact-source GitHub results are recorded with the pull request after completion. Firmware tests and builds run only in GitHub Actions; no local firmware build is used as evidence.
 
 The new timestamp test models a legal interleave in extracted production code. It is not an RP2350 scheduling, IRQ-latency or RF/acoustic measurement. Host replay uses simulated devices; callbacks and changing firmware counters cannot prove either AirPod played sound. The runner still requires explicit listening observations.
 
