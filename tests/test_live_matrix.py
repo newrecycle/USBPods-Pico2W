@@ -21,7 +21,7 @@ import live_audio
 class MatrixReplay(unittest.TestCase):
     def run_case(self,external=False,reject=False,mic_fault=False,startup_pause=False,
                  external_release=False,operator_failure=False,steady_retry=False,focused=False,
-                 output_stall=False):
+                 output_stall=False, phase_stall=None, input_stall=False, channel_error=False, relay=False):
         import numpy as np
         events=[];results={};streams=[];phase_begin={}
         class Recorder:
@@ -39,9 +39,10 @@ class MatrixReplay(unittest.TestCase):
                 for stream in list(streams):
                     kw=stream.kw
                     if kw['device']==1:
-                        if output_stall:continue
-                        buffer=bytearray(480*4);kw['callback'](buffer,480,None,None)
+                        if output_stall or (phase_stall and next(reversed(phase_begin),None)==phase_stall and not input_stall):continue
+                        buffer=bytearray(480*4);kw['callback'](buffer,480,None,'output underflow' if channel_error and next(reversed(phase_begin),None)=='mic_closed_left' else None)
                     else:
+                        if phase_stall and input_stall and next(reversed(phase_begin),None)==phase_stall:continue
                         frames=480;kw['callback'](np.full(frames*kw['channels'],1200,dtype='<i2').tobytes(),frames,None,None)
                 threading.Event().wait(.002) # Allow the actual bounded writer to drain.
         clock=Clock()
@@ -75,13 +76,17 @@ class MatrixReplay(unittest.TestCase):
                     self.revision+=1
                     if reject:self.connected=False;self.failed=True
                     return {'kind':'ack','queued':1,'value':rate}
+                if cmd=='phonepair 1':
+                    self.profile=('relay',*self.profile[1:4],164000,0,0,6);return {}
+                if cmd in ('phonedisc','phonepair 0'):return {}
                 if cmd=='disconnect':
                     assert capture_active() and len(streams)==2
                     self.connected=False;return {}
                 if cmd=='connect':self.connected=True;return {}
                 if cmd=='status':return dict(connected=self.connected,confirmed=int(self.connected),streaming=int(self.connected and not refreshing()),
+                    relay_connected=int(relay),relay_streaming=int(relay),
                     capture=int(capture_active()),codec=4 if self.connected else 0,fault_hold=int(self.failed),
-                    mic_started=int(self.connected and capture_active()),mic_recovery_pending=0,
+                    mic_started=int(self.connected and capture_active()),mic_recovery_pending=0,mic_restarts=0,mic_watchdog_failures=0,
                     peer='fixture',tx_packets=int(clock.now*50)+1,send_failures=0,
                     mic_watchdog_failed=int(mic_fault and clock.now>=3),
                     mic_retry_count=3 if mic_fault else int(steady_retry and 'eld256' in phase_begin and clock.now>=phase_begin['eld256']+2))
@@ -97,9 +102,9 @@ class MatrixReplay(unittest.TestCase):
                         negotiated_bitrate=0 if self.failed else 256000,negotiated_vbr=1,
                         error_stage=2 if self.failed else 0,last_error=263 if self.failed else 0)
                 if cmd=='telemetry':
-                    recorder.control=dict(micstats=dict(capture=int(capture_active()),generation=1,
+                    recorder.control=dict(micstats=dict(errors=0,au_drop=0,pcm_drop=0,capture=int(capture_active()),generation=1,
                         decoded=int(clock.now*133)+1,clock_windows=1,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-                        usbcapture=dict(running=int(capture_active()),pcm_samples=int(clock.now*64000)+1))
+                        usbcapture=dict(missing_samples=0,short_writes=0,running=int(capture_active()),pcm_samples=int(clock.now*64000)+1))
                     return {}
                 raise AssertionError('Unexpected command '+cmd)
             def wait(self,predicate,timeout=45):
@@ -110,7 +115,7 @@ class MatrixReplay(unittest.TestCase):
                     clock.sleep(.25)
                 raise TimeoutError('Stateful replay timeout')
         link=Link()
-        args=types.SimpleNamespace(output_device=None,input_device=None,duration=5,soak_seconds=10,phone_relay=False,mic_close_only=focused)
+        args=types.SimpleNamespace(output_device=None,input_device=None,duration=5,soak_seconds=10,phone_relay=relay,mic_close_only=focused)
         def result(name,status,detail=None):results[name]=(status,detail)
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)
@@ -129,7 +134,7 @@ class MatrixReplay(unittest.TestCase):
                     self.assertLess(clock.now,10) # No 15-second convergence timeout after a known failure.
                 else:
                     live_audio.run_matrix(args,root,link,recorder,lambda sd,kind,x:1 if kind=='output' else 2,result,
-                        lambda message:'yes' if output_stall else 'left ear is silent' if operator_failure and 'mic_closed: tone is LEFT' in message else '',
+                        lambda message:'yes' if output_stall or channel_error or relay else 'left ear is silent' if operator_failure and 'mic_closed: tone is LEFT' in message else '',
                         'fixture')
                     if focused:
                         self.assertNotIn('duplex_soak',results)
@@ -158,7 +163,12 @@ class MatrixReplay(unittest.TestCase):
                         self.assertEqual(settling[-1]['eldstatus']['transition'],'ready')
                     if not focused:
                         self.assertEqual(results['eld320'][0],'SKIP')
-                        for i in range(1,4):self.assertEqual(results[f'capture_reconnect_{i}'][0],'PASS')
+                        for i in range(1,4):
+                            name=f'capture_reconnect_{i}'
+                            self.assertEqual(results[name][0],'FAIL' if phase_stall==name else 'PASS')
+                        if phase_stall:self.assertTrue(results[phase_stall][1]['errors'])
+                    if relay:self.assertEqual(results['phone_relay_duplex'][0],'FAIL' if phase_stall else 'PASS')
+                    if channel_error:self.assertEqual(results['mic_closed_left'][0],'FAIL')
                     self.assertEqual(results['capture_close'][0],'SKIP' if external and not external_release else 'PASS')
                     self.assertFalse(results['capture_close'][1]['runner_exclusive_ownership_verified'])
                     if external_release:
@@ -180,6 +190,12 @@ class MatrixReplay(unittest.TestCase):
         return results
     def test_complete_owned_capture_matrix(self):self.run_case()
     def test_focused_mic_close_does_not_repeat_soak_or_game_matrix(self):self.run_case(focused=True)
+    def test_reconnect_output_stall_cannot_pass(self):self.run_case(phase_stall='capture_reconnect_1')
+    def test_reconnect_input_stall_cannot_pass(self):self.run_case(phase_stall='capture_reconnect_1',input_stall=True)
+    def test_phone_relay_with_live_callbacks(self):self.run_case(relay=True)
+    def test_phone_relay_output_stall_cannot_pass(self):self.run_case(relay=True,phase_stall='phone_relay_duplex')
+    def test_phone_relay_input_stall_cannot_pass(self):self.run_case(relay=True,phase_stall='phone_relay_duplex',input_stall=True)
+    def test_channel_underflow_cannot_accept_yes(self):self.run_case(focused=True,channel_error=True)
     def test_fake_firmware_tx_without_output_callback_cannot_pass(self):self.run_case(focused=True,output_stall=True)
     def test_profile_measurement_waits_for_refresh_after_fixed_dwell(self):self.run_case(startup_pause=True)
     def test_external_capture_is_not_a_usb_close_failure(self):self.run_case(external=True)

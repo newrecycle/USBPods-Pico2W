@@ -963,5 +963,13 @@
     ],
     "timeout": 120,
     "requires_fdk": false
+  },
+  {
+    "name": "underrun-snapshot-interleave",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_underrun_snapshot.py"
+    ],
+    "timeout": 120
   }
 ]

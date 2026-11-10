@@ -161,6 +161,20 @@ def health(before, after, profile=None):
     a,b=before.get('micstats',{}),after.get('micstats',{})
     u,v=before.get('usbcapture',{}),after.get('usbcapture',{})
     errors=[]
+    # Missing counters are unknown evidence, not zero loss. Validate both
+    # endpoints before modular subtraction, including recovery counters.
+    required={
+        'micstats':('generation','decoded','errors','au_drop','pcm_drop'),
+        'usbcapture':('pcm_samples','missing_samples','short_writes'),
+        'status':('tx_packets','send_failures','mic_restarts','mic_retry_count','mic_watchdog_failures'),
+    }
+    for label,item in (('begin',before),('end',after)):
+        for section,keys in required.items():
+            for key in keys:
+                value=item.get(section,{}).get(key)
+                if type(value) is not int or not 0<=value<=0xffffffff:
+                    errors.append(f'Missing or invalid {section}.{key} at {label} of steady interval')
+    if errors:return errors
     for label,item in (('begin',before),('end',after)):
         s=item.get('status',{});e=item.get('eldstatus',{})
         if profile is not None and not profile_matches(e,profile):
@@ -435,6 +449,11 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 if not audio.output_callbacks.get(phase,0):
                     result(phase,'UNVERIFIED','No host output callbacks observed; acoustic stimulus cannot be assumed')
                     continue
+                output_errors=audio.output_errors.get(phase,[])
+                if output_errors:
+                    preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(output_errors)))
+                    result(phase,'FAIL',{'output_errors':list(output_errors)})
+                    continue
                 answer=prompt(f'{label}: tone is {side.upper()} only. Type yes if correct; otherwise no, silent, both, wrong-side, or a description:')
                 result(phase,observation_status(answer,'channel',side),answer)
         channel_check('mic_active')
@@ -470,7 +489,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
             await_profile(link,baseline);dwell(3,name+'_settle')
             await_duplex_ready(link,recorder,baseline,name+'_ready')
             before=snapshot(link,recorder,name+'_begin');faults=dwell(5,name,baseline)
-            after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)+faults
+            after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)+faults+audio.phase_errors(name)
             if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
         audio.set_phase('duplex_soak');print(f'Duplex soak: {args.soak_seconds} seconds. Leave both streams open.',flush=True)
@@ -486,7 +505,7 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
                 relay_profile=('relay',*baseline[1:4],164000,0,0,6)
                 await_profile(link,relay_profile);dwell(3,'relay_settle')
                 before=snapshot(link,recorder,'phone_relay_duplex_begin');faults=dwell(15,'phone_relay_duplex',relay_profile)
-                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)+faults
+                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)+faults+audio.phase_errors('phone_relay_duplex')
                 if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
                 heard=prompt('Was the mixed phone/PC audio clear? Type yes/no, or Enter for unverified:')
                 result('phone_relay_duplex','FAIL' if errors or heard.lower()=='no' else 'PASS' if heard.lower()=='yes' else 'UNVERIFIED',{'state':state,'errors':errors,'before':before,'after':after})

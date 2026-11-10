@@ -318,13 +318,24 @@ class Contracts(unittest.TestCase):
         for change in (dict(pending=1),dict(transition='wait-start'),dict(active_bitrate=192000),dict(active_jitter=90),dict(built_revision=1)):
             self.assertFalse(live_audio.profile_matches({**s,**change},p))
     def test_counter_wrap_and_failures(self):
-        a={'micstats':dict(generation=2,capture=1,decoded=0xfffffff0,clock_windows=2,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-           'usbcapture':dict(running=1,pcm_samples=10),
-           'status':dict(streaming=1,codec=4,tx_packets=1),'eldstatus':dict(transition='ready')}
-        b={**a,'status':dict(streaming=1,codec=4,tx_packets=2),'micstats':dict(generation=2,capture=1,decoded=10,clock_windows=3,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-           'usbcapture':dict(running=1,pcm_samples=650)}
+        a={'micstats':dict(errors=0,au_drop=0,pcm_drop=0,generation=2,capture=1,decoded=0xfffffff0,clock_windows=2,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
+           'usbcapture':dict(missing_samples=0,short_writes=0,running=1,pcm_samples=10),
+           'status':dict(send_failures=0,mic_restarts=0,mic_retry_count=0,mic_watchdog_failures=0,streaming=1,codec=4,tx_packets=1),'eldstatus':dict(transition='ready')}
+        b={**a,'status':dict(send_failures=0,mic_restarts=0,mic_retry_count=0,mic_watchdog_failures=0,streaming=1,codec=4,tx_packets=2),'micstats':dict(errors=0,au_drop=0,pcm_drop=0,generation=2,capture=1,decoded=10,clock_windows=3,measured_rate=64000,coding_rate=48000,pcm_rate=64000),
+           'usbcapture':dict(missing_samples=0,short_writes=0,running=1,pcm_samples=650)}
         self.assertEqual(live_audio.health(a,b),[])
         self.assertIn('No playback media packets progressed',live_audio.health(a,{**b,'status':a['status']}))
+        for section,keys in (('micstats',('generation','decoded','errors','au_drop','pcm_drop')),
+                             ('usbcapture',('pcm_samples','missing_samples','short_writes')),
+                             ('status',('tx_packets','send_failures','mic_restarts','mic_retry_count','mic_watchdog_failures'))):
+            for key in keys:
+                for endpoint in (0,1):
+                    for bad in ('missing',None,-1,4294967296,'0'):
+                        with self.subTest(section=section,key=key,endpoint=endpoint,bad=bad):
+                            pair=json.loads(json.dumps([a,b]))
+                            if bad=='missing':del pair[endpoint][section][key]
+                            else:pair[endpoint][section][key]=bad
+                            self.assertTrue(live_audio.health(*pair))
         b['micstats']['generation']=3;b['usbcapture']['missing_samples']=64
         self.assertGreaterEqual(len(live_audio.health(a,b)),2)
         self.assertTrue(live_audio.health({},{}))
