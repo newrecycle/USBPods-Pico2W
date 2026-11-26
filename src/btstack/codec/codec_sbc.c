@@ -54,23 +54,19 @@ static const uint8_t media_sbc_codec_capabilities[] = {
 /* ---- local config buffer ---- */
 static uint8_t local_stream_endpoint_sbc_media_codec_configuration[4];
 
+#define SBC_MAX_PACKET_FRAMES 15
 #define SBC_PAYLOAD_HDR 1   /* A2DP SBC media payload header: frame count */
 
 /* ---- send ---- */
 static void a2dp_demo_send_media_packet_sbc(void){
     int num_bytes_in_frame = btstack_sbc_encoder_sbc_buffer_length();
     int bytes_in_storage = media_tracker.codec_storage_count;
-    uint8_t num_sbc_frames = bytes_in_storage / num_bytes_in_frame;
-    // Prepend SBC Header
-    media_tracker.codec_storage[0] = num_sbc_frames;  // (fragmentation << 7) | (starting_packet << 6) | (last_packet << 5) | num_frames;
-    a2dp_source_send_payload(0, bytes_in_storage + SBC_PAYLOAD_HDR);
-
-
-
-    // update rtp_timestamp
-    unsigned int num_audio_samples_per_sbc_buffer = btstack_sbc_encoder_num_audio_frames();
-
-    media_tracker.rtp_timestamp += num_sbc_frames * num_audio_samples_per_sbc_buffer;
+    if (num_bytes_in_frame > 0 && bytes_in_storage > 0) {
+        uint8_t num_frames = bytes_in_storage / num_bytes_in_frame;
+        media_tracker.codec_storage[0] = num_frames;
+        a2dp_source_send_payload(0, bytes_in_storage + SBC_PAYLOAD_HDR);
+        media_tracker.rtp_timestamp += num_frames * btstack_sbc_encoder_num_audio_frames();
+    }
 
     media_tracker.codec_storage_count = 0;
     media_tracker.codec_ready_to_send = 0;
@@ -81,34 +77,34 @@ static int fill_sbc_audio_buffer(a2dp_media_sending_context_t * context){
     int total_num_bytes_read = 0;
     unsigned int num_audio_samples_per_sbc_buffer = btstack_sbc_encoder_num_audio_frames();
 
-    /* RESERVE THE HEADER BYTE. Frames are staged at codec_storage[1 + count]
-       and the send ships count + 1 bytes (the A2DP SBC payload header carries
-       the frame count), but this bound only checked the frames — so whenever
-       the frame size divides max_media_payload_size exactly the packet came
-       out ONE byte over the L2CAP MTU and the send failed. 82 B frames hit it
-       on 656: stereo / 8 subbands / 16 blocks / bitpool 35, an entirely
-       ordinary negotiation. */
-    while (context->samples_ready >= num_audio_samples_per_sbc_buffer &&
-           (context->max_media_payload_size - SBC_PAYLOAD_HDR - context->codec_storage_count)
-               >= btstack_sbc_encoder_sbc_buffer_length()){
+    int frame_bytes = btstack_sbc_encoder_sbc_buffer_length();
+    if (frame_bytes <= 0 || num_audio_samples_per_sbc_buffer == 0) return 0;
+    /* The SBC header reserves its high bits for fragmentation. Limit a
+       packet by both the media MTU and the four-bit frame count. */
+    int budget = context->max_media_payload_size - SBC_PAYLOAD_HDR;
+    if (budget > SBC_MAX_PACKET_FRAMES * frame_bytes)
+        budget = SBC_MAX_PACKET_FRAMES * frame_bytes;
 
+    while (context->samples_ready >= num_audio_samples_per_sbc_buffer &&
+           context->codec_storage_count + frame_bytes <= budget) {
         uint8_t slot_idx;
         if (!audio_slot_pop(&slot_idx)) break;
 
         btstack_sbc_encoder_process_data(audio_slot_data(slot_idx));
 
-        uint16_t sbc_frame_size = btstack_sbc_encoder_sbc_buffer_length();
         uint8_t * sbc_frame = btstack_sbc_encoder_sbc_buffer();
 
         total_num_bytes_read += num_audio_samples_per_sbc_buffer;
 
-        memcpy(&context->codec_storage[1 + context->codec_storage_count], sbc_frame, sbc_frame_size);
-        context->codec_storage_count += sbc_frame_size;
+        memcpy(&context->codec_storage[1 + context->codec_storage_count], sbc_frame, frame_bytes);
+        context->codec_storage_count += frame_bytes;
         context->samples_ready -= num_audio_samples_per_sbc_buffer;
 
         audio_slot_release(slot_idx);
     }
 
+    context->codec_ready_to_send = context->codec_storage_count > 0 &&
+        context->codec_storage_count + frame_bytes > budget;
     return total_num_bytes_read;
 }
 

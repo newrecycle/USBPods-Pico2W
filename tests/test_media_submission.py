@@ -11,7 +11,7 @@ engine = SOURCE / 'btstack_avdtp_source.c'
 
 def definition(path, name):
     source = path.read_text()
-    start = re.search(r'^(?:static )?(?:void|uint32_t) ' + name + r'\(', source, re.M)
+    start = re.search(r'^(?:static )?(?:void|int|uint32_t) ' + name + r'\(', source, re.M)
     assert start, name
     return source[start.start():source.index('\n}', start.end()) + 2]
 
@@ -25,12 +25,21 @@ fixture = r"""
 #define ERROR_CODE_SUCCESS 0
 #define LDACBT_ENC_LSU 128
 #define LHDC_FRAME_SAMPLES 480
+#define SBC_MAX_PACKET_FRAMES 15
 #define SBC_PAYLOAD_HDR 1
-static struct {
+typedef struct {
+    int max_media_payload_size;
     uint16_t avdtp_cid, codec_storage_count;
     uint8_t local_seid, codec_storage[1500], codec_num_frames, codec_ready_to_send;
     uint32_t rtp_timestamp, samples_ready;
-} media_tracker;
+} a2dp_media_sending_context_t;
+static a2dp_media_sending_context_t media_tracker;
+static uint8_t frame_data[4];
+static bool audio_slot_pop(uint8_t *slot) { *slot=0; return true; }
+static int16_t *audio_slot_data(uint8_t slot) { (void)slot; return NULL; }
+static void audio_slot_release(uint8_t slot) { (void)slot; }
+static void btstack_sbc_encoder_process_data(int16_t *data) { (void)data; }
+static uint8_t *btstack_sbc_encoder_sbc_buffer(void) { return frame_data; }
 static uint32_t now_ms, observed_stamp, submissions, src_tx_pkts, src_send_fails;
 static uint16_t observed_length;
 static uint8_t next_rc, src_send_fail_rc;
@@ -90,6 +99,20 @@ int main(void) {
             assert(src_tx_pkts == previous_count + !reject && src_send_fails == failures + reject);
         }
     }
+    const int budgets[] = {656, 22, 4};
+    const int expected_frames[] = {15, 5, 0};
+    for (unsigned i = 0; i < 3; i++) {
+        media_tracker.max_media_payload_size = budgets[i];
+        media_tracker.samples_ready = 128 * 32;
+        int samples = fill_sbc_audio_buffer(&media_tracker);
+        assert(samples == expected_frames[i] * 128);
+        assert(media_tracker.codec_ready_to_send == (expected_frames[i] > 0));
+        if (media_tracker.codec_ready_to_send) {
+            a2dp_demo_send_media_packet_sbc();
+            assert(media_tracker.codec_storage[0] == expected_frames[i]);
+            assert(observed_length == 1 + 4 * expected_frames[i]);
+        }
+    }
     uint8_t vendor[] = {0x78,0x56,0x34,0xff};
     assert(get_vendor_id(vendor) == UINT32_C(0xff345678));
 }
@@ -100,6 +123,7 @@ for codec, name in [('sbc', 'a2dp_demo_send_media_packet_sbc'),
                     ('aac', 'a2dp_demo_send_media_packet_aac'),
                     ('ldac', 'ldac_send'), ('lhdc', 'lhdc_send')]:
     functions.append(definition(SOURCE / 'codec' / f'codec_{codec}.c', name))
+functions.append(definition(SOURCE / 'codec/codec_sbc.c', 'fill_sbc_audio_buffer'))
 with tempfile.TemporaryDirectory() as directory:
     src = Path(directory) / 'media.c'
     binary = src.with_suffix('')

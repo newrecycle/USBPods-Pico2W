@@ -2822,11 +2822,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
 
         case 1:   /* SBC */
             codec_sbc_ops.fill(context);
-            /* +1: the SBC payload header ships with the frames (see the
-               reservation in fill_sbc_audio_buffer) */
-            if ((context->codec_storage_count + 1 + btstack_sbc_encoder_sbc_buffer_length()) > context->max_media_payload_size){
-                // schedule sending
-                context->codec_ready_to_send = 1;
+            if (context->codec_ready_to_send) {
                 a2dp_source_stream_endpoint_request_can_send_now(context->avdtp_cid, context->local_seid);
             }
             break;
@@ -2893,6 +2889,9 @@ static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
     if (cur_codec == 4) {
         int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
         context->max_media_payload_size = m > 0 && m < 986 ? (uint16_t)m : 986;
+    } else if (cur_codec == CODEC_ID_SBC) {
+        int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
+        context->max_media_payload_size = m > 0 && m < 0x290 ? m : 0x290;
     } else if (cur_codec == 2) {
         int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
         context->max_media_payload_size = (m >= 0x290 && m <= 1024) ? (uint16_t) m : 0x290;
