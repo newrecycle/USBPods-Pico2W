@@ -971,5 +971,13 @@
       "tests/test_underrun_snapshot.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "codec-media-submission",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_media_submission.py"
+    ],
+    "timeout": 120
   }
 ]

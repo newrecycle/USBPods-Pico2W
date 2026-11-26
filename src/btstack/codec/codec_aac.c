@@ -84,9 +84,7 @@ static uint8_t  aac_sink_vbr;   /* sink's VBR capability (we send CBR anyway) */
 
 /* ---- send ---- */
 static void a2dp_demo_send_media_packet_aac(void) {
-    uint8_t num_frames = 1;
-
-    src_tx_pkts++; a2dp_source_stream_send_media_payload_rtp(media_tracker.avdtp_cid, media_tracker.local_seid, 0, media_tracker.rtp_timestamp, &media_tracker.codec_storage[0], media_tracker.codec_storage_count);
+    a2dp_source_send_payload(0, media_tracker.codec_storage_count);
 
     //media_tracker.rtp_timestamp += aacinf.frameLength;
     media_tracker.rtp_timestamp += rtp_samples_per_frame;

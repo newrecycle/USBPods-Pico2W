@@ -63,9 +63,7 @@ static void a2dp_demo_send_media_packet_sbc(void){
     uint8_t num_sbc_frames = bytes_in_storage / num_bytes_in_frame;
     // Prepend SBC Header
     media_tracker.codec_storage[0] = num_sbc_frames;  // (fragmentation << 7) | (starting_packet << 6) | (last_packet << 5) | num_frames;
-    src_tx_pkts++; a2dp_source_stream_send_media_payload_rtp(media_tracker.avdtp_cid, media_tracker.local_seid, 0,
-                               media_tracker.rtp_timestamp,
-                               media_tracker.codec_storage, bytes_in_storage + 1);
+    a2dp_source_send_payload(0, bytes_in_storage + SBC_PAYLOAD_HDR);
 
 
 

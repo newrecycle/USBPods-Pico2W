@@ -1,16 +1,6 @@
 # Local Codex handoff
 
-Current task order and CI-only build/test policy: [2026-11-07 local handoff](LOCAL-AGENT-TASKS-20261107.md).
-The current integrated baseline is `263de0c707e95a668f8ce2686ac38ba3058cee3d`;
-the later handoff commit adds documentation and a CI watcher. The source-specific
-authorization and `evidence/current-validation.json` below are historical records,
-not physical acceptance of integrated main. See `validation-status.json` for
-their scope. The last physically tested laptop source remains `880dc318`.
-
-Latest branch integration: [2026-11-05 review](INTEGRATION-REVIEW-20261105.md)
-and [offline evidence](evidence/integration-review-20261105.json). Read this
-before the historical implementation chronology below. The integrated source
-retains default single-core operation and does not establish a physical fix.
+For Windows installation, pairing and the downloadable single-core package, start with [the README](../README.md). For the last physical measurements, use [the single-core record](evidence/local-windows-20261107-live.json) and [the core1 record](evidence/local-windows-20261107-dualcore.json). Both identify flashed source `1979ae6be1c2daf9e1db8024763504d4061c4588`. The [November 10 audit](SYSTEMATIC-AUDIT-20261110.md) documents subsequent offline changes. Build and test the firmware in GitHub Actions. The older implementation chronology below is retained for provenance.
 
 Start with [the resume prompt](LOCAL-CODEX-RESUME-PROMPT.md). This repository
 contains the implementation and tests, pinned public references and licenses,

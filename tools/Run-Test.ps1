@@ -7,6 +7,7 @@ param(
   [switch]$PhoneRelay,
   [switch]$SessionOnly,
   [switch]$MicCloseOnly,
+  [switch]$PairOnly,
   [switch]$ReusePairing
 )
 $ErrorActionPreference = 'Stop'
@@ -16,13 +17,20 @@ if ($SoakSeconds -lt 10 -or $SoakSeconds -gt 1800) { throw 'SoakSeconds must be 
 if ($TargetName -and $TargetMac) { throw 'TargetName and TargetMac are mutually exclusive; select one exact target before flashing' }
 if ($SessionOnly -and $PhoneRelay) { throw 'SessionOnly cannot include PhoneRelay' }
 if ($MicCloseOnly -and ($SessionOnly -or $PhoneRelay)) { throw 'MicCloseOnly is an interactive mic-close check; cannot combine with SessionOnly or PhoneRelay' }
+if ($PairOnly -and ($SessionOnly -or $MicCloseOnly -or $PhoneRelay)) { throw 'PairOnly cannot include an audio test mode' }
 if (!(Get-Command picotool -ErrorAction SilentlyContinue)) { throw 'picotool must be in PATH' }
 $Python = Join-Path $Root '.venv\Scripts\python.exe'
 if (!(Test-Path $Python)) {
   & py -3 -m venv (Join-Path $Root '.venv')
   if ($LASTEXITCODE -ne 0) { throw 'Python 3 venv creation failed' }
-  & $Python -m pip install -r (Join-Path $Root 'live-requirements.txt')
+}
+$Requirements = Join-Path $Root 'live-requirements.txt'
+$Installed = Join-Path $Root '.venv\usbpods-requirements.sha256'
+$Digest = (Get-FileHash -Algorithm SHA256 -LiteralPath $Requirements).Hash
+if (!(Test-Path $Installed) -or (Get-Content -Raw $Installed).Trim() -ne $Digest) {
+  & $Python -m pip install --disable-pip-version-check -r $Requirements
   if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
+  Set-Content -LiteralPath $Installed -Value $Digest -Encoding ascii
 }
 $PortFile = Join-Path $Root 'flashed-port.txt'
 $FlashArgs = @((Join-Path $Root 'flash_candidate.py'), '--root', $Root, '--port-file', $PortFile)
@@ -37,10 +45,12 @@ if ($TargetMac) { $RunArgs += @('--target-mac', $TargetMac) }
 if ($PhoneRelay) { $RunArgs += '--phone-relay' }
 if ($SessionOnly) { $RunArgs += '--session-only' }
 if ($MicCloseOnly) { $RunArgs += '--mic-close-only' }
+if ($PairOnly) { $RunArgs += '--pair-only' }
 if ($ReusePairing) { $RunArgs += '--reuse-pairing' }
 if ($CdcPort) { $RunArgs += @('--cdc', $CdcPort) }
 & $Python @RunArgs
 $Code = $LASTEXITCODE
 if ($Code -ne 0) { Write-Host 'A check or collection failed. Return the results ZIP; see summary.json.' }
+elseif ($PairOnly) { Write-Host 'Setup finished. Select the USBPods output and input in Windows Sound.' }
 else { Write-Host 'Automatic checks finished. Return the results ZIP, including SKIP/UNVERIFIED coverage.' }
 exit $Code

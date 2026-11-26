@@ -1,5 +1,13 @@
 # Pico 2 W reconstruction: controlled hardware acceptance
 
+For everyday Windows setup, extract the **USBPods-Windows-Pico2W** artifact, connect the board and run this from the extracted folder. The first launch needs Python 3, picotool and internet access for Python dependencies.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Run-Test.ps1 -PairOnly
+```
+
+At the pairing prompt, put both AirPods in the open case, enable pairing until the light flashes white, press Enter and choose the exact scan index. For a saved bond, add `-ReusePairing`. Select the USBPods input and output in Windows Sound after setup. For a short channel check, replace `-PairOnly` with `-ReusePairing -MicCloseOnly`. Use a phone speaker near the AirPods as the microphone stimulus. A single USB CDC connection carries the firmware diagnostics. To recover the observed left-channel mute after closing capture, open that port at 115200 after the runner exits and press uppercase `K` once.
+
 Current follow-up: [2026-11-07 task order](LOCAL-AGENT-TASKS-20261107.md).
 Build firmware and run firmware/codec tests exclusively in GitHub Actions.
 After exact-source CI passes, use a short same-host comparison: 256 kbps baseline,

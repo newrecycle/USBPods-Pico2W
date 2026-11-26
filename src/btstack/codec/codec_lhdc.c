@@ -326,10 +326,7 @@ static int lhdc_fill(a2dp_media_sending_context_t *context) {
 static void lhdc_send(void) {
     uint8_t num_frames = media_tracker.codec_num_frames;
 
-    src_tx_pkts++;
-    a2dp_source_stream_send_media_payload_rtp(media_tracker.avdtp_cid,
-        media_tracker.local_seid, 0, media_tracker.rtp_timestamp,
-        &media_tracker.codec_storage[0], media_tracker.codec_storage_count);
+    a2dp_source_send_payload(0, media_tracker.codec_storage_count);
     media_tracker.rtp_timestamp += (uint32_t) num_frames * LHDC_FRAME_SAMPLES;
 
     media_tracker.codec_storage_count = 0;

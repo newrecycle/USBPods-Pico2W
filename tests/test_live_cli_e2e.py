@@ -110,7 +110,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
             command=raw.decode().strip()[1:];commands.append(command);name=command.split()[0]
             if c[4]:return [self.status()]
             assert c[0]==live.IDS[name],(name,c[0],live.IDS[name])
-            if name=='info':return [dict(kind='info',protocol=2,sha='b'*40 if case=='identity-mismatch' else manifest['sha'],mic_decode=True,uac1=case=='normalize')]
+            if name=='info':return [dict(kind='info',protocol=2,sha='b'*40 if case=='identity-mismatch' else manifest['sha'],mic_decode=True,variant='other-core' if case=='wrong-variant' else manifest.get('variant'),uac1=case=='normalize')]
             if name=='settings':return [dict(kind='settings',**self.settings)]
             if name=='status':return [self.status()]
             if name=='eldstatus':return [self.eld()]
@@ -190,6 +190,8 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     modules={'serial':serial,'serial.tools':serial_tools,'serial.tools.list_ports':list_ports,'hid':hid,'sounddevice':sd,'live_audio':audio}
     args=['live_test.py','--manifest',str(manifest_path),'--cdc','COM_SIM','--duration','5','--soak-seconds','10','--output',str(output)]
     session_case=case in ('session-only','session-peer-timeout','session-no-ack')
+    if case in ('pair-only','wrong-variant','wrong-target'):args+=['--pair-only']
+    if case=='wrong-target':args+=['--target-name','Absent earphones']
     if session_case:args+=['--session-only']
     if case=='mic-close-only':args+=['--mic-close-only']
     def answer(message):return '0' if 'Enter the index' in message else ''
@@ -199,7 +201,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
     root=next(output.glob('USBPods-results-*'))
     if root.suffix=='.zip':root=root.with_suffix('')
     summary=json.loads((root/'summary.json').read_text());tests=summary['tests']
-    failed=case in ('missing-counter','identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault','session-peer-timeout')
+    failed=case in ('wrong-variant','wrong-target','missing-counter','identity-mismatch','pair-rejected','start-rejected','mic-watchdog','normalize','usb-lost','reconnect-fault','session-peer-timeout')
     assert code==(2 if failed else 0),(case,code,log.getvalue()[-1200:])
     assert summary['automated_pass']==(not failed)
     assert not summary['complete'] # Physical observations remain UNVERIFIED.
@@ -208,7 +210,7 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         assert all('simulated USB device removed' in e for e in summary['collector_errors'])
     else:assert not summary['collector_errors'] and not summary.get('restore_errors')
     assert all(p.closed for p in ports) and all(h.closed for h in handles) and not streams
-    if not failed and not session_case and case!='mic-close-only':
+    if not failed and not session_case and case not in ('mic-close-only','pair-only'):
         for key in ('eld256','eld192','game_stable','game_latency','restore256','duplex_soak','capture_reconnect_1','capture_reconnect_2','capture_reconnect_3'):
             assert tests[key]['status']=='PASS',(case,key,tests[key])
         assert tests['eld320']['status']==('PASS' if ceiling>=320000 else 'SKIP')
@@ -221,6 +223,15 @@ def run_case(live,audio,manifest_path,manifest,parser,profile,output,case,ceilin
         for wav in root.glob('*.wav'):
             with wave.open(str(wav)) as f:assert (f.getframerate(),f.getnchannels(),f.getsampwidth())==(48000,2,2)
         assert list(root.glob('*.wav'))
+    if case in ('wrong-variant','wrong-target'):
+        assert tests['run']['status']=='FAIL' and not any(c.startswith('pair ') for c in commands)
+        assert not list(root.glob('*.wav'))
+        if case=='wrong-variant':assert commands==['info','status','eldstatus','telemetry','savedlist']
+    if case=='pair-only':
+        assert summary['hardware_phase']=='paired_for_use' and device.connected
+        assert tests['targeted_connection']['status']=='PASS' and tests['audio_matrix']['status']=='SKIP'
+        assert device.settings==device.original and not list(root.glob('*.wav'))
+        assert not any(c.startswith(('earpause ','stem ','profile ','phonedisc')) for c in commands)
     if case=='mic-close-only':
         assert tests['restore256']['status']=='PASS'
         assert tests['mic_close_endpoint']['status']=='PASS'
@@ -276,7 +287,7 @@ if __name__=='__main__':
         if not options.candidate:
             candidate.mkdir();(candidate/'fixture.uf2').write_bytes(b'simulation only')
             (candidate/'candidate.json').write_text(json.dumps(dict(hardware_test_candidate=True,sha='a'*40,mic_decode=True,
-                firmware='fixture.uf2',firmware_sha256=hashlib.sha256(b'simulation only').hexdigest())))
+                variant='fixture:rpi0065',firmware='fixture.uf2',firmware_sha256=hashlib.sha256(b'simulation only').hexdigest())))
         runner_dir=candidate if options.candidate else ROOT/'tools'
         live=load_module('e2e_live_test',runner_dir/'live_test.py');audio=load_module('e2e_live_audio',runner_dir/'live_audio.py')
         manifest_path=candidate/'candidate.json';manifest=json.loads(manifest_path.read_text());live.verify_manifest(candidate,manifest)
@@ -286,7 +297,7 @@ if __name__=='__main__':
         lib=ctypes.CDLL(str(base/'parser.so'));lib.parse_wire.argtypes=[ctypes.c_char_p,ctypes.c_uint,ctypes.POINTER(ctypes.c_uint8)]
         lib.profile_wire.argtypes=[ctypes.c_uint]*4+[ctypes.POINTER(ctypes.c_uint32)]
         results=[]
-        for case,ceiling in [('missing-counter',256000),('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('mic-close-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
+        for case,ceiling in [('pair-only',256000),('wrong-variant',256000),('wrong-target',256000),('missing-counter',256000),('complete',256000),('complete-320',320000),('external-capture',256000),('no-control-echo',256000),('off-unavailable',256000),('session-only',256000),('mic-close-only',256000),('session-peer-timeout',256000),('session-no-ack',256000),
                              ('identity-mismatch',256000),('pair-rejected',256000),('start-rejected',256000),('mic-watchdog',256000),('normalize',256000),('usb-lost',256000),('reconnect-fault',256000)]:
             d=out/case;d.mkdir(exist_ok=False)
             result=run_case(live,audio,manifest_path,manifest,lib.parse_wire,lib.profile_wire,d,case,ceiling)

@@ -187,6 +187,7 @@ jobs:
           python3 tests/test_sdk_transport_contract.py
           python3 tests/test_sdk_response_reentry.py
           python3 tests/test_underrun_snapshot.py
+          python3 tests/test_media_submission.py
           python3 tests/test_relay_sdk_routing.py
           python3 tests/test_codec_setup.py
           python3 tests/test_button_context.py
@@ -306,6 +307,19 @@ jobs:
           fi
           stem="$(cat build/usbpods-output-name.txt)"
           python3 tools/package_live_test.py --build build --evidence evidence --output live-test-candidate --stem "$stem" --source-sha "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID"
+      - name: Exercise the packaged Windows runner with simulated devices
+        if: matrix.decode == 'ON' && matrix.dualcore != 'ON' && hashFiles('live-test-candidate/candidate.json') != ''
+        run: |
+          python3 -m venv "$RUNNER_TEMP/usbpods-package-test"
+          "$RUNNER_TEMP/usbpods-package-test/bin/python" -m pip install 'numpy>=2,<3'
+          "$RUNNER_TEMP/usbpods-package-test/bin/python" tests/test_live_cli_e2e.py --candidate live-test-candidate
+      - name: Upload Windows setup bundle
+        if: matrix.decode == 'ON' && matrix.dualcore != 'ON' && hashFiles('live-test-candidate/candidate.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: USBPods-Windows-Pico2W
+          path: live-test-candidate/
+          if-no-files-found: error
       - name: Upload firmware and verification evidence
         if: always() && hashFiles('evidence/firmware.json') != ''
         uses: actions/upload-artifact@v4

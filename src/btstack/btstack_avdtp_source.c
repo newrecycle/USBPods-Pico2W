@@ -304,7 +304,7 @@ static const char * codec_name_for_type(avdtp_media_codec_type_t codec_type){
     }
 }
 
-uint32_t src_tx_pkts;   /* media packets actually sent — a frozen value
+static uint32_t src_tx_pkts;   /* media packets actually sent — a frozen value
                                   in the 'R' dump = the source stream is DEAD
                                   (timer stopped / start lost), not just quiet */
 
@@ -409,6 +409,7 @@ static const hci_cmd_t usbpods_hci_enhanced_flush = { 0x0C5F, "H1" };        /* 
 static uint8_t  src_rec_state;      /* 0 idle, 1 nudge sent, 2 beacon wait,
                                        3 kick beacon wait                    */
 uint32_t src_splice_last_ms; /* last live splice (quiesce gate)      */
+static bool src_rtp_clock_started;
 static uint32_t src_rtp_ms_base;    /* wall-clock base for the 1 kHz RTP stamp */
 static uint32_t src_rec_t0;         /* nudge send time                      */
 static uint8_t  src_rec_escal;      /* k-escalations this episode (backoff) */
@@ -621,16 +622,14 @@ void a2dp_source_eld_send(void) {
         txchk_done: ;
     }
 
-    src_tx_pkts++;
-    {
-        uint8_t send_rc = a2dp_source_stream_send_media_payload_rtp(media_tracker.avdtp_cid, media_tracker.local_seid, rtp_marker, media_tracker.rtp_timestamp, &media_tracker.codec_storage[0], media_tracker.codec_storage_count);
-        if (send_rc != ERROR_CODE_SUCCESS) {
-            src_send_fails++;
-            src_send_fail_rc = send_rc;
-            printf("[txchk] SEND FAILED rc %u pkt #%lu (on-air seq gap!)\n",
-                   send_rc, (unsigned long)src_tx_pkts);
-        }
+    /* Stamp this packet at submission. A zero millisecond clock value is valid
+       both at startup and when the 32-bit timer rolls over. */
+    if (!src_rtp_clock_started) {
+        src_rtp_ms_base = now_ms;
+        src_rtp_clock_started = true;
     }
+    media_tracker.rtp_timestamp = now_ms - src_rtp_ms_base;
+    a2dp_source_send_payload(rtp_marker, media_tracker.codec_storage_count);
 
     if (src_eld_tap) {
         /* codec_ready_to_send gates the pump, so no fill ran since this
@@ -645,19 +644,6 @@ void a2dp_source_eld_send(void) {
                rtp_marker ? " SNAP" : "");
     }
 
-    /* RTP timestamp: MILLISECOND clock stamped from the REAL clock, exactly
-       as macOS does (wire, 3732 pkts: 1 kHz units, per-packet deltas
-       jittering 29-33 with mean 30.00 — i.e. sampled from a millisecond
-       clock, NOT accumulated from AU counts).
-       Accumulating (n_AUs x 10) was tried and FAILED HARD: our packets are
-       often 2 AUs, so the clock advanced +20 while 22 ms of wall time
-       passed — a playout clock running slower than real time starves the
-       renderer and the buds go SILENT within seconds (HW). Stamping from
-       the run-loop clock is immune to AU batching, resampling and pump
-       jitter by construction. Base offset keeps the first stamp near 0. */
-    if (src_rtp_ms_base == 0) src_rtp_ms_base = now_ms;
-    media_tracker.rtp_timestamp = now_ms - src_rtp_ms_base;
-
     media_tracker.codec_storage_count = 0;
     media_tracker.codec_ready_to_send = 0;
     media_tracker.codec_num_frames = 0;
@@ -670,7 +656,7 @@ uint32_t get_vendor_id(const uint8_t *codec_info) {
     vendor_id |= codec_info[0];
     vendor_id |= codec_info[1] << 8;
     vendor_id |= codec_info[2] << 16;
-    vendor_id |= codec_info[3] << 24;
+    vendor_id |= (uint32_t)codec_info[3] << 24;
     return vendor_id;
 }
 
@@ -1201,12 +1187,17 @@ const uint8_t *a2dp_source_peer_addr(void){
    simply never sent. Only the ELD path checked this, so an oversized codec
    payload was silent, total audio loss that looked like RF trouble. Every
    codec's send now reports here. */
-void a2dp_source_note_send(uint8_t rc){
-    if (rc == ERROR_CODE_SUCCESS) return;
-    src_send_fails++;
-    src_send_fail_rc = rc;
-    printf("[txchk] SEND FAILED rc %u pkt #%lu (payload too big for the link MTU?)\n",
-           rc, (unsigned long) src_tx_pkts);
+void a2dp_source_send_payload(uint8_t marker, uint16_t length) {
+    uint8_t rc = a2dp_source_stream_send_media_payload_rtp(
+        media_tracker.avdtp_cid, media_tracker.local_seid, marker,
+        media_tracker.rtp_timestamp, media_tracker.codec_storage, length);
+    if (rc == ERROR_CODE_SUCCESS) {
+        src_tx_pkts++;
+    } else {
+        src_send_fails++;
+        src_send_fail_rc = rc;
+        printf("[txchk] media submission failed rc %u len %u\n", rc, length);
+    }
 }
 
 bool get_allow_switch_slot(){
@@ -2926,7 +2917,7 @@ static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
     context->codec_storage_count = 0;
     context->codec_ready_to_send = 0;
     context->streaming = 1;
-    src_rtp_ms_base = 0;    /* fresh ms timeline for this stream session */
+    src_rtp_clock_started = false;  /* First submission establishes the new timeline. */
     src_tick_last_ms = 0;   /* pause/resume must not read as a giant tick gap */
     src_full_since = 0;     /* nor a pre-suspend jam as a 200 ms dwell served */
     src_manflush_streak = 0;

@@ -1,29 +1,29 @@
-> Reconstruction work: start with [the local Codex handoff](docs/LOCAL-CODEX-HANDOFF.md) and [resume prompt](docs/LOCAL-CODEX-RESUME-PROMPT.md). Current validation and physical limits are recorded there; the upstream README below is historical context.
-
 # USBPods — Pico 2 W USB to Bluetooth Audio
 
 <p align="center">
 <img alt="Logo" src="logo.jpg" width="200">
 </p>
 
-## Turn Pico 2 W into a USB to Bluetooth Aduio Streaming Dongle
+This fork builds USB audio firmware for Raspberry Pi Pico 2 W. On Windows 11 it presents a headphone output, microphone input, HID interface and one USB CDC port. The default Windows package uses the single-core rpi0065 build with AAC-ELD microphone decoding.
 
-**Added BL616 Support! Visit USBPods webUI to control your Dongle! [hub.usbpods.com](https://hub.usbpods.com)**
+## Windows setup
 
+1. Open a successful [Pico firmware build on main](https://github.com/newrecycle/USBPods-Pico2W/actions/workflows/pico-firmware.yml?query=branch%3Amain). Under **Artifacts**, download **USBPods-Windows-Pico2W** and extract the ZIP to a writable folder. GitHub requires sign-in to download workflow artifacts.
+2. Connect the Pico 2 W. For a new board, hold BOOTSEL while plugging in USB. For a board already running this fork, leave it connected normally. Have Python 3 with the Windows `py` launcher and `picotool` on PATH.
+3. Open PowerShell in the extracted folder and run:
 
-Open-source firmware that turns a Raspberry Pi Pico 2 W (or the Waveshare RP2350B-Plus-W) 
-into a UAC 1/2 sound card that streams to Bluetooth headphones with the hi-quailty codecs.
+   ```powershell
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\Run-Test.ps1 -PairOnly
+   ```
 
+4. At the prompt, put both AirPods Pro 3 in their case, open the lid, and double-tap the front until the light flashes white. Press Enter, then select your AirPods by their displayed scan index. For a previously paired set, add `-ReusePairing`. When several dongles are present, specify yours with `-CdcPort COMx` using its actual port.
+5. In **Settings → System → Sound**, select USBPods for output and input. The setup script leaves the selected AirPods connected. On later launches it reuses firmware whose source and build variant match the package.
 
-Plug it into any computer, console or handheld with a USB port. No app, no
-driver, no pairing dance on the host — the dongle owns the Bluetooth link, so
-the host just sees a sound card.
+The last physical single-core measurements covered simultaneous microphone and playback at 256 kbps, 192 kbps, and both game profiles in short intervals. Closing microphone capture can silence the left AirPod. **Uppercase K** on the dongle's CDC console restored left playback with capture still closed in the recorded test. Lowercase `k` changes the USB sample rate. Experimental dual-core decoding still has recorded USB underruns at 192 kbps. The public firmware uses the Lite source tree. [Physical evidence](docs/evidence/local-windows-20261107-live.json) · [Focused verification and operator guide](docs/LIVE-TEST.md)
 
-This is the RP2350 successor of the original PicoW-usb2bt-audio project that
-lived in this repo ([video demo](http://www.youtube.com/watch?v=Dilagi7l4xc)
-of the original Pico W version). The RP2040 Pico W is **not** supported by
-this firmware — see the older tags for that board.
+## Upstream project background
 
+The feature descriptions and Lite/Full comparison below describe the upstream project. This fork's Windows artifact and measured behavior are described above.
 
 ## Features
 
@@ -72,24 +72,6 @@ This repo is the free **Lite** firmware. The **Full** firmware at **Under Develo
 | Firmware updates | copy a UF2 | one click in the browser |
 
 The web UI recognizes a Lite dongle and offers the upgrade path.
-
-## Installation
-
-1. Download `USBPods_Pico2W_Lite.uf2` from the
-   [releases page](https://github.com/wasdwasd0105/USBPods-Pico2W/releases)
-   (or build it yourself, below).
-2. Hold **BOOTSEL** while plugging the board in — it appears as an `RP2350`
-   drive.
-3. Copy the UF2 onto the drive; the board reboots into the firmware.
-
-## Usage
-
-1. Select the **USBPods Lite** audio output on your computer.
-2. Put your headphones in pairing mode — the dongle scans and connects on its
-   own. Afterwards it reconnects at power-on.
-3. For anything else, open the serial console: any terminal on the USB CDC
-   port, e.g. `screen /dev/tty.usbmodem*` (macOS/Linux) or PuTTY on the COM
-   port (Windows). Press **Enter** for the menu.
 
 ### Console keys
 

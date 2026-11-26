@@ -27,6 +27,9 @@ extern uint32_t last_hang_ticks,last_fault_pc,last_fault_lr,last_fault_cfsr;
 #ifndef USBPODS_BUILD_SHA
 #define USBPODS_BUILD_SHA "unknown"
 #endif
+#ifndef USBPODS_BUILD_VARIANT
+#define USBPODS_BUILD_VARIANT "unknown"
+#endif
 #ifdef USBPODS_MIC_DECODE
 #define MIC_DECODE 1
 #define RELAY_AAC 0
@@ -114,7 +117,7 @@ static bool dispatch(control_command c) {
  user_settings_t*s=settings();uint8_t v=c.value;
  switch(c.id) {
  case CONTROL_INFO:
-   printf("\n[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1,\"reset_kind\":%u,\"reset_phase\":%u,\"reset_irq\":%u,\"reset_usb_ticks\":%lu,\"fault_pc\":%lu,\"fault_lr\":%lu,\"fault_cfsr\":%lu}\n",USBPODS_BUILD_SHA,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active(),(unsigned)last_reset_kind,(unsigned)last_hang_phase,(unsigned)last_hang_irq,(unsigned long)last_hang_ticks,(unsigned long)last_fault_pc,(unsigned long)last_fault_lr,(unsigned long)last_fault_cfsr);return true;
+   printf("\n[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"variant\":\"%s\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1,\"reset_kind\":%u,\"reset_phase\":%u,\"reset_irq\":%u,\"reset_usb_ticks\":%lu,\"fault_pc\":%lu,\"fault_lr\":%lu,\"fault_cfsr\":%lu}\n",USBPODS_BUILD_SHA,USBPODS_BUILD_VARIANT,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active(),(unsigned)last_reset_kind,(unsigned)last_hang_phase,(unsigned)last_hang_irq,(unsigned long)last_hang_ticks,(unsigned long)last_fault_pc,(unsigned long)last_fault_lr,(unsigned long)last_fault_cfsr);return true;
  case CONTROL_ELDSTATUS: {
    eld_runtime_status state;a2dp_source_eld_status(&state);
    struct mallinfo heap=mallinfo();

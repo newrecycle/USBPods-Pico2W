@@ -62,6 +62,13 @@ def flash(root, cdc=None, *, serial_module=None, ports=None, run=subprocess.run,
             report['previous_info']=firmware_info(serial_module,device.device)
             previous_serial=device.serial_number
             report['previous_port']=device.device
+            previous=report['previous_info']
+            if (manifest.get('variant') and previous.get('variant')==manifest['variant']
+                    and previous.get('sha')==manifest['sha'] and previous.get('mic_decode')==manifest['mic_decode']):
+                report.update(complete=True,cdc=device.device,info=previous,reset_method='already-current')
+                save()
+                print('Matching firmware is already running on '+device.device,flush=True)
+                return device.device
             # A failed reset must not redirect a load to a different board
             # that was already in BOOTSEL. With an application target selected,
             # require BOOTSEL to be absent before starting its reset.
@@ -109,6 +116,8 @@ def flash(root, cdc=None, *, serial_module=None, ports=None, run=subprocess.run,
                 else:
                     if info.get('sha')!=manifest['sha']:
                         raise RuntimeError('Returning firmware SHA differs from this candidate; stopping before tests')
+                    if 'variant' in manifest and (info.get('variant')!=manifest['variant'] or info.get('mic_decode')!=manifest['mic_decode']):
+                        raise RuntimeError('Returning firmware build variant differs from this candidate')
                     report.update(complete=True,cdc=returned[0].device,info=info);save()
                     print('Firmware verified; CDC ready on '+returned[0].device,flush=True)
                     return returned[0].device

@@ -31,6 +31,15 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
     & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 -SessionOnly -ReusePairing *> (Join-Path $TempRoot 'launcher.log')
     if ($LASTEXITCODE -ne $Expected) { throw "Launcher exited $LASTEXITCODE; expected $Expected. $(Get-Content -Raw (Join-Path $TempRoot 'launcher.log'))" }
   }
+  # An interrupted bootstrap can leave python.exe before pip finished.
+  Set-Content (Join-Path $TempRoot 'live-requirements.txt') 'usbpods-missing-wheel @ file:///does-not-exist.whl'
+  Run-Launcher 1
+  if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Incomplete dependencies reached the flasher' }
+  Set-Content (Join-Path $TempRoot 'live-requirements.txt') '# offline fixture'
+  Run-Launcher 0
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -PairOnly *> (Join-Path $TempRoot 'launcher.log')
+  $SetupArgs = Get-Content -Raw (Join-Path $TempRoot 'run-args.json') | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $SetupArgs -notcontains '--pair-only') { throw 'PairOnly setup failed' }
   Run-Launcher 0
   $FlashArgs = Get-Content -Raw (Join-Path $TempRoot 'flash-args.json') | ConvertFrom-Json
   $RunArgs = Get-Content -Raw (Join-Path $TempRoot 'run-args.json') | ConvertFrom-Json
