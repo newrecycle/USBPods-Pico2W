@@ -31,6 +31,15 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
     & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName "Justin's AirPods Pro" -StageSeconds 20 -SoakSeconds 600 -SessionOnly -ReusePairing *> (Join-Path $TempRoot 'launcher.log')
     if ($LASTEXITCODE -ne $Expected) { throw "Launcher exited $LASTEXITCODE; expected $Expected. $(Get-Content -Raw (Join-Path $TempRoot 'launcher.log'))" }
   }
+  # An interrupted bootstrap can leave python.exe before pip finished.
+  Set-Content (Join-Path $TempRoot 'live-requirements.txt') 'usbpods-missing-wheel @ file:///does-not-exist.whl'
+  Run-Launcher 1
+  if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Incomplete dependencies reached the flasher' }
+  Set-Content (Join-Path $TempRoot 'live-requirements.txt') '# offline fixture'
+  Run-Launcher 0
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -PairOnly *> (Join-Path $TempRoot 'launcher.log')
+  $SetupArgs = Get-Content -Raw (Join-Path $TempRoot 'run-args.json') | ConvertFrom-Json
+  if ($LASTEXITCODE -ne 0 -or $SetupArgs -notcontains '--pair-only') { throw 'PairOnly setup failed' }
   Run-Launcher 0
   $FlashArgs = Get-Content -Raw (Join-Path $TempRoot 'flash-args.json') | ConvertFrom-Json
   $RunArgs = Get-Content -Raw (Join-Path $TempRoot 'run-args.json') | ConvertFrom-Json
@@ -39,6 +48,11 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   if ($RunArgs[[Array]::IndexOf($RunArgs, '--target-name') + 1] -ne "Justin's AirPods Pro") { throw 'Target argument was split' }
   if ($RunArgs -notcontains '--session-only') { throw 'Session-only mode was not forwarded' }
   if ($RunArgs -notcontains '--reuse-pairing') { throw 'Saved-pairing reuse was not forwarded' }
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName 'fixture-one' -MicCloseOnly -ReusePairing *> (Join-Path $TempRoot 'launcher.log')
+  if ($LASTEXITCODE -ne 0) { throw 'Focused microphone-close launcher did not complete' }
+  $FocusedArgs = Get-Content -Raw (Join-Path $TempRoot 'run-args.json') | ConvertFrom-Json
+  if ($FocusedArgs -notcontains '--mic-close-only') { throw 'MicCloseOnly was not forwarded to live CLI' }
+  if ($FocusedArgs -contains '--session-only' -or $FocusedArgs -contains '--phone-relay') { throw 'Focused mode unexpectedly requested full session/relay flags' }
   New-Item (Join-Path $TempRoot 'fail-run') | Out-Null
   Run-Launcher 9
   Remove-Item (Join-Path $TempRoot 'run-args.json')
@@ -49,6 +63,9 @@ sys.exit(9 if (root/'fail-run').exists() else 0)
   & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -TargetName 'fixture-one' -TargetMac 'AA:BB:CC:DD:EE:FF' *> (Join-Path $TempRoot 'launcher.log')
   if ($LASTEXITCODE -eq 0) { throw 'Conflicting target identities unexpectedly accepted' }
   if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Invalid target selection reached the firmware flasher' }
+  & $Shell -NoProfile -ExecutionPolicy Bypass -File $Launcher -CdcPort COM3 -SessionOnly -MicCloseOnly *> (Join-Path $TempRoot 'launcher.log')
+  if ($LASTEXITCODE -eq 0) { throw 'Conflicting focused and session-only modes unexpectedly accepted' }
+  if (Test-Path (Join-Path $TempRoot 'flash-args.json')) { throw 'Conflicting modes reached the flasher' }
   Write-Host 'PASS Windows launcher: automatic flash, changed COM, quoted paths/target, test failure exit, flash failure stop'
 } finally {
   $env:PATH = $PreviousPath

@@ -66,5 +66,6 @@
     "run_id": 41746700738,
     "conclusion": "success",
     "url": "https://github.com/newrecycle/USBPods-Pico2W/actions/runs/41746700738"
-  }
+  },
+  "record_scope": "Historical 7de2130 offline evidence. Preserved verbatim fields describe that source, including the packaging pause at that time. Current integrated workflow/physical evidence pointers are in docs/validation-status.json; this record does not accept integrated main."
 }

@@ -285,14 +285,20 @@ def main():
     parser.add_argument('--soak-seconds',type=int,default=600)
     parser.add_argument('--phone-relay',action='store_true',help='Include phone relay with both USB streams open')
     parser.add_argument('--session-only',action='store_true',help='Only a 45-second AAC-ELD/mic/USB session probe; omit the full feature matrix')
+    parser.add_argument('--mic-close-only',action='store_true',help='One narrow 256/192-supported profile and manual left/right mic close/reopen check; no soak/game/reconnect matrix')
+    parser.add_argument('--pair-only',action='store_true',help='Connect the selected AirPods and leave them connected for normal Windows audio use')
     parser.add_argument('--reuse-pairing',action='store_true',help='Reuse the current or uniquely selected saved bond without scanning or fresh pairing')
     parser.add_argument('--output',type=Path,default=Path.cwd())
     parser.add_argument('--noninteractive',action='store_true')
     args=parser.parse_args()
     if not 5<=args.duration<=120:parser.error('--duration must be 5..120 seconds')
     if not 10<=args.soak_seconds<=1800:parser.error('--soak-seconds must be 10..1800')
+    if args.pair_only and (args.session_only or args.phone_relay or args.mic_close_only):
+        parser.error('--pair-only cannot be combined with an audio test mode')
     if args.phone_relay and args.noninteractive:parser.error('--phone-relay requires physical phone prompts')
     if args.phone_relay and args.session_only:parser.error('--session-only cannot include phone relay')
+    if args.mic_close_only and (args.session_only or args.phone_relay or args.noninteractive):
+        parser.error('--mic-close-only requires interactive acoustic observations and cannot include session-only or phone relay')
     if args.noninteractive and not args.reuse_pairing and not (args.target_name or args.target_mac):parser.error('Noninteractive pairing requires an exact target identity')
     stamp=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     root=args.output/('USBPods-results-'+stamp);root.mkdir(parents=True,exist_ok=False)
@@ -319,20 +325,22 @@ def main():
         recorder.handles.append(port);recorder.serial_reader(port,'cdc.jsonl',True);link=Link(port,recorder)
         time.sleep(.5);info=link.request('info')
         if info.get('sha')!=manifest['sha'] or info.get('protocol')!=2:raise RuntimeError('Running firmware does not match this verified bundle')
+        if 'variant' in manifest and info.get('variant')!=manifest['variant']:
+            raise RuntimeError('Running firmware build variant differs from this candidate')
         if info.get('mic_decode')!=manifest['mic_decode']:raise RuntimeError('Wrong firmware variant')
         summary['hardware_run']=True;summary['hardware_phase']='firmware_identity_verified'
         summary['firmware']=info;result('firmware_identity','PASS',info)
         original=link.request('settings');summary['original_settings']=original
         summary['original_saved']=link.request('savedlist')
         # Descriptor mode changes require one explicit replug, before any pairing.
-        if info.get('uac1') or original['connmode']!=1 or original['usbset']&8:
+        if not args.pair_only and original['connmode']!=1:
             link.request('connmode 1')
+        if info.get('uac1') or original['usbset']&8:
             if info.get('uac1'):link.request('uac1 0')
             if original['usbset']&8:link.request('rate44 0')
-            reboot=bool(info.get('uac1') or original['usbset']&8)
             original=None # Keep intentional UAC2/manual/48k normalization for the rerun.
-            if reboot:link.request('reboot')
-            raise RuntimeError('Saved UAC2/manual/48k mode. Replug the Pico and rerun; no AirPods pairing was attempted.')
+            link.request('reboot')
+            raise RuntimeError('Saved UAC2/48k mode. Replug the Pico and rerun; no AirPods pairing was attempted.')
         if info['mic_decode'] and not link.request('status').get('decoder_ready'):raise RuntimeError('Microphone decoder allocation failed; do not proceed with pairing')
         result('diagnostic_transport','PASS',{'transport':'usb-cdc','port':cdc.device,'log':'cdc.jsonl','includes':'application, AACP, codec, USB and firmware HID submission logs'})
         try:result('hid_connection','PASS',collect_hid(recorder,cdc))
@@ -348,7 +356,7 @@ def main():
             items=link.request('scanlist')['items'];(root/'scan.json').write_text(json.dumps(items,indent=2))
             try:chosen=choose_target(items,args.target_mac,args.target_name)
             except ValueError:
-                if args.noninteractive:raise
+                if args.noninteractive or args.target_mac or args.target_name:raise
                 print('Scanned devices:',json.dumps(items,indent=2),flush=True)
                 index=int(prompt('Enter the index of the intended AirPods from that list (no automatic guess):'))
                 selected=[item for item in items if item.get('index')==index]
@@ -366,83 +374,92 @@ def main():
         result('aacp_handshake','PASS' if session.get('open') and session.get('handshake_ack') else 'UNVERIFIED',
                {'session':session,'reason':'Peer traffic and locally submitted initialization do not independently establish a handshake acknowledgment'})
         result('connection_preflight','PASS',connection_preflight(link,recorder))
-        link.request('earpause 0');link.request('stem 0')
-        if state.get('relay_connected'):
-            link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
-        if args.session_only:
-            print('Session probe starts automatically: wear the AirPods. PC playback and microphone capture stay open for 45 seconds. Play your phone-speaker clip for the first 20 seconds if convenient; no counting or talking is required.',flush=True)
+        if args.pair_only:
+            summary['hardware_phase']='paired_for_use'
+            result('audio_matrix','SKIP','Pairing only')
+            print('AirPods connected. Select USBPods for playback and microphone input in Windows Sound.',flush=True)
         else:
-            prompt('Wear the AirPods. The PC will play a quiet tone. For microphone input, play a clip through your phone SPEAKER near the AirPods, or speak. Keep the phone audio off Bluetooth. Press Enter to start:')
-        capture_ca=link.request('status').get('ca',-1)
-        audio_ok=False
-        try:
-            if capture_ca>0:
-                submit_peer_control(link,'ca',0)
-            if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
-            from live_audio import run_matrix
-            summary['hardware_phase']='audio_matrix_attempted'
-            run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
-            audio_ok=True
-            summary['hardware_phase']='audio_matrix_finished'
-        except Exception as e:
-            result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
+            if not args.mic_close_only:
+                link.request('earpause 0');link.request('stem 0')
+            if state.get('relay_connected'):
+                link.request('phonedisc');link.wait(lambda s:not s.get('relay_connected'),15)
+            if args.session_only:
+                print('Session probe starts automatically: wear the AirPods. PC playback and microphone capture stay open for 45 seconds. Play your phone-speaker clip for the first 20 seconds if convenient; no counting or talking is required.',flush=True)
+            else:
+                prompt('Wear the AirPods. The PC will play a quiet tone. For microphone input, play a clip through your phone SPEAKER near the AirPods, or speak. Keep the phone audio off Bluetooth. Press Enter to start:')
+            capture_ca=link.request('status').get('ca',-1)
+            audio_ok=False
             try:
-                from live_audio import preserve_audio_failure
-                preserve_audio_failure(root,link,recorder,e,before_cleanup=False)
-            except Exception as error:recorder.errors.append('audio failure diagnostics: '+str(error))
-        finally:
-            if capture_ca>0:
-                try:submit_peer_control(link,'ca',capture_ca)
-                except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
-        link.request('telemetry')
-        if audio_ok and not args.session_only:
-            for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
-                control_state=link.request('status');initial=control_state[field]
-                if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
-                if command=='noise' and initial==1 and link.request('status').get('allow_off')!=1:
-                    result(command,'SKIP','Current Off mode cannot be safely restored without an AllowOff notification');continue
-                selected_values=peer_control_values(command,values,control_state)
-                if selected_values!=values:
-                    result('noise_off','SKIP','Peer has not reported AllowOff=1; Off is unavailable or unconfirmed')
-                observed=[]
+                if capture_ca>0:
+                    submit_peer_control(link,'ca',0)
+                if not info['mic_decode']:raise RuntimeError('This priority matrix requires the microphone-decoder candidate')
+                from live_audio import run_matrix
+                summary['hardware_phase']='audio_matrix_attempted'
+                run_matrix(args,root,link,recorder,select_audio,result,prompt,chosen['mac'])
+                audio_ok=True
+                summary['hardware_phase']='audio_matrix_finished'
+            except Exception as e:
+                result('simultaneous_audio','FAIL',str(e));(root/'audio-exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
                 try:
-                    for value in selected_values:
-                        before,sent=submit_peer_control(link,command,value)
-                        echo=observe_peer_control(link,command,value,before)
-                        observed.append({'requested':value,'wire_sent':True,'fresh_peer_readback':echo,'control_tx':sent['control_tx']})
-                    result(command,'PASS' if all(x['fresh_peer_readback'] for x in observed) else 'UNVERIFIED',
-                           {'changes':observed,'reason':'Missing echo is not proof of application; physical control behavior requires observation'})
-                except Exception as e:result(command,'FAIL',str(e))
-                finally:
-                    try:submit_peer_control(link,command,initial)
-                    except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
-            link.request('jitter 150');result('jitter','UNVERIFIED','Queued exact reference command; no independent peer readback')
-            for command,field,values in [('usbvol','usbvol',[75,100]),('phvol','phvol',[75,100]),('btnmode','btnmode',[1,2,3,4]),('ldacq','ldacq',[1,2,3]),('lhdcrate','lhdcrate',[1,2,3,4])]:
-                try:
-                    for value in values:
-                        link.request(f'{command} {value}')
-                        if link.request('settings')[field]!=value:raise RuntimeError('Setting readback mismatch')
-                    result('setting_'+command,'PASS','RAM readback; codec performance requires matching headset')
-                except Exception as e:result('setting_'+command,'FAIL',str(e))
-                finally:
-                    try:link.request(f'{command} {original[field]}')
-                    except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
-            heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')
-            result('playback_quality',observation_status(heard),heard)
-            wavs=sorted(root.glob('*.wav'))
-            if wavs:
-                print('Recorded clips:',', '.join(p.name for p in wavs),flush=True)
-                heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
-                result('microphone_pitch',observation_status(heard),heard)
-            else:result('microphone_pitch','UNVERIFIED','Audio capture produced no WAV files; no listening prompt was presented')
-            link.request('earpause 1');link.request('stem 1')
-            note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
-            result('ear_and_stem',observation_status(note,'gestures'),note or 'No physical observation supplied; see firmware HID and raw HID logs')
-        else:
-            result('post_audio_controls','SKIP','Session-only diagnostic scope' if args.session_only else 'Audio matrix failed; no further control mutations or physical prompts')
-        if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
-        result('persistence_suspend_uac_slots_other_codecs','UNVERIFIED','Requires the guided matrix in LIVE-TEST.md; destructive/USB-reenumeration tests are not silently automated')
-        link.request('savedlist');link.request('telemetry')
+                    from live_audio import preserve_audio_failure
+                    preserve_audio_failure(root,link,recorder,e,before_cleanup=False)
+                except Exception as error:recorder.errors.append('audio failure diagnostics: '+str(error))
+            finally:
+                if capture_ca>0:
+                    try:submit_peer_control(link,'ca',capture_ca)
+                    except Exception as e:recorder.errors.append('restore ca after audio: '+str(e))
+            link.request('telemetry')
+            if audio_ok and not (args.session_only or args.mic_close_only):
+                for command,field,values in [('noise','noise',[1,2,3,4]),('pvol','pvol',[0,1]),('ca','ca',[0,1]),('aa','aa',[0,50,100])]:
+                    control_state=link.request('status');initial=control_state[field]
+                    if initial<0 or (field=='noise' and initial==0):result(command,'SKIP','No peer notification establishes support/state');continue
+                    if command=='noise' and initial==1 and link.request('status').get('allow_off')!=1:
+                        result(command,'SKIP','Current Off mode cannot be safely restored without an AllowOff notification');continue
+                    selected_values=peer_control_values(command,values,control_state)
+                    if selected_values!=values:
+                        result('noise_off','SKIP','Peer has not reported AllowOff=1; Off is unavailable or unconfirmed')
+                    observed=[]
+                    try:
+                        for value in selected_values:
+                            before,sent=submit_peer_control(link,command,value)
+                            echo=observe_peer_control(link,command,value,before)
+                            observed.append({'requested':value,'wire_sent':True,'fresh_peer_readback':echo,'control_tx':sent['control_tx']})
+                        result(command,'PASS' if all(x['fresh_peer_readback'] for x in observed) else 'UNVERIFIED',
+                               {'changes':observed,'reason':'Missing echo is not proof of application; physical control behavior requires observation'})
+                    except Exception as e:result(command,'FAIL',str(e))
+                    finally:
+                        try:submit_peer_control(link,command,initial)
+                        except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
+                link.request('jitter 150');result('jitter','UNVERIFIED','Queued exact reference command; no independent peer readback')
+                for command,field,values in [('usbvol','usbvol',[75,100]),('phvol','phvol',[75,100]),('btnmode','btnmode',[1,2,3,4]),('ldacq','ldacq',[1,2,3]),('lhdcrate','lhdcrate',[1,2,3,4])]:
+                    try:
+                        for value in values:
+                            link.request(f'{command} {value}')
+                            if link.request('settings')[field]!=value:raise RuntimeError('Setting readback mismatch')
+                        result('setting_'+command,'PASS','RAM readback; codec performance requires matching headset')
+                    except Exception as e:result('setting_'+command,'FAIL',str(e))
+                    finally:
+                        try:link.request(f'{command} {original[field]}')
+                        except Exception as e:recorder.errors.append('restore '+command+': '+str(e))
+                heard=prompt('Was playback clear? Type yes, no, or Enter for unverified:')
+                result('playback_quality',observation_status(heard),heard)
+                wavs=sorted(root.glob('*.wav'))
+                if wavs:
+                    print('Recorded clips:',', '.join(p.name for p in wavs),flush=True)
+                    heard=prompt('Listen to a recorded WAV in the results folder. Was microphone pitch/speed natural? Type yes/no, or Enter if not checked:')
+                    result('microphone_pitch',observation_status(heard),heard)
+                else:result('microphone_pitch','UNVERIFIED','Audio capture produced no WAV files; no listening prompt was presented')
+                link.request('earpause 1');link.request('stem 1')
+                note=prompt('Start playback, remove/reinsert one then both buds, and try single/double/triple stem presses. Describe behavior (or Enter to leave unverified):')
+                result('ear_and_stem',observation_status(note,'gestures'),note or 'No physical observation supplied; see firmware HID and raw HID logs')
+            else:
+                result('post_audio_controls','SKIP',
+                       'Focused microphone-close scope: no control mutations or extra prompts' if args.mic_close_only
+                       else 'Session-only diagnostic scope' if args.session_only
+                       else 'Audio matrix failed; no further control mutations or physical prompts')
+            if not args.phone_relay:result('phone_relay_duplex','SKIP','Use --phone-relay to include a physical phone in this same session')
+            result('persistence_suspend_uac_slots_other_codecs','UNVERIFIED','Requires the guided matrix in LIVE-TEST.md; destructive/USB-reenumeration tests are not silently automated')
+            link.request('savedlist');link.request('telemetry')
     except (Exception,KeyboardInterrupt) as e:
         result('run','FAIL',str(e));(root/'exception.txt').write_text(traceback.format_exc(),encoding='utf-8')
         # Preserve the failure state before cleanup can rebuild or reconnect.

@@ -297,10 +297,7 @@ static void ldac_send(void) {
     uint8_t num_frames = media_tracker.codec_num_frames;
     media_tracker.codec_storage[0] = num_frames; // frames in first byte
 
-    src_tx_pkts++;
-    a2dp_source_note_send(a2dp_source_stream_send_media_payload_rtp(
-        media_tracker.avdtp_cid, media_tracker.local_seid, 0, media_tracker.rtp_timestamp,
-        &media_tracker.codec_storage[0], media_tracker.codec_storage_count));
+    a2dp_source_send_payload(0, media_tracker.codec_storage_count);
     media_tracker.rtp_timestamp += num_frames * LDACBT_ENC_LSU;
 
     media_tracker.codec_storage_count = 0;

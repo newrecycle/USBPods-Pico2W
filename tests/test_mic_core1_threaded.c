@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 enum { FRAME_SAMPLES = 480, TEST_FRAMES = 512 };
-uint32_t mock_time_us; /* written exclusively by the decoder thread */
+_Atomic uint32_t mock_time_us; /* decoder advances; producer samples enqueue time */
 static _Atomic bool done;
 static CStreamInfo stream_info={48000,1,480};
 static uint8_t next_value; /* decoder-thread private */

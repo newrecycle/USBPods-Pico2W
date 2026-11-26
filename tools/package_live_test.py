@@ -33,6 +33,10 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     data_bytes=binary.read_bytes()
     if hashlib.sha256(data_bytes).hexdigest()!=report['artifacts'][binary.name]['sha256']:raise ValueError('Verified binary changed')
     if source_sha.encode()+b'\0' not in data_bytes:raise ValueError('Source SHA is not embedded in this firmware')
+    radio=json.loads((evidence/'firmware.json').read_text())['selection']
+    variant=f'{stem}:{radio}'
+    if variant.encode()+b'\0' not in data_bytes:
+        raise ValueError('Variant identity is not embedded in this firmware')
     verify_uf2(firmware.read_bytes(),data_bytes)
     out.mkdir(parents=True,exist_ok=False)
     for name in ('live_test.py','live_audio.py','flash_candidate.py','Run-Test.ps1','live-requirements.txt'):
@@ -82,7 +86,7 @@ def package(root,build,evidence,out,stem,source_sha,run_id):
     shutil.copy2(root/'3rd-party/ldacBT/LICENSE',out/'LDAC-LICENSE.txt')
     data={'schema':1,'hardware_test_candidate':validation['live_test_authorized'],'validation_blockers':validation['blockers'],'hardware_tested':False,'sha':source_sha,'ci_run_id':int(run_id),
           'source_url':'https://github.com/newrecycle/USBPods-Pico2W/tree/'+source_sha,
-          'firmware':firmware.name,'firmware_sha256':actual,'mic_decode':'AACELD_Mic' in stem,'board':'pico2_w','protocol':2,
+          'variant':variant,'firmware':firmware.name,'firmware_sha256':actual,'mic_decode':'AACELD_Mic' in stem,'board':'pico2_w','protocol':2,
           'runner_files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in out.iterdir() if p.is_file() and p.suffix!='.uf2'}}
     (out/'candidate.json').write_text(json.dumps(data,indent=2)+'\n')
     return data

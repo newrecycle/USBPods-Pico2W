@@ -27,6 +27,9 @@ extern uint32_t last_hang_ticks,last_fault_pc,last_fault_lr,last_fault_cfsr;
 #ifndef USBPODS_BUILD_SHA
 #define USBPODS_BUILD_SHA "unknown"
 #endif
+#ifndef USBPODS_BUILD_VARIANT
+#define USBPODS_BUILD_VARIANT "unknown"
+#endif
 #ifdef USBPODS_MIC_DECODE
 #define MIC_DECODE 1
 #define RELAY_AAC 0
@@ -60,8 +63,15 @@ static void audio_telemetry(void) {
  usb_capture_snapshot_t u=usb_capture_snapshot();
  usb_hid_media_snapshot_t h=usb_hid_media_snapshot();
 #define U(v) (unsigned long)(v)
- printf("\n[control] {\"kind\":\"micstats\",\"generation\":%lu,\"capture\":%lu,\"decoder_ready\":%lu,\"au\":%lu,\"intervals\":%lu,\"bursts\":%lu,\"cadence7500\":%lu,\"cadence10000\":%lu,\"arrival_gaps\":%lu,\"timestamp\":%lu,\"timestamp_step\":%lu,\"timestamp_gap_candidates\":%lu,\"timestamp_duplicates\":%lu,\"timestamp_backwards\":%lu,\"au_depth\":%lu,\"au_high\":%lu,\"au_drop\":%lu,\"au_stale\":%lu,\"pcm_depth\":%lu,\"pcm_high\":%lu,\"pcm_drop\":%lu,\"pcm_stale\":%lu,\"decoded\":%lu,\"errors\":%lu,\"decode_max_us\":%lu,\"decode_last_us\":%lu,\"decode_ema_us\":%lu,\"decoded_rate\":%lu,\"decoded_frame_samples\":%lu,\"coding_rate\":48000,\"pcm_rate\":64000,\"measured_rate\":%lu,\"clock_windows\":%lu,\"primed\":%lu}\n",
- U(m.generation),U(m.capture),U(m.decoder_ready),U(m.au_observed),U(m.arrival_intervals),U(m.arrival_bursts),U(m.arrival_7500us),U(m.arrival_10000us),U(m.arrival_gaps),U(m.timestamp_last),U(m.timestamp_step_reference),U(m.timestamp_gap_candidates),U(m.timestamp_duplicates),U(m.timestamp_backwards),U(m.au_depth),U(m.au_high_water),U(m.au_overflows),U(m.au_stale),U(m.pcm_depth),U(m.pcm_high_water),U(m.pcm_overflows),U(m.pcm_stale),U(m.decoded),U(m.decode_errors),U(m.decode_max_us),U(m.decode_last_us),U(m.decode_ema_us),U(m.decoded_rate),U(m.decoded_frame_samples),U(m.measured_sample_rate),U(m.clock_windows),U(m.pcm_primed));
+ printf("\n[control] {\"kind\":\"micstats\",\"generation\":%lu,\"capture\":%lu,\"decoder_ready\":%lu,\"au\":%lu,\"intervals\":%lu,\"bursts\":%lu,\"cadence7500\":%lu,\"cadence10000\":%lu,\"arrival_gaps\":%lu,\"timestamp\":%lu,\"timestamp_step\":%lu,\"timestamp_gap_candidates\":%lu,\"timestamp_duplicates\":%lu,\"timestamp_backwards\":%lu,\"au_depth\":%lu,\"au_high\":%lu,\"au_drop\":%lu,\"au_stale\":%lu,\"pcm_depth\":%lu,\"pcm_high\":%lu,\"pcm_drop\":%lu,\"pcm_stale\":%lu,\"decoded\":%lu,\"errors\":%lu,\"decode_max_us\":%lu,\"decode_last_us\":%lu,\"decode_ema_us\":%lu,\"decoded_rate\":%lu,\"decoded_frame_samples\":%lu,\"coding_rate\":48000,\"pcm_rate\":64000,\"measured_rate\":%lu,\"clock_windows\":%lu,\"primed\":%lu,\"au_wait_last_us\":%lu,\"au_wait_max_us\":%lu,\"work_max_us\":%lu,\"pcm_blocked\":%lu,\"au_drop_pcm_full\":%lu}\n",
+ U(m.generation),U(m.capture),U(m.decoder_ready),U(m.au_observed),U(m.arrival_intervals),U(m.arrival_bursts),U(m.arrival_7500us),U(m.arrival_10000us),U(m.arrival_gaps),U(m.timestamp_last),U(m.timestamp_step_reference),U(m.timestamp_gap_candidates),U(m.timestamp_duplicates),U(m.timestamp_backwards),U(m.au_depth),U(m.au_high_water),U(m.au_overflows),U(m.au_stale),U(m.pcm_depth),U(m.pcm_high_water),U(m.pcm_overflows),U(m.pcm_stale),U(m.decoded),U(m.decode_errors),U(m.decode_max_us),U(m.decode_last_us),U(m.decode_ema_us),U(m.decoded_rate),U(m.decoded_frame_samples),U(m.measured_sample_rate),U(m.clock_windows),U(m.pcm_primed),U(m.au_wait_last_us),U(m.au_wait_max_us),U(m.work_max_us),U(m.pcm_blocked),U(m.au_overflow_pcm_full));
+ printf("\n[control] {\"kind\":\"micunderrun\",\"after_prime\":%lu,\"rebuffers\":%lu,\"first_valid\":%lu,\"first_generation\":%lu,\"first_us\":%lu,\"first_want\":%lu,\"first_got\":%lu,\"first_au_depth\":%lu,\"first_pcm_depth\":%lu,\"first_available\":%lu,\"first_au_age_us\":%lu,\"first_pcm_age_us\":%lu,\"first_rebuffer\":%lu}\n",
+  U(m.usb_postprime_underruns),U(m.usb_rebuffers),U(m.usb_first_fault_valid),
+  U(m.usb_first_fault_generation),U(m.usb_first_fault_at_us),
+  U(m.usb_first_fault_requested),U(m.usb_first_fault_supplied),
+  U(m.usb_first_fault_au_depth),U(m.usb_first_fault_pcm_depth),
+  U(m.usb_first_fault_available),U(m.usb_first_fault_au_age_us),
+  U(m.usb_first_fault_pcm_age_us),U(m.usb_first_fault_rebuffer));
  printf("\n[control] {\"kind\":\"usbcapture\",\"mounted\":%u,\"suspended\":%u,\"alt\":%u,\"running\":%u,\"packets\":%lu,\"pcm_samples\":%lu,\"underruns\":%lu,\"missing_samples\":%lu,\"short_writes\":%lu,\"expected_samples\":%lu,\"packets63\":%lu,\"packets65\":%lu}\n",
  (unsigned)u.mounted,(unsigned)u.suspended,(unsigned)u.alt_active,(unsigned)u.capture_running,U(u.usb_packets),U(u.pcm_samples),U(u.underrun_packets),U(u.missing_samples),U(u.short_writes),U(u.expected_samples),U(u.packets_63),U(u.packets_65));
  printf("\n[control] {\"kind\":\"hidstats\",\"active\":%u,\"release_pending\":%u,\"depth\":%lu,\"high\":%lu,\"accepted\":%lu,\"full\":%lu,\"inactive\":%lu,\"stale\":%lu,\"presses\":%lu,\"releases\":%lu,\"busy\":%lu,\"failures\":%lu}\n",
@@ -107,7 +117,7 @@ static bool dispatch(control_command c) {
  user_settings_t*s=settings();uint8_t v=c.value;
  switch(c.id) {
  case CONTROL_INFO:
-   printf("\n[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1,\"reset_kind\":%u,\"reset_phase\":%u,\"reset_irq\":%u,\"reset_usb_ticks\":%lu,\"fault_pc\":%lu,\"fault_lr\":%lu,\"fault_cfsr\":%lu}\n",USBPODS_BUILD_SHA,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active(),(unsigned)last_reset_kind,(unsigned)last_hang_phase,(unsigned)last_hang_irq,(unsigned long)last_hang_ticks,(unsigned long)last_fault_pc,(unsigned long)last_fault_lr,(unsigned long)last_fault_cfsr);return true;
+   printf("\n[control] {\"kind\":\"info\",\"protocol\":2,\"sha\":\"%s\",\"board\":\"rp2350\",\"variant\":\"%s\",\"mic_decode\":%u,\"relay\":%u,\"relay_aac\":%u,\"uac1\":%u,\"uart_baud\":115200,\"uart_tx_gpio\":0,\"uart_rx_gpio\":1,\"reset_kind\":%u,\"reset_phase\":%u,\"reset_irq\":%u,\"reset_usb_ticks\":%lu,\"fault_pc\":%lu,\"fault_lr\":%lu,\"fault_cfsr\":%lu}\n",USBPODS_BUILD_SHA,USBPODS_BUILD_VARIANT,MIC_DECODE,RELAY,RELAY&&RELAY_AAC,usb_uac1_active(),(unsigned)last_reset_kind,(unsigned)last_hang_phase,(unsigned)last_hang_irq,(unsigned long)last_hang_ticks,(unsigned long)last_fault_pc,(unsigned long)last_fault_lr,(unsigned long)last_fault_cfsr);return true;
  case CONTROL_ELDSTATUS: {
    eld_runtime_status state;a2dp_source_eld_status(&state);
    struct mallinfo heap=mallinfo();

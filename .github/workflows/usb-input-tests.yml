@@ -1,16 +1,8 @@
 name: USB capture and HID host tests
 on:
   push:
-    paths:
-      - 'src/tinyusb/**'
-      - 'tests/test_usb_host_input.c'
-      - 'tests/test_usb_input_wiring.py'
-      - 'tests/test_usb_control_boundaries.py'
-      - 'tests/test_uac1_controls.py'
-      - 'tests/test_mic_recovery_integration.py'
-      - 'tests/test_source_boundaries.py'
-      - 'CMakeLists.txt'
-      - '.github/workflows/usb-input-tests.yml'
+    # Exact-source follow-up watchers require this workflow for every push,
+    # including playback-only, microphone-only and documentation candidates.
   pull_request:
     paths:
       - 'src/tinyusb/**'

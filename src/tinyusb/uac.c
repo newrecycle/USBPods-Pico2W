@@ -992,6 +992,7 @@ bool tud_audio_tx_done_pre_load_cb(uint8_t rhport, uint8_t itf, uint8_t ep_in, u
     uint32_t want=aacp_mic_audio_packet_samples();
     uint32_t got=want?aacp_mic_audio_read(packet,want):0;
     if(!want)want=64; /* Count startup/rebuffering silence explicitly. */
+    aacp_mic_audio_note_usb_packet(want,got);
     uint16_t written = tud_audio_write(packet,(uint16_t)(want*sizeof packet[0]));
     usb_capture_note_tx(want,got,written);
    return true;

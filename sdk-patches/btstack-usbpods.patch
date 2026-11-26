@@ -21,12 +21,9 @@ diff --git a/src/classic/avdtp.c b/src/classic/avdtp.c
          return ERROR_CODE_COMMAND_DISALLOWED;
      }
 diff --git a/src/classic/avdtp_initiator.c b/src/classic/avdtp_initiator.c
-index 36055e4e4..13b3a9402 100644
 --- a/src/classic/avdtp_initiator.c
 +++ b/src/classic/avdtp_initiator.c
-@@ -79,6 +79,14 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
-     avdtp_stream_endpoint_t * stream_endpoint_for_event = NULL;
- 
+@@ -81,2 +81,10 @@
      avdtp_sep_t sep;
 +    /* A delayed/duplicate reply cannot retire another outstanding transaction. */
 +    if (connection->initiator_signaling_packet.transaction_label !=
@@ -37,24 +34,25 @@ index 36055e4e4..13b3a9402 100644
 +        return;
 +    }
      if (connection->initiator_connection_state == AVDTP_SIGNALING_CONNECTION_INITIATOR_W4_ANSWER) {
-         connection->initiator_connection_state = AVDTP_SIGNALING_CONNECTION_INITIATOR_IDLE;
-     } else {
-@@ -273,9 +281,11 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
-             }
-+            /* A synchronous accept callback may queue/send a new command.
-+               Retire this label BEFORE calling out, not after the new send. */
+@@ -102,9 +110,8 @@
+         case AVDTP_RESPONSE_ACCEPT_MSG:
++            /* Retire this label BEFORE any event, including SEP/capability callbacks.
++               They can synchronously queue/send the next signaling request. */
 +            connection->initiator_transaction_label = avdtp_get_next_transaction_label();
-             if (stream_endpoint_for_event != NULL){
-                 avdtp_signaling_emit_accept_for_stream_endpoint(stream_endpoint_for_event, connection->initiator_local_seid,
-                                                                 connection->initiator_signaling_packet.signal_identifier, true);
-             } else {
-                 avdtp_signaling_emit_accept(connection->avdtp_cid, 0, connection->initiator_signaling_packet.signal_identifier, true);
+             switch (connection->initiator_signaling_packet.signal_identifier){
+                 case AVDTP_SI_DISCOVER:{
+-                    if (connection->initiator_signaling_packet.transaction_label != connection->initiator_transaction_label){
+-                        log_info("unexpected transaction label, got %d, expected %d", connection->initiator_signaling_packet.transaction_label, connection->initiator_transaction_label);
+-                        // status = BAD_HEADER_FORMAT;
+-                        break;
+-                    }
++                    /* The common response guard already validated this label. */
+                     
+@@ -279,3 +286,2 @@
              }
 -            connection->initiator_transaction_label = avdtp_get_next_transaction_label();
              break;
-@@ -284,6 +294,23 @@ void avdtp_initiator_stream_config_subsm(avdtp_connection_t *connection, uint8_t
-                 case AVDTP_SI_SET_CONFIGURATION:
-                     connection->configuration_state = AVDTP_CONFIGURATION_STATE_IDLE;
+@@ -286,2 +292,19 @@
                      sep.in_use = 0;
 +                    /* usbpods PATCH: a SET_CONFIGURATION reject carries the
 +                       SERVICE CATEGORY the sink objected to plus an AVDTP
@@ -74,8 +72,6 @@ index 36055e4e4..13b3a9402 100644
 +                        printf("\n");
 +                    }
                      log_info("Received reject for set configuration, role changed from initiator to acceptor. TODO: implement retry.");
-                     break;
-                 case AVDTP_SI_RECONFIGURE:
 diff --git a/src/classic/avdtp_source.c b/src/classic/avdtp_source.c
 index 6363ae34c..2ef6fbd8b 100644
 --- a/src/classic/avdtp_source.c

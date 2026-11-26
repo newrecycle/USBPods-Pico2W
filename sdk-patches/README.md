@@ -35,6 +35,14 @@ git -C $PICO_SDK_PATH/lib/tinyusb diff > sdk-patches/tinyusb-usbpods.patch
   and an unanswered peer remains possible. See
   `docs/PLAYBACK-RESTART-AUDIT-20261104.md` and
   `tests/test_sdk_transport_contract.py`.
+  Accepted responses retire their label before **all** application events,
+  including SEP-done and capability callbacks. Those callbacks synchronously
+  submit the next capability request; retiring only before the final generic
+  ACCEPT event overwrites that new request's label. The discovery-local label
+  check is redundant after the common guard and must not compare against the
+  already-retired label. `tests/test_sdk_response_reentry.py` executes those
+  production branches with immediate next-request callbacks and reproduces
+  the previous integrated patch's assertion failure, including label wrap.
 - **`src/hci.c` — flush ≠ death.** Stock BTstack treats `HCI_EVENT_FLUSH_OCCURRED`
   as a link watchdog and sets `SEND_DISCONNECT`. macOS semantics: a flush is the
   200 ms timeout doing its job on a degraded link. Without this patch, any flush

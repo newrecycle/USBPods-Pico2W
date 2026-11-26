@@ -74,6 +74,7 @@ foreach(_usbpods_check
         "lib/btstack/src/classic/avdtp.c|A queued START is silently discarded"
         "lib/btstack/src/classic/avdtp_initiator.c|stale AVDTP response label"
         "lib/btstack/src/classic/avdtp_initiator.c|Retire this label BEFORE"
+        "lib/btstack/src/classic/avdtp_initiator.c|including SEP/capability callbacks"
         "lib/tinyusb/src/portable/raspberrypi/rp2040/rp2040_usb.c|// panic(\"ep")
     string(REPLACE "|" ";" _usbpods_pair "${_usbpods_check}")
     list(GET _usbpods_pair 0 _usbpods_file)
@@ -231,7 +232,8 @@ execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_CURRENT_LIS
 if(NOT USBPODS_BUILD_SHA MATCHES "^[0-9a-f]+$")
     set(USBPODS_BUILD_SHA unknown)
 endif()
-target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_BUILD_SHA="${USBPODS_BUILD_SHA}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE USBPODS_BUILD_SHA="${USBPODS_BUILD_SHA}"
+    USBPODS_BUILD_VARIANT="${USBPODS_OUT_NAME}:${USBPODS_BTFW}")
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${USBPODS_OUT_NAME})
 file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/usbpods-output-name.txt"
      CONTENT "${USBPODS_OUT_NAME}\n")

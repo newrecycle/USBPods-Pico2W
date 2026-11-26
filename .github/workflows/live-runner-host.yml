@@ -1,7 +1,7 @@
 name: Live runner host regressions
 on:
   push:
-    branches: ['work/local-windows-*']
+    branches: ['work/local-windows-*', 'audit/sequential-validation-*']
   pull_request:
     paths:
       - 'tools/watch_ci.py'
@@ -19,6 +19,7 @@ on:
       - 'src/btstack/btstack_avdtp_source.c'
       - 'src/btstack/eld_transition.*'
       - 'tests/test_eld_foreground.py'
+      - 'tests/test_eld_pcm_tap.py'
       - '.github/workflows/live-runner-host.yml'
   workflow_dispatch:
 permissions:
@@ -47,6 +48,7 @@ jobs:
       - name: Exercise production codec scheduling and transition adapters
         run: |
           python3 tests/test_eld_foreground.py
+          python3 tests/test_eld_pcm_tap.py
           python3 tests/test_eld_adapter.py
           python3 tests/test_mic_recovery_integration.py
           cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined -I src/btstack tests/test_eld_transition.c src/btstack/eld_transition.c -o /tmp/eld-transition

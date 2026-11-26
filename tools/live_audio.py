@@ -161,6 +161,20 @@ def health(before, after, profile=None):
     a,b=before.get('micstats',{}),after.get('micstats',{})
     u,v=before.get('usbcapture',{}),after.get('usbcapture',{})
     errors=[]
+    # Missing counters are unknown evidence, not zero loss. Validate both
+    # endpoints before modular subtraction, including recovery counters.
+    required={
+        'micstats':('generation','decoded','errors','au_drop','pcm_drop'),
+        'usbcapture':('pcm_samples','missing_samples','short_writes'),
+        'status':('tx_packets','send_failures','mic_restarts','mic_retry_count','mic_watchdog_failures'),
+    }
+    for label,item in (('begin',before),('end',after)):
+        for section,keys in required.items():
+            for key in keys:
+                value=item.get(section,{}).get(key)
+                if type(value) is not int or not 0<=value<=0xffffffff:
+                    errors.append(f'Missing or invalid {section}.{key} at {label} of steady interval')
+    if errors:return errors
     for label,item in (('begin',before),('end',after)):
         s=item.get('status',{});e=item.get('eldstatus',{})
         if profile is not None and not profile_matches(e,profile):
@@ -263,22 +277,26 @@ class AudioSession:
         self.phase='capture_open';self.position=0
         self.rng=np.random.default_rng(0)
         self.queue=queue.Queue(maxsize=512);self.stop=threading.Event()
-        self.lock=threading.Lock();self.metrics={};self.errors=[];self.output_errors={};self.drops=0
+        self.lock=threading.Lock();self.metrics={};self.errors=[];self.output_errors={};self.output_callbacks={};self.drops=0
         self.files={};self.clip_samples={};self.stack=contextlib.ExitStack();self.input_stack=contextlib.ExitStack()
     def set_phase(self,name):
         self.phase=name;self.recorder.log('phases.jsonl',{'phase':name})
     def tone(self,outdata,frames,timing,status):
+        # A callback is evidence of the *host requesting* output samples, not
+        # evidence that the AirPods played them. Count per phase before writing.
+        phase=self.phase
+        self.output_callbacks[phase]=self.output_callbacks.get(phase,0)+1
         np=self.np
         t=(np.arange(frames)+self.position)/48000
         values=np.column_stack((500*np.sin(2*np.pi*440*t),500*np.sin(2*np.pi*660*t)))
         # Quiet broadband sections exercise more than the inexpensive sine case.
         noise=(t.astype(np.int64)%8>=4)
         values+=self.rng.uniform(-140,140,(frames,2))*noise[:,None]
-        if self.phase.endswith('_left'):values[:,1]=0
-        if self.phase.endswith('_right'):values[:,0]=0
-        if self.phase=='music_quality':values[:]=0
+        if phase.endswith('_left'):values[:,1]=0
+        if phase.endswith('_right'):values[:,0]=0
+        if phase=='music_quality':values[:]=0
         self.position+=frames;outdata[:]=values.astype('<i2').tobytes()
-        if status:self.output_errors.setdefault(self.phase,[]).append(str(status))
+        if status:self.output_errors.setdefault(phase,[]).append(str(status))
     def capture(self,indata,frames,timing,status):
         try:self.queue.put_nowait((self.phase,bytes(indata),str(status) if status else ''))
         except queue.Full:self.drops+=1
@@ -328,7 +346,8 @@ class AudioSession:
             with self.lock:
                 result={k:{**v,'rms':math.sqrt(v['sumsq']/max(v['samples'],1))} for k,v in self.metrics.items()}
             (self.root/'audio-metrics.json').write_text(json.dumps({'phases':result,'errors':self.errors,
-                     'output_status':self.output_errors,'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
+                     'output_status':self.output_errors,'output_callbacks_by_phase':self.output_callbacks,
+                      'collector_dropped_buffers':self.drops,'input_rate':self.input_rate,'input_channels':self.input_channels,
                      'usb_microphone_rate':64000,'host_capture_mode':self.input_format.get('mode'),
                      'output_rate':48000},indent=2))
     def note_failure(self,error):
@@ -341,6 +360,8 @@ class AudioSession:
     def phase_errors(self,name):
         with self.lock:m=dict(self.metrics.get(name,{}))
         errors=list(m.get('host_errors',[]))+list(self.output_errors.get(name,[]))+list(self.errors)
+        if not self.output_callbacks.get(name,0):
+            errors.append('No host output callbacks observed')
         if not m.get('samples'):errors.append('No host input samples collected')
         if m.get('samples') and not m.get('peak'):errors.append('Microphone recording contains only digital silence')
         if self.drops:errors.append('Audio collector queue overflowed')
@@ -385,7 +406,9 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if ceiling<192000:raise RuntimeError('No valid AAC-ELD session ceiling: '+str(limits))
         baseline=PROFILES[-1] if ceiling>=256000 else ('restore192',1,False,1,192000,0,0,6)
         probe_only=getattr(args,'session_only',False)
-        profiles=[('session_probe',*baseline[1:])] if probe_only else PROFILES[:-1]+[baseline]
+        mic_close_only=getattr(args,'mic_close_only',False)
+        profiles=([('session_probe',*baseline[1:])] if probe_only else [baseline] if mic_close_only
+                  else PROFILES[:-1]+[baseline])
         for profile in profiles:
             name,rate,gaming,level,*_=profile
             if profile[4]>ceiling:
@@ -422,8 +445,17 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         def channel_check(label):
             for side in ('left','right'):
                 audio.set_phase(label+'_'+side);dwell(2,label+'_'+side)
+                phase=label+'_'+side
+                if not audio.output_callbacks.get(phase,0):
+                    result(phase,'UNVERIFIED','No host output callbacks observed; acoustic stimulus cannot be assumed')
+                    continue
+                output_errors=audio.output_errors.get(phase,[])
+                if output_errors:
+                    preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(output_errors)))
+                    result(phase,'FAIL',{'output_errors':list(output_errors)})
+                    continue
                 answer=prompt(f'{label}: tone is {side.upper()} only. Type yes if correct; otherwise no, silent, both, wrong-side, or a description:')
-                result(label+'_'+side,observation_status(answer,'channel',side),answer)
+                result(phase,observation_status(answer,'channel',side),answer)
         channel_check('mic_active')
         prompt('Keep this firmware connected. Press Enter to check microphone close/reopen while script playback continues:')
         audio.set_phase('mic_closing');audio.set_capture(False)
@@ -438,19 +470,27 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if closed=='PASS':channel_check('mic_reopened')
         audio.set_phase('mic_reopened_steady')
         before=snapshot(link,recorder,'mic_reopened_begin');faults=dwell(5,'mic_reopened_steady',baseline)
-        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after,baseline)+faults
+        after=snapshot(link,recorder,'mic_reopened_end');errors=health(before,after,baseline)+faults+audio.phase_errors('mic_reopened_steady')
         if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('mic_close_reopen_duplex','FAIL' if errors else 'PASS' if closed=='PASS' else 'UNVERIFIED',
                {'errors':errors,'closure':closed,'before':before,'after':after})
+        if mic_close_only:
+            audio.set_phase('mic_close_acceptance_cleanup')
+            audio.set_capture(False)
+            final_closed,final_detail=capture_close_state(link,external_capture)
+            result('capture_close',final_closed,final_detail)
+            result('reconnect_game_soak','SKIP','Focused mic-close acceptance: no three reconnects, game profiles, relay, or repeat ten-minute soak')
+            return
         for cycle in range(3):
-            name=f'capture_reconnect_{cycle+1}';audio.set_phase(name)
+            name=f'capture_reconnect_{cycle+1}';audio.set_phase(name+'_transition')
             link.request('disconnect');link.wait(lambda s:not s.get('connected'),15)
             link.request('connect')
             link.wait(lambda s:s.get('confirmed') and s.get('peer','').upper()==target_mac.upper(),45)
             await_profile(link,baseline);dwell(3,name+'_settle')
             await_duplex_ready(link,recorder,baseline,name+'_ready')
+            audio.set_phase(name)
             before=snapshot(link,recorder,name+'_begin');faults=dwell(5,name,baseline)
-            after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)+faults
+            after=snapshot(link,recorder,name+'_end');errors=health(before,after,baseline)+faults+audio.phase_errors(name)
             if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
             result(name,'FAIL' if errors else 'PASS',{'errors':errors,'before':before,'after':after})
         audio.set_phase('duplex_soak');print(f'Duplex soak: {args.soak_seconds} seconds. Leave both streams open.',flush=True)
@@ -459,14 +499,15 @@ def run_matrix(args,root,link,recorder,select_audio,result,prompt,target_mac):
         if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
         result('duplex_soak','FAIL' if errors else 'PASS',{'seconds':args.soak_seconds,'errors':errors,'before':before,'after':after})
         if args.phone_relay:
-            audio.set_phase('phone_relay_duplex');link.request('phonepair 1')
+            audio.set_phase('phone_relay_transition');link.request('phonepair 1')
             try:
                 prompt('Pair/play a phone now; leave PC playback and microphone capture running. Press Enter when playing:')
                 state=link.wait(lambda s:s.get('relay_connected') and s.get('relay_streaming'),60)
                 relay_profile=('relay',*baseline[1:4],164000,0,0,6)
                 await_profile(link,relay_profile);dwell(3,'relay_settle')
+                audio.set_phase('phone_relay_duplex')
                 before=snapshot(link,recorder,'phone_relay_duplex_begin');faults=dwell(15,'phone_relay_duplex',relay_profile)
-                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)+faults
+                after=snapshot(link,recorder,'phone_relay_duplex_end');errors=health(before,after,relay_profile)+faults+audio.phase_errors('phone_relay_duplex')
                 if errors:preserve_audio_failure(root,link,recorder,RuntimeError('; '.join(errors)))
                 heard=prompt('Was the mixed phone/PC audio clear? Type yes/no, or Enter for unverified:')
                 result('phone_relay_duplex','FAIL' if errors or heard.lower()=='no' else 'PASS' if heard.lower()=='yes' else 'UNVERIFIED',{'state':state,'errors':errors,'before':before,'after':after})

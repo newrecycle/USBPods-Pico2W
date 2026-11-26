@@ -304,7 +304,7 @@ static const char * codec_name_for_type(avdtp_media_codec_type_t codec_type){
     }
 }
 
-uint32_t src_tx_pkts;   /* media packets actually sent — a frozen value
+static uint32_t src_tx_pkts;   /* media packets actually sent — a frozen value
                                   in the 'R' dump = the source stream is DEAD
                                   (timer stopped / start lost), not just quiet */
 
@@ -409,6 +409,7 @@ static const hci_cmd_t usbpods_hci_enhanced_flush = { 0x0C5F, "H1" };        /* 
 static uint8_t  src_rec_state;      /* 0 idle, 1 nudge sent, 2 beacon wait,
                                        3 kick beacon wait                    */
 uint32_t src_splice_last_ms; /* last live splice (quiesce gate)      */
+static bool src_rtp_clock_started;
 static uint32_t src_rtp_ms_base;    /* wall-clock base for the 1 kHz RTP stamp */
 static uint32_t src_rec_t0;         /* nudge send time                      */
 static uint8_t  src_rec_escal;      /* k-escalations this episode (backoff) */
@@ -621,16 +622,14 @@ void a2dp_source_eld_send(void) {
         txchk_done: ;
     }
 
-    src_tx_pkts++;
-    {
-        uint8_t send_rc = a2dp_source_stream_send_media_payload_rtp(media_tracker.avdtp_cid, media_tracker.local_seid, rtp_marker, media_tracker.rtp_timestamp, &media_tracker.codec_storage[0], media_tracker.codec_storage_count);
-        if (send_rc != ERROR_CODE_SUCCESS) {
-            src_send_fails++;
-            src_send_fail_rc = send_rc;
-            printf("[txchk] SEND FAILED rc %u pkt #%lu (on-air seq gap!)\n",
-                   send_rc, (unsigned long)src_tx_pkts);
-        }
+    /* Stamp this packet at submission. A zero millisecond clock value is valid
+       both at startup and when the 32-bit timer rolls over. */
+    if (!src_rtp_clock_started) {
+        src_rtp_ms_base = now_ms;
+        src_rtp_clock_started = true;
     }
+    media_tracker.rtp_timestamp = now_ms - src_rtp_ms_base;
+    a2dp_source_send_payload(rtp_marker, media_tracker.codec_storage_count);
 
     if (src_eld_tap) {
         /* codec_ready_to_send gates the pump, so no fill ran since this
@@ -645,19 +644,6 @@ void a2dp_source_eld_send(void) {
                rtp_marker ? " SNAP" : "");
     }
 
-    /* RTP timestamp: MILLISECOND clock stamped from the REAL clock, exactly
-       as macOS does (wire, 3732 pkts: 1 kHz units, per-packet deltas
-       jittering 29-33 with mean 30.00 — i.e. sampled from a millisecond
-       clock, NOT accumulated from AU counts).
-       Accumulating (n_AUs x 10) was tried and FAILED HARD: our packets are
-       often 2 AUs, so the clock advanced +20 while 22 ms of wall time
-       passed — a playout clock running slower than real time starves the
-       renderer and the buds go SILENT within seconds (HW). Stamping from
-       the run-loop clock is immune to AU batching, resampling and pump
-       jitter by construction. Base offset keeps the first stamp near 0. */
-    if (src_rtp_ms_base == 0) src_rtp_ms_base = now_ms;
-    media_tracker.rtp_timestamp = now_ms - src_rtp_ms_base;
-
     media_tracker.codec_storage_count = 0;
     media_tracker.codec_ready_to_send = 0;
     media_tracker.codec_num_frames = 0;
@@ -670,7 +656,7 @@ uint32_t get_vendor_id(const uint8_t *codec_info) {
     vendor_id |= codec_info[0];
     vendor_id |= codec_info[1] << 8;
     vendor_id |= codec_info[2] << 16;
-    vendor_id |= codec_info[3] << 24;
+    vendor_id |= (uint32_t)codec_info[3] << 24;
     return vendor_id;
 }
 
@@ -1201,12 +1187,17 @@ const uint8_t *a2dp_source_peer_addr(void){
    simply never sent. Only the ELD path checked this, so an oversized codec
    payload was silent, total audio loss that looked like RF trouble. Every
    codec's send now reports here. */
-void a2dp_source_note_send(uint8_t rc){
-    if (rc == ERROR_CODE_SUCCESS) return;
-    src_send_fails++;
-    src_send_fail_rc = rc;
-    printf("[txchk] SEND FAILED rc %u pkt #%lu (payload too big for the link MTU?)\n",
-           rc, (unsigned long) src_tx_pkts);
+void a2dp_source_send_payload(uint8_t marker, uint16_t length) {
+    uint8_t rc = a2dp_source_stream_send_media_payload_rtp(
+        media_tracker.avdtp_cid, media_tracker.local_seid, marker,
+        media_tracker.rtp_timestamp, media_tracker.codec_storage, length);
+    if (rc == ERROR_CODE_SUCCESS) {
+        src_tx_pkts++;
+    } else {
+        src_send_fails++;
+        src_send_fail_rc = rc;
+        printf("[txchk] media submission failed rc %u len %u\n", rc, length);
+    }
 }
 
 bool get_allow_switch_slot(){
@@ -1342,6 +1333,40 @@ static uint32_t src_eld_packet_au_limit(void) {
 #endif
 }
 
+/* 'U' diagnostic only: the actual stereo input handed to FDK, after gain,
+ * mixing and optional resampling. This does not prove the compressed payload
+ * decodes correctly or that either earbud rendered it. No PCM is modified. */
+static void src_eld_pcm_tap_note(const int16_t *pcm, uint32_t frames) {
+    extern volatile bool usb_pcm_tap;
+    static struct {
+        uint32_t started, generation, frames, peak_l, peak_r;
+        bool valid, capture, mixed;
+    } tap;
+    if (!usb_pcm_tap) { memset(&tap,0,sizeof tap); return; }
+    uint32_t now=time_us_32(),generation=aacp_mic_generation();
+    bool capture=aacp_mic_capture();
+    if (!tap.valid || now-tap.started>1000000u) {
+        memset(&tap,0,sizeof tap);tap.valid=true;tap.started=now;
+        tap.generation=generation;tap.capture=capture;
+    }
+    if (tap.generation!=generation || tap.capture!=capture) tap.mixed=true;
+    for (uint32_t i=0;i<frames;i++) {
+        int32_t l=pcm[2*i],r=pcm[2*i+1];
+        uint32_t al=(uint32_t)(l<0?-l:l),ar=(uint32_t)(r<0?-r:r);
+        if(al>tap.peak_l)tap.peak_l=al;
+        if(ar>tap.peak_r)tap.peak_r=ar;
+    }
+    tap.frames+=frames;
+    if (aacp_mic_generation()!=generation) tap.mixed=true;
+    if (now-tap.started>=500000u) {
+        printf("[eld-pcm] frames=%lu peak_l=%lu peak_r=%lu mic=%s gen=%lu\n",
+               (unsigned long)tap.frames,(unsigned long)tap.peak_l,
+               (unsigned long)tap.peak_r,tap.mixed?"transition":tap.capture?"open":"closed",
+               (unsigned long)generation);
+        memset(&tap,0,sizeof tap);
+    }
+}
+
 int codec_fdk_fill(a2dp_media_sending_context_t *context) {
     int          total_samples_read               = 0;
 
@@ -1450,6 +1475,8 @@ int codec_fdk_fill(a2dp_media_sending_context_t *context) {
         out_buf.bufSizes     = &out_size;
         AACENC_ERROR err;
 
+        if(cur_codec==CODEC_ID_AACELD && aacinf.inputChannels==2)
+            src_eld_pcm_tap_note((const int16_t *)in_ptr,(uint32_t)in_args.numInSamples/2u);
         watchdog_hw->scratch[7] = 0x3B;   /* entering aacEncEncode */
         const uint32_t encode_started=time_us_32();
         err = aacEncEncode(handleAAC, &in_buf, &out_buf, &in_args, &out_args);
@@ -2795,11 +2822,7 @@ static void avdtp_audio_timeout_handler_inner(btstack_timer_source_t * timer){
 
         case 1:   /* SBC */
             codec_sbc_ops.fill(context);
-            /* +1: the SBC payload header ships with the frames (see the
-               reservation in fill_sbc_audio_buffer) */
-            if ((context->codec_storage_count + 1 + btstack_sbc_encoder_sbc_buffer_length()) > context->max_media_payload_size){
-                // schedule sending
-                context->codec_ready_to_send = 1;
+            if (context->codec_ready_to_send) {
                 a2dp_source_stream_endpoint_request_can_send_now(context->avdtp_cid, context->local_seid);
             }
             break;
@@ -2866,6 +2889,9 @@ static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
     if (cur_codec == 4) {
         int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
         context->max_media_payload_size = m > 0 && m < 986 ? (uint16_t)m : 986;
+    } else if (cur_codec == CODEC_ID_SBC) {
+        int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
+        context->max_media_payload_size = m > 0 && m < 0x290 ? m : 0x290;
     } else if (cur_codec == 2) {
         int m = avdtp_max_media_payload_size(context->avdtp_cid, context->local_seid);
         context->max_media_payload_size = (m >= 0x290 && m <= 1024) ? (uint16_t) m : 0x290;
@@ -2890,7 +2916,7 @@ static void a2dp_demo_timer_start(a2dp_media_sending_context_t * context){
     context->codec_storage_count = 0;
     context->codec_ready_to_send = 0;
     context->streaming = 1;
-    src_rtp_ms_base = 0;    /* fresh ms timeline for this stream session */
+    src_rtp_clock_started = false;  /* First submission establishes the new timeline. */
     src_tick_last_ms = 0;   /* pause/resume must not read as a giant tick gap */
     src_full_since = 0;     /* nor a pre-suspend jam as a 200 ms dwell served */
     src_manflush_streak = 0;

@@ -93,7 +93,7 @@ extern bool    eld_resample;
 extern int16_t eld_rs_buf[480 * 2];
 
 /* ---- transport telemetry + recovery hooks (written by send paths) ------- */
-extern uint32_t src_tx_pkts;             /* every media packet sent          */
+void a2dp_source_send_payload(uint8_t marker, uint16_t length);
 extern uint32_t src_splice_last_ms;      /* damage signal timestamp          */
 extern volatile bool src_auto_kick_pending; /* arms the recovery kick        */
 

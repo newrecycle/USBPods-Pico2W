@@ -98,7 +98,7 @@ class AppliedPolicy(unittest.TestCase):
     def test_strict_loss_accounting_unchanged(self):
         def sample(decoded, samples, au_drop=0, missing=0):
             return {
-                "status": {"streaming": 1, "codec": 4, "tx_packets": 100 + decoded, "send_failures": 0},
+                "status": {"mic_restarts": 0, "mic_retry_count": 0, "mic_watchdog_failures": 0, "streaming": 1, "codec": 4, "tx_packets": 100 + decoded, "send_failures": 0},
                 "eldstatus": {"transition": "ready"},
                 "micstats": {"generation": 3, "capture": 1, "decoded": decoded,
                              "clock_windows": 1, "measured_rate": 64000,
@@ -120,7 +120,7 @@ class AppliedPolicy(unittest.TestCase):
             applied = state(profile)
             applied["active_jitter"] = jitter
             return dict(
-                status=dict(streaming=1, codec=4, tx_packets=decoded, send_failures=0),
+                status=dict(mic_restarts=0,mic_retry_count=0,mic_watchdog_failures=0,streaming=1, codec=4, tx_packets=decoded, send_failures=0),
                 eldstatus=applied,
                 micstats=dict(generation=1,capture=1,decoded=decoded,
                               clock_windows=1,measured_rate=64000,

@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "hardware_run": true,
+  "source_sha": "1979ae6be1c2daf9e1db8024763504d4061c4588",
+  "firmware_run_id": 42419581145,
+  "artifact_id": 13592873692,
+  "archive_sha256": "480b04f9d148524f51071115c2f12b933882bccefe0e914e9c6a74a185e24474",
+  "firmware_sha256": "d89d964077e79f36f0ae1f825b761135a39ffac60d8659a1f404432644fc27db",
+  "variant": "Lite rpi0065 AACELD mic; single-core default",
+  "cdc_port": "COM4",
+  "intervals": {
+    "baseline256": {
+      "status": "PASS",
+      "requested_seconds": 20,
+      "errors": [],
+      "decoded": 2752,
+      "au_drop": 0,
+      "usb_missing_samples": 0,
+      "pcm_blocked": 0,
+      "au_drop_pcm_full": 0,
+      "tx_packets": 1032,
+      "active_bitrate": 256000,
+      "active_jitter": 150
+    },
+    "duplex192": {
+      "status": "PASS",
+      "requested_seconds": 20,
+      "errors": [],
+      "decoded": 2742,
+      "au_drop": 0,
+      "usb_missing_samples": 0,
+      "pcm_blocked": 1412,
+      "au_drop_pcm_full": 0,
+      "tx_packets": 977,
+      "active_bitrate": 192000,
+      "active_jitter": 150
+    },
+    "game_stable": {
+      "status": "PASS",
+      "requested_seconds": 20,
+      "errors": [],
+      "decoded": 2744,
+      "au_drop": 0,
+      "usb_missing_samples": 0,
+      "pcm_blocked": 0,
+      "au_drop_pcm_full": 0,
+      "tx_packets": 995,
+      "active_bitrate": 192000,
+      "active_jitter": 90
+    },
+    "game_latency": {
+      "status": "PASS",
+      "requested_seconds": 20,
+      "errors": [],
+      "decoded": 2740,
+      "au_drop": 0,
+      "usb_missing_samples": 0,
+      "pcm_blocked": 0,
+      "au_drop_pcm_full": 0,
+      "tx_packets": 993,
+      "active_bitrate": 192000,
+      "active_jitter": 60
+    }
+  },
+  "continuous_mic_lifecycle_left_observations": {
+    "open": "Left ear only",
+    "closed": "Silent",
+    "reopened": "Left ear only"
+  },
+  "original_closed_right_observation": "Right ear only",
+  "post_gain_pcm_windows": {
+    "stable_open_left": [
+      "[eld-pcm] frames=24480 peak_l=316 peak_r=1 mic=open gen=27",
+      "[eld-pcm] frames=24480 peak_l=316 peak_r=1 mic=open gen=27"
+    ],
+    "stable_closed_left": [
+      "[eld-pcm] frames=24480 peak_l=317 peak_r=1 mic=closed gen=29",
+      "[eld-pcm] frames=24480 peak_l=316 peak_r=1 mic=closed gen=29"
+    ],
+    "stable_reopened_left": [
+      "[eld-pcm] frames=24480 peak_l=316 peak_r=1 mic=open gen=33",
+      "[eld-pcm] frames=24480 peak_l=317 peak_r=1 mic=open gen=33"
+    ],
+    "before_refresh_left": [
+      "[eld-pcm] frames=24960 peak_l=316 peak_r=1 mic=closed gen=35",
+      "[eld-pcm] frames=24960 peak_l=317 peak_r=1 mic=closed gen=35"
+    ],
+    "after_refresh_left": [
+      "[eld-pcm] frames=24960 peak_l=316 peak_r=1 mic=closed gen=35",
+      "[eld-pcm] frames=24960 peak_l=316 peak_r=1 mic=closed gen=35"
+    ],
+    "after_saved_reconnect_left": [
+      "[eld-pcm] frames=24960 peak_l=316 peak_r=1 mic=closed gen=39",
+      "[eld-pcm] frames=24960 peak_l=317 peak_r=1 mic=closed gen=39"
+    ]
+  },
+  "explicit_K_refresh": {
+    "transport": "PASS",
+    "before_closed_left": "Silent",
+    "after_closed_left": "Left ear only",
+    "disconnect_required": false
+  },
+  "saved_bond_reconnect": {
+    "transport": "PASS",
+    "closed_left": "Left ear only",
+    "fresh_pairing": false,
+    "power_cycle_tested": false
+  },
+  "320kbps": "SKIP: negotiated ceiling 256000",
+  "mic_close_channel_loss_fixed": false,
+  "new_soak_run": false,
+  "lifetime_au_drop_at_cleanup": 248,
+  "loss_scope": "Zero-loss claims apply only to listed measured steady intervals. Lifetime drops include interrupted startup and capture lifecycle activity. No whole-session zero-loss claim.",
+  "interruption_limit": "Wi-Fi/runner interruptions invalidated the intermediate fresh-open silence report. Final lifecycle sequence used current heartbeats, synchronized tap state and one continuously open playback endpoint.",
+  "cleanup": {
+    "audio_stopped": true,
+    "capture": 0,
+    "selected_rate": 2,
+    "game": 0,
+    "gamelevel": 1,
+    "bitrate": 256000,
+    "restore_error": null,
+    "recorder_errors": []
+  },
+  "local_archives": [
+    {
+      "id": "live-20261107T224501Z",
+      "sha256": "f634d12b5678ca2c09d148e400642f83996ba14b2708572eb2524877bcd3f646"
+    }
+  ],
+  "raw_recordings_or_addresses_committed": false,
+  "compressed_audio_content_verified": false
+}

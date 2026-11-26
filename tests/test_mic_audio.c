@@ -6,7 +6,8 @@
 #include <aacdecoder_lib.h>
 #include <assert.h>
 #include <stdio.h>
-uint32_t mock_time_us;
+#include <stdatomic.h>
+_Atomic uint32_t mock_time_us;
 static int16_t value;
 static bool fail,flush_fail,clear_fail,fill_fail,supplied;
 static unsigned flush_calls,clear_calls;
@@ -42,6 +43,12 @@ static void enqueue(uint8_t v) { aacp_mic_audio_enqueue(&v,1); }
 static void drain(void) { int16_t p[64]; while(aacp_mic_audio_read(p,64)) {} }
 int main(void) {
  aacp_mic_audio_stats s;
+ // Queue residence includes time waiting for the worker, across clock wrap.
+ aacp_mic_audio_init();aacp_mic_set_capture(true);
+ mock_time_us=UINT32_MAX-99u;enqueue(2);mock_time_us=200;
+ aacp_mic_audio_work();aacp_mic_audio_get_stats(&s);
+ assert(s.au_wait_last_us==300 && s.au_wait_max_us==300 && s.work_max_us==325);
+ drain();aacp_mic_set_capture(false);
  // Raw AACP timestamps are not assumed to be in samples or microseconds.
  // A 480-tick step and 7500-us arrival period are independent observations.
  for (uint32_t i=0;i<20;i++) aacp_mic_audio_note_au(i*480u,i*7500u);
@@ -66,7 +73,7 @@ int main(void) {
  assert(s.generation==previous_generation+1);
  assert(s.timestamp_backwards==1); // restart is not a wrap/backtrack
  assert(s.timestamp_step_reference==480);
- int16_t p[64]; aacp_mic_audio_init(); assert(aacp_mic_audio_ready());
+ int16_t p[64]; assert(aacp_mic_audio_ready());
  enqueue(3); aacp_mic_audio_work(); assert(!aacp_mic_audio_read(p,64));
  aacp_mic_set_capture(true); enqueue(7); aacp_mic_audio_work();
  assert(aacp_mic_audio_read(p,64)==64); for(int i=0;i<64;i++) assert(p[i]==7);
@@ -88,6 +95,18 @@ int main(void) {
  aacp_mic_audio_get_stats(&s);
  assert(s.au_high_water==32 && s.au_overflows>=68);
  assert(s.pcm_high_water==16 && s.pcm_overflows==0 && s.au_depth==16);
+ assert(s.pcm_blocked>0 && s.work_max_us>=8u*325u);
+ uint32_t blocked_drops=s.au_overflow_pcm_full;
+ // Saturation with blocked PCM is observable separately from the initial
+ // compressed burst, which overflowed while PCM still had space.
+ for(unsigned i=0;i<17;i++)enqueue(12);
+ aacp_mic_audio_get_stats(&s);
+ assert(s.au_overflow_pcm_full==blocked_drops+1 && s.au_depth==32);
+ // Discard these additional AUs via generation fencing before continuing
+ // the existing retention/order checks on a fresh, equivalent queue.
+ aacp_mic_discontinuity();aacp_mic_audio_work();drain();
+ for(unsigned i=0;i<32;i++)enqueue(12);
+ aacp_mic_audio_work();aacp_mic_audio_work();aacp_mic_audio_get_stats(&s);
  assert(!aacp_mic_audio_pending());
  uint32_t decoded_before=s.decoded;int16_t frame[480];
  assert(aacp_mic_audio_read(frame,480)==480 && frame[0]==12);

@@ -105,9 +105,9 @@ class RunnerAudit(unittest.TestCase):
         self.assertTrue(any(x['eldstatus']['transition']=='wait-start' for x in recorder.records))
 
     def test_recovery_during_steady_interval_is_a_failure(self):
-        base={'micstats':dict(generation=3,capture=1,decoded=80,clock_windows=4,
+        base={'micstats':dict(errors=0,au_drop=0,pcm_drop=0,generation=3,capture=1,decoded=80,clock_windows=4,
                 measured_rate=64000,coding_rate=48000,pcm_rate=64000),
-              'usbcapture':dict(running=1,pcm_samples=10000,missing_samples=0),
+              'usbcapture':dict(running=1,pcm_samples=10000,missing_samples=0,short_writes=0),
               'status':dict(streaming=1,codec=4,capture=1,mic_started=1,
                 mic_audio_seen=1,mic_retry_count=0,mic_restarts=0,
                 mic_watchdog_failures=0,tx_packets=150,send_failures=0),
@@ -184,7 +184,7 @@ class RunnerAudit(unittest.TestCase):
             base=Path(temp);build=base/'build';evidence=base/'evidence';out=base/'candidate'
             build.mkdir();evidence.mkdir()
             stem='USBPods_Pico2W_Lite_AACELD_Mic';source_sha='a'*40
-            binary=source_sha.encode()+b'\0'
+            binary=(source_sha+'\0'+stem+':rpi0065\0').encode()
             binary=binary.ljust(256,b'\0')
             block=bytearray(512)
             struct.pack_into('<8I',block,0,0x0a324655,0x9e5d5157,
@@ -198,7 +198,7 @@ class RunnerAudit(unittest.TestCase):
                     'artifacts':{stem+'.bin':{'sha256':digest(build/(stem+'.bin'))},
                                  stem+'.uf2':{'sha256':digest(build/(stem+'.uf2'))}}}
             (evidence/'verification.json').write_text(json.dumps(report))
-            (evidence/'firmware.json').write_text(json.dumps({'schema':1}))
+            (evidence/'firmware.json').write_text(json.dumps({'schema':1,'selection':'rpi0065'}))
             manifest=package(ROOT,build,evidence,out,stem,source_sha,123)
             self.assertTrue(manifest['mic_decode'])
             self.assertFalse(manifest['hardware_tested'])

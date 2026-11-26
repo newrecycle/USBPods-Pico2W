@@ -943,5 +943,41 @@
       "tests/test_validation_audit.py"
     ],
     "timeout": 120
+  },
+  {
+    "name": "eld-pcm-tap",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_eld_pcm_tap.py"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "sdk-response-reentry",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_sdk_response_reentry.py",
+      "--source-dir",
+      "{SDK}"
+    ],
+    "timeout": 120,
+    "requires_fdk": false
+  },
+  {
+    "name": "underrun-snapshot-interleave",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_underrun_snapshot.py"
+    ],
+    "timeout": 120
+  },
+  {
+    "name": "codec-media-submission",
+    "argv": [
+      "{PYTHON}",
+      "tests/test_media_submission.py"
+    ],
+    "timeout": 120
   }
 ]

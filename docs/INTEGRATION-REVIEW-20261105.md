@@ -19,7 +19,9 @@ The inventory contained 19 branches and two open draft PRs. Baseline main:
 head. All other historical branches were already ancestors of main (or equal
 to it). Exact inventory is in
 [evidence/integration-review-20261105.json](evidence/integration-review-20261105.json).
-Branch refs are retained.
+Branch refs were retained at review time. The 2026-11-07 handoff records their
+subsequent deletion after verifying zero unique commits; all reviewed commits
+remain in main history. PRs #3 and #4 are merged.
 
 ## Review findings and resolutions
 
